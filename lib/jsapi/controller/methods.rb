@@ -15,7 +15,7 @@ module Jsapi
       # Performs an API operation by calling the given block. The request parameters are
       # passed as an instance of the operation's model class to the block. The object
       # returned by the block is implicitly rendered according to the appropriate +response+
-      # specification.
+      # specification when the content type is a JSON MIME type.
       #
       #   api_operation('foo') do |api_params|
       #     # ...
@@ -151,9 +151,11 @@ module Jsapi
 
           Error.new(e, status: status)
         end
-        response = Response.new(result, response_model, definitions, omit: omit)
 
         # Write response
+        return unless response_model.json_type?
+
+        response = Response.new(result, response_model, definitions, omit: omit)
         self.content_type = response_model.content_type
         render(json: response, status: status)
       end

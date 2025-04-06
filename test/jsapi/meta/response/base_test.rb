@@ -21,6 +21,22 @@ module Jsapi
           assert_equal('bar', response.schema.ref)
         end
 
+        def test_json_type_predicate
+          %w[application/json application/vnd.foo+json text/json].each do |content_type|
+            assert(
+              Base.new(content_type: content_type).json_type?,
+              "Expected #{content_type} to be a JSON type"
+            )
+          end
+
+          %w[application/pdf text/plain].each do |content_type|
+            assert(
+              !Base.new(content_type: content_type).json_type?,
+              "Expected #{content_type} not to be a JSON type"
+            )
+          end
+        end
+
         # OpenAPI objects
 
         def test_minimal_openapi_response_object

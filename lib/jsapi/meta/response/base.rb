@@ -7,6 +7,8 @@ module Jsapi
       class Base < Model::Base
         include OpenAPI::Extensions
 
+        JSON_TYPE = %r{(^application/|^text/|\+)json$}.freeze # :nodoc:
+
         delegate_missing_to :schema
 
         ##
@@ -56,6 +58,12 @@ module Jsapi
           keywords[:ref] = keywords.delete(:schema) if keywords.key?(:schema)
 
           @schema = Schema.new(keywords)
+        end
+
+        # Returns true if content type is a JSON MIME type as specified by
+        # https://mimesniff.spec.whatwg.org/#json-mime-type.
+        def json_type?
+          content_type.match?(JSON_TYPE)
         end
 
         # Returns a hash representing the \OpenAPI response object.

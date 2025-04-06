@@ -1,5 +1,12 @@
 # Change log
 
+##  1.1 (2025-04-06)
+
+### Changes
+
+- The `api_operation` and `api_operation!` controller methods renders a response only if
+  the content type is a JSON MIME type.
+
 ## 1.0 (2024-11-01)
 
 ### Changes

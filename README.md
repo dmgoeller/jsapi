@@ -1208,9 +1208,9 @@ If `status` is not present, the default response of the API operation is selecte
 `api_operation` performs an API operation by calling the given block. The request parameters
 are passed as an instance of the operation's model class to the block.
 
-This method implicitly renders the JSON representation of the object returned by the block.
-This can be a hash or an object providing corresponding methods for all properties of the
-response.
+This method implicitly renders the JSON representation of the object returned by the block
+when the content type is a JSON MIME type. This can be a hash or an object providing
+corresponding methods for all properties of the response.
 
 ```ruby
 api_operation('foo', status: 200) do |api_params|

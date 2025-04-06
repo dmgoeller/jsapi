@@ -13,7 +13,7 @@ module Jsapi
         define_method("test_#{name}") do
           controller = dummy_controller do
             api_operation do
-              response 200, type: 'string', content_type: 'application/foo'
+              response 200, type: 'string', content_type: 'application/vnd.foo+json'
             end
           end
           # Method call without block
@@ -29,7 +29,7 @@ module Jsapi
           response = controller.response
 
           assert_equal(200, response.status)
-          assert_equal('application/foo', response.content_type)
+          assert_equal('application/vnd.foo+json', response.content_type)
           assert_equal('"foo"', response.body)
 
           # Errors
@@ -141,6 +141,20 @@ module Jsapi
             controller.api_operation(status: 200) { raise 'foo' }
           end
           assert_equal('foo', error.message)
+        end
+
+        define_method("test_#{name}_on_other_type_than_json") do
+          controller = dummy_controller do
+            api_operation do
+              response 200, type: 'string', content_type: 'text/plain'
+            end
+          end
+          controller.send(method, status: 200) { 'foo' }
+          response = controller.response
+
+          assert_nil(response.status)
+          assert_nil(response.content_type)
+          assert_nil(response.body)
         end
       end
 

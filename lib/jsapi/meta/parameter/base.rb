@@ -126,7 +126,7 @@ module Jsapi
             property_schema = property.schema.resolve(definitions)
             parameter_name = "#{name}[#{property.name}]"
             required = (required && property.required?).presence
-            deprecated = (deprecated || property.deprecated?).presence
+            deprecated = (deprecated || property_schema.deprecated?).presence
 
             if property_schema.object?
               explode_parameter(

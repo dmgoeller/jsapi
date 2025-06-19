@@ -1,5 +1,11 @@
 # Change log
 
+## 1.1.1 (2025-06-19)
+
+### Changes
+
+- `Meta::Parameter::Base#explode_parameter` no longer fails when a property refers a schema.
+
 ##  1.1 (2025-04-06)
 
 ### Changes

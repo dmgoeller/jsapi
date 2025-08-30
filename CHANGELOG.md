@@ -1,6 +1,6 @@
 # Change log
 
-## 1.2.0
+## 1.2 (2025-08-30)
 
 ### New features
 

@@ -22,7 +22,7 @@ module Jsapi
           assert_equal('foo', evaluator.call(hash))
         end
 
-        # #inspect
+        # Inspection
 
         def test_inspect
           assert_equal(

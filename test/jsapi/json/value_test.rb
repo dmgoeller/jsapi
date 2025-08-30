@@ -65,7 +65,7 @@ module Jsapi
         assert(errors.added?(:base, 'is invalid'))
       end
 
-      # #inspect
+      # Inspection
 
       def test_inspect
         assert_equal(

@@ -82,7 +82,7 @@ module Jsapi
         assert(errors.added?(:base, "can't be blank"))
       end
 
-      # #inspect
+      # Inspection
 
       def test_inspect
         schema = Meta::Schema.new(type: 'array', items: { type: 'string' })

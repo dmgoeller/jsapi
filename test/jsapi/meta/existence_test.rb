@@ -75,7 +75,7 @@ module Jsapi
         assert(Existence::PRESENT.reach?(dummy))
       end
 
-      # #inspect
+      # Inspection
 
       def test_inspect
         assert_equal(

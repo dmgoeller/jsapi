@@ -379,7 +379,7 @@ module Jsapi
         assert_equal('{"foo":"Hallo Welt"}', response.to_json)
       end
 
-      # #inspect
+      # Inspection
 
       def test_inspect
         response_model = Meta::Response.new(type: 'string')

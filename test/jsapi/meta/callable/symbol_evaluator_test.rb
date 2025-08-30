@@ -31,7 +31,7 @@ module Jsapi
           end
         end
 
-        # #inspect
+        # Inspection
 
         def test_inspect
           assert_equal(

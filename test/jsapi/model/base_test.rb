@@ -153,7 +153,7 @@ module Jsapi
         assert(model.errors.added?(:foo, "'bar' can't be blank"))
       end
 
-      # #inspect
+      # Inspection
 
       def test_inspect
         model = Base.new(JSON.wrap({}, Meta::Schema.new(type: 'object')))

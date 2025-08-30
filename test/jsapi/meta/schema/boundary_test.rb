@@ -27,7 +27,7 @@ module Jsapi
           assert(!boundary.exclusive?)
         end
 
-        # #inspect
+        # Inspection
 
         def test_inspect
           assert_equal(

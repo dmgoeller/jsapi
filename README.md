@@ -1338,3 +1338,28 @@ class BaseRange < Jsapi::Model::Base
   end
 end
 ```
+
+### Mass assignment
+
+When creating or updating an ActiveRecord object, attributes can be set using the
+`serializable_hash` method provided by `Jsapi::Model::Base`, for example:
+
+```ruby
+def create
+  api_operation!('create_foo') do |api_params|
+    Foo.create! api_params.foo.serializable_hash
+  end
+end
+```
+
+The attributes returned by `serializable_hash` can be filtered by `:only` or `:except`.
+An `update` action that only updates the passed attributes only looks like:
+
+```ruby
+def update
+  api_operation!('update_foo') do |api_params|
+    foo = Foo.find api_params.id
+    foo.update! api_params.foo.serializable_hash(only: params[:foo].keys)
+  end
+end
+```

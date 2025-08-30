@@ -20,6 +20,10 @@ module Jsapi
         "#<#{self.class.name} [#{@json_values.map(&:inspect).join(', ')}]>"
       end
 
+      def serializable_value(**options) # :nodoc:
+        @json_values.map { |element| element.serializable_value(**options) }
+      end
+
       def validate(errors) # :nodoc:
         return false unless super
 

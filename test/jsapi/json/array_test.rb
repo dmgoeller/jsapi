@@ -39,6 +39,14 @@ module Jsapi
         assert(!array.empty?)
       end
 
+      # Serialization
+
+      def test_serializable_value
+        schema = Meta::Schema.new(type: 'array', items: { type: 'string' })
+        array = Array.new(%w[foo bar], schema, definitions)
+        assert_equal(%w[foo bar], array.serializable_value)
+      end
+
       # Validation
 
       def test_validates_self_against_schema

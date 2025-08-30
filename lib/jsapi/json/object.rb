@@ -6,6 +6,8 @@ module Jsapi
     class Object < Value
       include Model::Nestable
 
+      alias serializable_value serializable_hash
+
       attr_reader :raw_additional_attributes, :raw_attributes
 
       def initialize(hash, schema, definitions, context: nil)

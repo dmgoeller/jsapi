@@ -25,7 +25,43 @@ module Jsapi
       extend ActiveModel::Translation
       include ActiveModel::Validations
 
-      delegate :[], :additional_attributes, :attribute?, :attributes, to: :@nested
+      ##
+      # :method: []
+      # :call-seq: [](name)
+      #
+      # Returns the value assigned to +name+.
+
+      ##
+      # :method: additional_attributes
+      #
+      # Returns a hash containing the additional attributes.
+
+      ##
+      # :method: attribute?
+      # :call-seq: attribute?(name)
+      #
+      # Returns +true+ if +name+ is present, +false+ otherwise.
+
+      ##
+      # :method: attributes
+      #
+      # Returns a hash containing all attributes.
+
+      ##
+      # :method: serializable_hash
+      # :call-seq: serializable_hash(**options)
+      #
+      # Returns a hash containing serializable representations of all attributes.
+      #
+      # Possible options are:
+      #
+      # - +:only+ - The hash contains the given attributes only.
+      # - +:except+ - The hash does not contain the given attributes.
+      # - +:symbolize_names+ - If set to true, keys are symbols.
+      # - +:jsonify_values+ - If set to true, values are converted by +as_json+.
+
+      delegate :[], :additional_attributes, :attribute?, :attributes,
+               :serializable_hash, to: :@nested
 
       validate :_nested_validity
 

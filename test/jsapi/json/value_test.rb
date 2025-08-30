@@ -13,6 +13,16 @@ module Jsapi
         assert(!Value.new(nil).null?)
       end
 
+      # Serialization
+
+      def test_serializable_value
+        schema = Meta::Schema.new(type: 'string', format: 'date')
+        json = JSON.wrap('2099-12-31', schema)
+
+        assert_equal(Date.new(2099, 12, 31), json.serializable_value)
+        assert_equal('2099-12-31', json.serializable_value(jsonify_values: true))
+      end
+
       # Validation
 
       def test_validates_presence

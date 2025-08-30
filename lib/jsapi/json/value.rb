@@ -29,6 +29,11 @@ module Jsapi
         false
       end
 
+      # Returns a serializable representation of +value+.
+      def serializable_value(**options)
+        options[:jsonify_values] == true ? value.as_json : value
+      end
+
       # Validates it against #schema. Returns true if it is valid, false otherwise.
       # Detected errors are added to +errors+.
       def validate(errors)

@@ -13,7 +13,7 @@ module Jsapi
         raw_additional_attributes.transform_values(&:value)
       end
 
-      # Returns +true+ if +name+ is present, false +otherwise+.
+      # Returns +true+ if +name+ is present, +false+ otherwise.
       def attribute?(name)
         raw_attributes.key?(name&.to_s)
       end
@@ -30,6 +30,32 @@ module Jsapi
             .map { |k, v| "#{k}: #{v.inspect}" }
             .join(', ')
         }>"
+      end
+
+      # Returns a hash containing serializable representations of all attributes.
+      #
+      # Possible options are:
+      #
+      # - +:only+ - The hash contains the given attributes only.
+      # - +:except+ - The hash does not contain the given attributes.
+      # - +:symbolize_names+ - If set to true, keys are symbols.
+      # - +:jsonify_values+ - If set to true, values are converted by +as_json+.
+      def serializable_hash(**options)
+        options = options.dup
+        except = options.delete(:except)&.map(&:to_s)
+        only = options.delete(:only)&.map(&:to_s)
+        symbolize_names = options[:symbolize_names] == true
+
+        {}.tap do |hash|
+          [raw_attributes, raw_additional_attributes].each do |attributes|
+            attributes.each do |name, value|
+              next if except&.include?(name) || only&.exclude?(name)
+
+              name = name.to_sym if symbolize_names
+              hash[name] = value.serializable_value(**options)
+            end
+          end
+        end
       end
 
       private

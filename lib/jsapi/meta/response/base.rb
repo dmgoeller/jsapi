@@ -8,12 +8,13 @@ module Jsapi
         include OpenAPI::Extensions
 
         JSON_TYPE = %r{(^application/|^text/|\+)json$}.freeze # :nodoc:
+        JSON_SEQ_TYPE = 'application/json-seq' # :nodoc:
 
         delegate_missing_to :schema
 
         ##
         # :attr: content_type
-        # The content type. <code>"application/json"</code> by default.
+        # The content type, <code>"application/json"</code> by default.
         attribute :content_type, String, default: 'application/json'
 
         ##
@@ -46,12 +47,17 @@ module Jsapi
         # The Schema of the response.
         attribute :schema, accessors: %i[reader]
 
+        ##
+        # :attr: summary
+        # The short description of the response. Applies to \OpenAPI 3.2 and higher.
+        attribute :summary, String
+
         def initialize(keywords = {})
           keywords = keywords.dup
           super(
             keywords.extract!(
               :content_type, :description, :examples, :headers,
-              :links, :locale, :openapi_extensions
+              :links, :locale, :openapi_extensions, :summary
             )
           )
           add_example(value: keywords.delete(:example)) if keywords.key?(:example)
@@ -66,12 +72,17 @@ module Jsapi
           content_type.match?(JSON_TYPE)
         end
 
+        # Returns true if content type is <code>"application/json-seq"</code>.
+        def json_seq_type?
+          content_type == JSON_SEQ_TYPE
+        end
+
         # Returns a hash representing the \OpenAPI response object.
         def to_openapi(version, definitions)
           version = OpenAPI::Version.from(version)
 
           with_openapi_extensions(
-            if version.major == 2
+            if version == OpenAPI::V2_0
               {
                 description: description,
                 schema: schema.to_openapi(version),
@@ -86,17 +97,24 @@ module Jsapi
               }
             else
               {
+                summary: (summary if version >= OpenAPI::V3_2),
                 description: description,
-                content: {
-                  content_type => {
-                    schema: schema.to_openapi(version),
-                    examples: examples.transform_values(&:to_openapi).presence
-                  }.compact
-                },
                 headers: headers.transform_values do |header|
                   header.to_openapi(version)
                 end.presence,
-                links: links.transform_values(&:to_openapi).presence
+                content: {
+                  content_type => {
+                    **if json_seq_type? && schema.array? && version >= OpenAPI::V3_2
+                        { itemSchema: schema.items.to_openapi(version) }
+                      else
+                        { schema: schema.to_openapi(version) }
+                      end,
+                    examples: examples.transform_values(&:to_openapi).presence
+                  }.compact
+                },
+                links: links.transform_values do |link|
+                  link.to_openapi(version)
+                end.presence
               }
             end
           )

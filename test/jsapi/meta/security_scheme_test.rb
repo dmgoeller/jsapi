@@ -20,6 +20,11 @@ module Jsapi
         assert_kind_of(SecurityScheme::HTTP::Bearer, security_scheme)
       end
 
+      def test_new_mutual_tls_scheme
+        security_scheme = SecurityScheme.new(type: 'mutual_tls')
+        assert_kind_of(SecurityScheme::MutualTLS, security_scheme)
+      end
+
       def test_new_oauth2_scheme
         security_scheme = SecurityScheme.new(type: 'oauth2')
         assert_kind_of(SecurityScheme::OAuth2, security_scheme)

@@ -24,12 +24,11 @@ module Jsapi
         attribute :name, String
 
         # Returns a hash representing the \OpenAPI security scheme object.
-        def to_openapi(*)
+        def to_openapi(version, *)
+          version = OpenAPI::Version.from(version)
+
           with_openapi_extensions(
-            type: 'apiKey',
-            name: name,
-            in: self.in,
-            description: description
+            base_openapi_fields('apiKey', version).merge(name: name, in: self.in)
           )
         end
       end

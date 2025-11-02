@@ -5,8 +5,10 @@ require 'test_helper'
 module Jsapi
   module Meta
     class ContactTest < Minitest::Test
+      include OpenAPITestHelper
+
       def test_empty_openapi_contact_object
-        assert_equal({}, Contact.new.to_openapi)
+        assert_openapi_equal({}, Contact.new, nil)
       end
 
       def test_full_openapi_contact_object
@@ -16,14 +18,15 @@ module Jsapi
           email: 'foo@foo.bar',
           openapi_extensions: { 'foo' => 'bar' }
         )
-        assert_equal(
+        assert_openapi_equal(
           {
             name: 'Foo',
             url: 'https://foo.bar',
             email: 'foo@foo.bar',
             'x-foo': 'bar'
           },
-          contact.to_openapi
+          contact,
+          nil
         )
       end
     end

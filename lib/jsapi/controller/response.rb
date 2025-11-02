@@ -50,11 +50,27 @@ module Jsapi
       # Returns the \JSON representation of the response as a string.
       def to_json(*)
         schema = @response.schema.resolve(@definitions)
-        if @response.locale
-          I18n.with_locale(@response.locale) { jsonify(@object, schema) }
-        else
-          jsonify(@object, schema)
-        end.to_json
+        with_locale { jsonify(@object, schema) }.to_json
+      end
+
+      # Writes the response in \JSON sequence text format to +stream+.
+      def write_json_seq_to(stream)
+        schema = @response.schema.resolve(@definitions)
+        with_locale do
+          items, item_schema =
+            if schema.array? && @object.respond_to?(:each)
+              [@object, schema.items.resolve(@definitions)]
+            else
+              [[@object], schema]
+            end
+
+          items.each do |item|
+            stream.write("\u001E") # Record separator (see RFC 7464)
+            stream.write(jsonify(item, item_schema).to_json)
+            stream.write("\n")
+          end
+        end
+        nil
       end
 
       private
@@ -137,6 +153,14 @@ module Jsapi
         end
 
         properties.presence
+      end
+
+      def with_locale(&block)
+        if @response.locale
+          I18n.with_locale(@response.locale, &block)
+        else
+          yield
+        end
       end
     end
   end

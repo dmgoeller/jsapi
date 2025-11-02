@@ -13,7 +13,7 @@ optional OpenAPI documentation base on the same API definition. This significant
 the workload and ensures that the OpenAPI documentation is consistent with the server-side
 implementation of the API.
 
-Jsapi supports OpenAPI 2.0, 3.0 and 3.1.
+Jsapi supports OpenAPI 2.0, 3.0, 3.1 and 3.2.
 
 ## Installation
 
@@ -34,10 +34,10 @@ simple echo endpoint can be defined as below.
 get 'echo', to: 'echo#index'
 ```
 
-Specify the operation to be bound to the API endpoint in `app/api_defs/echo.rb`:
+Specify the operation to be bound to the API endpoint in `jsapi/api_defs/echo.rb`:
 
 ```ruby
-# app/api_defs/echo.rb
+# jsapi/api_defs/echo.rb
 
 operation path: '/echo' do
   parameter 'call', type: 'string', existence: true
@@ -84,10 +84,10 @@ body is produced:
 
 When the required `call` parameter is missing or the value of `call` is empty, `api_operation!`
 raises a `Jsapi::Controller::ParametersInvalid` error. To rescue such exceptions, add an
-`rescue_from` directive to `app/api_defs/echo.rb`:
+`rescue_from` directive to `jsapi/api_defs/echo.rb`:
 
 ```ruby
-# app/api_defs/echo.rb
+# jsapi/api_defs/echo.rb
 
 rescue_from Jsapi::Controller::ParametersInvalid, with: 400
 ```
@@ -111,7 +111,7 @@ get 'echo/openapi', to: 'echo#openapi'
 ```
 
 ```ruby
-# app/api_defs/echo.rb
+# jsapi/api_defs/echo.rb
 
 info title: 'Echo', version: '1'
 ```
@@ -260,7 +260,7 @@ keywords:
 - `:schemes` - The transfer protocols supported by the operation.
 - `:security_requirements` - See [Specifying security schemes and requirements].
 - `:servers` - See [Specifying API locations].
-- `:summary` - The short summary of the operation.
+- `:summary` - The short description of the operation.
 - `:tags` - The tags to group operations in an OpenAPI document.
 
 All keywords except `:model`, `:parameters`, `:request_body` and `:responses` are only used to
@@ -324,14 +324,33 @@ The one and only positional argument specifies the mandatory parameter name. The
 directive takes all keywords described in [Specifying schemas] to define the schema of a
 parameter. Additionally, the following keywords may be specified:
 
+- `:content_type` - The content type of a complex parameter.
 - `:example`, `:examples` - See [Specifying examples].
-- `:in` - The location of the parameter. Possible locations are `"header"`, `"path"` and
-  `"query"`. The default location is `"query"`.
+- `:in` - The location of the parameter. Possible locations are `"header"`, `"path"`,
+  `"query"` and `"querystring"`. The default location is `"query"`.
 - `:openapi_extensions` - See [Specifying OpenAPI extensions].
 - `:ref` - Refers a reusable parameter.
 
-The `:example`, `examples` and `:openapi_extensions` keywords are only used to describe a
-parameter in an OpenAPI document.
+The `:content_type`, `:example`, `examples` and `:openapi_extensions` keywords are only used
+to describe a parameter in an OpenAPI document.
+
+#### Query Parameters
+
+```ruby
+api_operation do
+  parameter 'foo', type: 'string'
+end
+# => api_params.foo
+```
+
+``` ruby
+api_operation do
+  parameter 'query', in: 'querystring' do
+    property 'foo', type: 'string'
+  end
+end
+# => api_params.query.foo
+```
 
 #### Reusable parameters
 
@@ -437,13 +456,14 @@ define the schema of the response. Additionally, the following keywords may be s
 - `:locale` - The locale to be used when rendering a response.
 - `:openapi_extensions` - See [Specifying OpenAPI extensions].
 - `:ref` - Refers a reusable response.
+- `:summary` - The short description of the response.
 
 The `:locale` keyword allows to produce responses in different languages depending on status
 code.  This can especially be used to return error responses in English regardless of the
 language of regular responses.
 
-The `:example`, `:examples`, `:headers`, `:links` and `:openapi_extensions` keywords are only
-used to describe a response in an OpenAPI document.
+The `:example`, `:examples`, `:headers`, `:links` `:openapi_extensions` and `summary` keywords
+are only used to describe a response in an OpenAPI document.
 
 #### Reusable responses
 
@@ -807,6 +827,23 @@ api_schema 'Bar', type: 'object' do
 end
 ```
 
+A default mapping can either be specified by the `:default_mapping` keyword or the default
+value of the discriminating property, for example:
+
+```ruby
+api_schema 'Base', type: 'object' do
+  discriminator property_name: 'type', default_mapping: 'Foo'
+  property 'type', type: 'string'
+end
+```
+
+```ruby
+api_schema 'Base', type: 'object' do
+  discriminator property_name: 'type'
+  property 'type', type: 'string', default: 'Foo'
+end
+```
+
 ### Specifying metadata
 
 Metadata about an API is specified by an `api_info` directive, for example:
@@ -982,7 +1019,9 @@ The `api_tag` directive takes the following keywords:
 
 - `:external_docs` - See [Specifying external docs].
 - `:description` - The description of the tag.
+- `:kind` - The category of the tag.
 - `:name` - The name of the tag.
+- `:summary` - The short summary of the tag.
 
 ### Specifying external docs
 
@@ -1062,11 +1101,11 @@ api_default 'array', within_requests: [], within_responses: []
 
 ### Importing API definitions
 
-API definitions can also be specified in separate files located in `apps/api_defs`. Directives
+API definitions can also be specified in separate files located in `jsapi/api_defs`. Directives
 within files are specified as in `api_definitions` blocks without prefix `api_`, for example:
 
 ```ruby
-# app/api_defs/foo.rb
+# jsapi/api_defs/foo.rb
 
 operation 'foo' do
   # ...
@@ -1074,7 +1113,7 @@ end
 ```
 
 The API definitions specified in a file are automatically imported into a controller if the
-file name matches the controller name. For example, `app/api_defs/foo.rb` is automatically
+file name matches the controller name. For example, `jsapi/api_defs/foo.rb` is automatically
 imported into `FooController`. Other files can be imported as below.
 
 ```ruby
@@ -1086,13 +1125,13 @@ end
 Within a file, other files can be imported as below.
 
 ```ruby
-# app/api_defs/foo/bar.rb
+# jsapi/api_defs/foo/bar.rb
 
 import 'foo/shared'
 ```
 
 ```ruby
-# app/api_defs/foo/bar.rb
+# jsapi/api_defs/foo/bar.rb
 
 import_relative 'shared'
 ```
@@ -1210,7 +1249,9 @@ are passed as an instance of the operation's model class to the block.
 
 This method implicitly renders the JSON representation of the object returned by the block
 when the content type is a JSON MIME type. This can be a hash or an object providing
-corresponding methods for all properties of the response.
+corresponding methods for all properties of the response. When content type is
+`application/json-seq`, the object returned by the block is streamed in JSON sequence text
+format.
 
 ```ruby
 api_operation('foo', status: 200) do |api_params|

@@ -5,6 +5,8 @@ require 'test_helper'
 module Jsapi
   module Meta
     class OperationTest < Minitest::Test
+      include OpenAPITestHelper
+
       def test_parameters
         operation = Operation.new('foo')
         parameter = operation.add_parameter('bar', type: 'string')
@@ -23,23 +25,23 @@ module Jsapi
       # OpenAPI objects
 
       def test_minimal_openapi_operation_object
-        definitions = Definitions.new
         operation = Operation.new('foo')
 
-        %w[2.0 3.0].each do |version|
-          assert_equal(
+        each_openapi_version do |version|
+          assert_openapi_equal(
             {
               operationId: 'foo',
               parameters: [],
               responses: {}
             },
-            operation.to_openapi(version, definitions)
+            operation,
+            version,
+            Definitions.new
           )
         end
       end
 
       def test_full_openapi_operation_object
-        definitions = Definitions.new
         operation = Operation.new(
           'foo',
           tags: %w[Foo],
@@ -82,116 +84,178 @@ module Jsapi
           ],
           openapi_extensions: { 'foo' => 'bar' }
         )
-        # OpenAPI 2.0
-        assert_equal(
-          {
-            operationId: 'foo',
-            tags: %w[Foo],
-            summary: 'Summary of foo',
-            description: 'Lorem ipsum',
-            externalDocs: {
-              url: 'https://foo.bar/docs'
-            },
-            consumes: [
-              'application/json'
-            ],
-            produces: [
-              'application/json'
-            ],
-            parameters: [
+        each_openapi_version do |version|
+          assert_openapi_equal(
+            case version
+            when OpenAPI::V2_0
               {
-                name: 'bar',
-                in: 'query',
-                type: 'string',
-                allowEmptyValue: true
-              },
-              {
-                name: 'body',
-                in: 'body',
-                required: true,
-                type: 'string'
-              }
-            ],
-            responses: {
-              'default' => {
-                schema: {
-                  type: 'string'
-                }
-              }
-            },
-            schemes: %w[https],
-            deprecated: true,
-            security: [
-              { 'http_basic' => [] }
-            ],
-            'x-foo': 'bar'
-          },
-          operation.to_openapi('2.0', definitions)
-        )
-        # OpenAPI 3.0
-        assert_equal(
-          {
-            operationId: 'foo',
-            tags: %w[Foo],
-            summary: 'Summary of foo',
-            description: 'Lorem ipsum',
-            externalDocs: {
-              url: 'https://foo.bar/docs'
-            },
-            parameters: [
-              {
-                name: 'bar',
-                in: 'query',
-                schema: {
-                  type: 'string',
-                  nullable: true
+                operationId: 'foo',
+                tags: %w[Foo],
+                summary: 'Summary of foo',
+                description: 'Lorem ipsum',
+                externalDocs: {
+                  url: 'https://foo.bar/docs'
                 },
-                allowEmptyValue: true
-              }
-            ],
-            request_body: {
-              content: {
-                'application/json' => {
-                  schema: {
+                consumes: [
+                  'application/json'
+                ],
+                produces: [
+                  'application/json'
+                ],
+                parameters: [
+                  {
+                    name: 'bar',
+                    in: 'query',
+                    type: 'string',
+                    allowEmptyValue: true
+                  },
+                  {
+                    name: 'body',
+                    in: 'body',
+                    required: true,
                     type: 'string'
                   }
-                }
-              },
-              required: true
-            },
-            responses: {
-              'default' => {
-                content: {
-                  'application/json' => {
+                ],
+                responses: {
+                  'default' => {
+                    schema: {
+                      type: 'string'
+                    }
+                  }
+                },
+                schemes: %w[https],
+                deprecated: true,
+                security: [
+                  { 'http_basic' => [] }
+                ],
+                'x-foo': 'bar'
+              }
+            when OpenAPI::V3_0
+              {
+                operationId: 'foo',
+                tags: %w[Foo],
+                summary: 'Summary of foo',
+                description: 'Lorem ipsum',
+                externalDocs: {
+                  url: 'https://foo.bar/docs'
+                },
+                parameters: [
+                  {
+                    name: 'bar',
+                    in: 'query',
                     schema: {
                       type: 'string',
                       nullable: true
+                    },
+                    allowEmptyValue: true
+                  }
+                ],
+                request_body: {
+                  content: {
+                    'application/json' => {
+                      schema: {
+                        type: 'string'
+                      }
+                    }
+                  },
+                  required: true
+                },
+                responses: {
+                  'default' => {
+                    content: {
+                      'application/json' => {
+                        schema: {
+                          type: 'string',
+                          nullable: true
+                        }
+                      }
                     }
                   }
-                }
-              }
-            },
-            callbacks: {
-              'onBar' => {
-                '{$request.query.bar}' => {
-                  'get' => {
-                    parameters: [],
-                    responses: {}
+                },
+                callbacks: {
+                  'onBar' => {
+                    '{$request.query.bar}' => {
+                      'get' => {
+                        parameters: [],
+                        responses: {}
+                      }
+                    }
                   }
-                }
+                },
+                deprecated: true,
+                security: [
+                  { 'http_basic' => [] }
+                ],
+                servers: [
+                  { url: 'https://foo.bar/foo' }
+                ],
+                'x-foo': 'bar'
               }
-            },
-            deprecated: true,
-            security: [
-              { 'http_basic' => [] }
-            ],
-            servers: [
-              { url: 'https://foo.bar/foo' }
-            ],
-            'x-foo': 'bar'
-          },
-          operation.to_openapi('3.0', definitions)
-        )
+            else
+              {
+                operationId: 'foo',
+                tags: %w[Foo],
+                summary: 'Summary of foo',
+                description: 'Lorem ipsum',
+                externalDocs: {
+                  url: 'https://foo.bar/docs'
+                },
+                parameters: [
+                  {
+                    name: 'bar',
+                    in: 'query',
+                    schema: {
+                      type: %w[string null]
+                    },
+                    allowEmptyValue: true
+                  }
+                ],
+                request_body: {
+                  content: {
+                    'application/json' => {
+                      schema: {
+                        type: 'string'
+                      }
+                    }
+                  },
+                  required: true
+                },
+                responses: {
+                  'default' => {
+                    content: {
+                      'application/json' => {
+                        schema: {
+                          type: %w[string null]
+                        }
+                      }
+                    }
+                  }
+                },
+                callbacks: {
+                  'onBar' => {
+                    '{$request.query.bar}' => {
+                      'get' => {
+                        parameters: [],
+                        responses: {}
+                      }
+                    }
+                  }
+                },
+                deprecated: true,
+                security: [
+                  { 'http_basic' => [] }
+                ],
+                servers: [
+                  { url: 'https://foo.bar/foo' }
+                ],
+                'x-foo': 'bar'
+              }
+            end,
+            operation,
+            version,
+            Definitions.new
+          )
+        end
       end
     end
   end

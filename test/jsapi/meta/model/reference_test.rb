@@ -49,16 +49,13 @@ module Jsapi
             { '$ref': '#/fooBars/foo' },
             reference.to_openapi('2.0')
           )
-          # OpenAPI 3.0
-          assert_equal(
-            { '$ref': '#/components/fooBars/foo' },
-            reference.to_openapi('3.0')
-          )
-          # OpenAPI 3.1
-          assert_equal(
-            { '$ref': '#/components/fooBars/foo' },
-            reference.to_openapi('3.1')
-          )
+          # OpenAPI 3.x
+          %w[3.0 3.1 3.2].each do |version|
+            assert_equal(
+              { '$ref': '#/components/fooBars/foo' },
+              reference.to_openapi(version)
+            )
+          end
         end
 
         def test_full_openapi_reference_object
@@ -77,15 +74,17 @@ module Jsapi
             { '$ref': '#/components/fooBars/foo' },
             reference.to_openapi('3.0')
           )
-          # OpenAPI 3.1
-          assert_equal(
-            {
-              '$ref': '#/components/fooBars/foo',
-              summary: 'Lorem ipsum',
-              description: 'Dolor sit amet'
-            },
-            reference.to_openapi('3.1')
-          )
+          # OpenAPI 3.1 and 3.2
+          %w[3.1 3.2].each do |version|
+            assert_equal(
+              {
+                '$ref': '#/components/fooBars/foo',
+                summary: 'Lorem ipsum',
+                description: 'Dolor sit amet'
+              },
+              reference.to_openapi(version)
+            )
+          end
         end
       end
     end

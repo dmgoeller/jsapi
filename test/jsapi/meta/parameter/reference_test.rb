@@ -6,6 +6,8 @@ module Jsapi
   module Meta
     module Parameter
       class ReferenceTest < Minitest::Test
+        include OpenAPITestHelper
+
         # #openapi_parameters
 
         def test_openapi_parameters
@@ -16,20 +18,18 @@ module Jsapi
           )
           reference = Reference.new(ref: 'foo')
 
-          # OpenAPI 2.0
-          assert_equal(
-            [
-              { '$ref': '#/parameters/foo' }
-            ],
-            reference.to_openapi_parameters('2.0', definitions)
-          )
-          # OpenAPI 3.0
-          assert_equal(
-            [
-              { '$ref': '#/components/parameters/foo' }
-            ],
-            reference.to_openapi_parameters('3.0', definitions)
-          )
+          each_openapi_version do |version|
+            assert_equal(
+              [
+                if version < OpenAPI::V3_0
+                  { '$ref': '#/parameters/foo' }
+                else
+                  { '$ref': '#/components/parameters/foo' }
+                end
+              ],
+              reference.to_openapi_parameters(version, definitions)
+            )
+          end
         end
 
         def test_openapi_parameters_on_object
@@ -45,33 +45,41 @@ module Jsapi
           )
           reference = Reference.new(ref: 'foo')
 
-          # OpenAPI 2.0
-          assert_equal(
-            [
-              {
-                name: 'foo[bar]',
-                in: 'query',
-                type: 'string',
-                allowEmptyValue: true
-              }
-            ],
-            reference.to_openapi_parameters('2.0', definitions)
-          )
-          # OpenAPI 3.0
-          assert_equal(
-            [
-              {
-                name: 'foo[bar]',
-                in: 'query',
-                schema: {
-                  type: 'string',
-                  nullable: true
-                },
-                allowEmptyValue: true
-              }
-            ],
-            reference.to_openapi_parameters('3.0', definitions)
-          )
+          each_openapi_version do |version|
+            assert_equal(
+              [
+                case version
+                when OpenAPI::V2_0
+                  {
+                    name: 'foo[bar]',
+                    in: 'query',
+                    type: 'string',
+                    allowEmptyValue: true
+                  }
+                when OpenAPI::V3_0
+                  {
+                    name: 'foo[bar]',
+                    in: 'query',
+                    schema: {
+                      type: 'string',
+                      nullable: true
+                    },
+                    allowEmptyValue: true
+                  }
+                else
+                  {
+                    name: 'foo[bar]',
+                    in: 'query',
+                    schema: {
+                      type: %w[string null]
+                    },
+                    allowEmptyValue: true
+                  }
+                end
+              ],
+              reference.to_openapi_parameters(version, definitions)
+            )
+          end
         end
       end
     end

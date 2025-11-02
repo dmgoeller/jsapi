@@ -52,8 +52,9 @@ module Jsapi
               name: 'body',
               in: 'body',
               description: description,
-              required: required?
-            }.merge(schema.to_openapi(OpenAPI::V2_0))
+              required: required?,
+              **schema.to_openapi(OpenAPI::V2_0)
+            }
           )
         end
 

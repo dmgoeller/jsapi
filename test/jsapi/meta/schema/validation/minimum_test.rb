@@ -7,6 +7,8 @@ module Jsapi
     module Schema
       module Validation
         class MinimumTest < Minitest::Test
+          include OpenAPITestHelper
+
           def test_raises_exception_on_invalid_minimum
             error = assert_raises(ArgumentError) { Minimum.new(nil) }
             assert_equal('invalid minimum: nil', error.message)
@@ -59,35 +61,33 @@ module Jsapi
 
           # OpenAPI objects
 
-          def test_to_openapi_3_0_on_minimum
-            assert_equal(
-              { minimum: 0 },
-              Minimum.new(0).to_openapi_validation('3.0')
-            )
+          def test_to_openapi_validation_on_minimum
+            minimum = Minimum.new(0)
+
+            each_openapi_version(from: OpenAPI::V3_0) do |version|
+              assert_equal(
+                { minimum: 0 },
+                minimum.to_openapi_validation(version)
+              )
+            end
           end
 
-          def test_to_openapi_3_0_on_exclusive_minimum
-            assert_equal(
-              {
-                minimum: 0,
-                exclusiveMinimum: true
-              },
-              Minimum.new(0, exclusive: true).to_openapi_validation('3.0')
-            )
-          end
+          def test_to_openapi_validation_on_exclusive_minimum
+            minimum = Minimum.new(0, exclusive: true)
 
-          def test_to_openapi_3_1_on_minimum
-            assert_equal(
-              { minimum: 0 },
-              Minimum.new(0).to_openapi_validation('3.1')
-            )
-          end
-
-          def test_to_openapi_3_1_on_exclusive_minimum
-            assert_equal(
-              { exclusiveMinimum: 0 },
-              Minimum.new(0, exclusive: true).to_openapi_validation('3.1')
-            )
+            each_openapi_version(from: OpenAPI::V3_0) do |version|
+              assert_equal(
+                if version == OpenAPI::V3_0
+                  {
+                    minimum: 0,
+                    exclusiveMinimum: true
+                  }
+                else
+                  { exclusiveMinimum: 0 }
+                end,
+                minimum.to_openapi_validation(version)
+              )
+            end
           end
         end
       end

@@ -6,6 +6,8 @@ module Jsapi
   module Meta
     module Schema
       class StringTest < Minitest::Test
+        include OpenAPITestHelper
+
         def test_max_length
           schema = String.new(max_length: 10)
           assert_equal(10, schema.max_length)
@@ -60,33 +62,46 @@ module Jsapi
 
         def test_minimal_openapi_schema_object
           schema = String.new
-          # OpenAPI 3.0
-          assert_equal(
-            {
-              type: 'string',
-              nullable: true
-            },
-            schema.to_openapi('3.0')
-          )
-          # OpenAPI 3.1
-          assert_equal(
-            {
-              type: %w[string null]
-            },
-            schema.to_openapi('3.1')
-          )
+
+          each_openapi_version(from: OpenAPI::V3_0) do |version|
+            assert_openapi_equal(
+              if version < OpenAPI::V3_1
+                {
+                  type: 'string',
+                  nullable: true
+                }
+              else
+                {
+                  type: %w[string null]
+                }
+              end,
+              schema,
+              version
+            )
+          end
         end
 
         def test_openapi_schema_object
           schema = String.new(format: 'date')
-          assert_equal(
-            {
-              type: 'string',
-              nullable: true,
-              format: 'date'
-            },
-            schema.to_openapi('3.0')
-          )
+
+          each_openapi_version(from: OpenAPI::V3_0) do |version|
+            assert_openapi_equal(
+              if version < OpenAPI::V3_1
+                {
+                  type: 'string',
+                  nullable: true,
+                  format: 'date'
+                }
+              else
+                {
+                  type: %w[string null],
+                  format: 'date'
+                }
+              end,
+              schema,
+              version
+            )
+          end
         end
       end
     end

@@ -6,6 +6,8 @@ module Jsapi
   module Meta
     module Header
       class BaseTest < Minitest::Test
+        include OpenAPITestHelper
+
         def test_raises_an_error_when_type_is_object
           error = assert_raises(ArgumentError) do
             Base.new(type: 'object')
@@ -18,21 +20,24 @@ module Jsapi
         def test_minimal_openapi_header_object
           header = Base.new(type: 'string')
 
-          # OpenAPI 2.0
-          assert_equal(
-            { type: 'string' },
-            header.to_openapi('2.0')
-          )
-          # OpenAPI 3.0
-          assert_equal(
-            {
-              schema: {
-                type: 'string',
-                nullable: true
-              }
-            },
-            header.to_openapi('3.0')
-          )
+          each_openapi_version do |version|
+            assert_openapi_equal(
+              if version == OpenAPI::V2_0
+                { type: 'string' }
+              else
+                {
+                  schema:
+                    if version == OpenAPI::V3_0
+                      { type: 'string', nullable: true }
+                    else
+                      { type: %w[string null] }
+                    end
+                }
+              end,
+              header,
+              version
+            )
+          end
         end
 
         def test_full_openapi_header_object
@@ -47,41 +52,51 @@ module Jsapi
             example: 'bar',
             openapi_extensions: { 'foo' => 'bar' }
           )
-          # OpenAPI 2.0
-          assert_equal(
-            {
-              type: 'array',
-              items: {
-                type: 'string'
-              },
-              collection_format: 'pipes',
-              description: 'foo',
-              'x-foo': 'bar'
-            },
-            header.to_openapi('2.0')
-          )
-          # OpenAPI 3.0
-          assert_equal(
-            {
-              schema: {
-                type: 'array',
-                nullable: true,
-                items: {
-                  type: 'string',
-                  nullable: true
+          each_openapi_version do |version|
+            assert_equal(
+              if version < OpenAPI::V3_0
+                {
+                  type: 'array',
+                  items: {
+                    type: 'string'
+                  },
+                  collection_format: 'pipes',
+                  description: 'foo',
+                  'x-foo': 'bar'
                 }
-              },
-              description: 'foo',
-              deprecated: true,
-              examples: {
-                'default' => {
-                  value: 'bar'
+              else
+                {
+                  schema:
+                    if version < OpenAPI::V3_1
+                      {
+                        type: 'array',
+                        nullable: true,
+                        items: {
+                          type: 'string',
+                          nullable: true
+                        }
+                      }
+                    else
+                      {
+                        type: %w[array null],
+                        items: {
+                          type: %w[string null]
+                        }
+                      }
+                    end,
+                  description: 'foo',
+                  deprecated: true,
+                  examples: {
+                    'default' => {
+                      value: 'bar'
+                    }
+                  },
+                  'x-foo': 'bar'
                 }
-              },
-              'x-foo': 'bar'
-            },
-            header.to_openapi('3.0')
-          )
+              end,
+              header.to_openapi(version)
+            )
+          end
         end
       end
     end

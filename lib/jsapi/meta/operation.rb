@@ -28,18 +28,8 @@ module Jsapi
 
       ##
       # :attr: method
-      # The HTTP verb of the operation. Possible values are:
-      #
-      # - <code>"delete"</code>
-      # - <code>"get"</code>
-      # - <code>"head"</code>
-      # - <code>"options"</code>
-      # - <code>"patch"</code>
-      # - <code>"post"</code>
-      # - <code>"put"</code>
-      #
-      # The default HTTP verb is <code>"get"</code>.
-      attribute :method, values: %w[delete get head options patch post put], default: 'get'
+      # The HTTP method of the operation, <code>"get"</code> by default.
+      attribute :method, String, default: 'get'
 
       ##
       # :attr: model
@@ -97,7 +87,7 @@ module Jsapi
 
       ##
       # :attr: summary
-      # The short summary of the operation.
+      # The short description of the operation.
       attribute :summary, String
 
       ##
@@ -148,7 +138,9 @@ module Jsapi
             end
             result[:schemes] = schemes if schemes.present?
           elsif servers.present?
-            result[:servers] = servers.map(&:to_openapi)
+            result[:servers] = servers.map do |server|
+              server.to_openapi(version)
+            end
           end
           # Parameters (and request body)
           result[:parameters] = parameters.values.flat_map do |parameter|

@@ -2,10 +2,11 @@
 
 module ActionDispatch
   class Request
-    attr_reader :headers
+    attr_reader :headers, :query_parameters
 
-    def initialize(headers)
+    def initialize(headers: {}, query_parameters: {})
       @headers = headers
+      @query_parameters = query_parameters
     end
   end
 

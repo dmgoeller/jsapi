@@ -18,7 +18,7 @@ module ActionController
 
     def initialize(params: {}, request_headers: {})
       @params = ActionController::Parameters.new(params)
-      @request = ActionDispatch::Request.new(request_headers)
+      @request = ActionDispatch::Request.new(headers: request_headers)
     end
 
     def content_type=(content_type)

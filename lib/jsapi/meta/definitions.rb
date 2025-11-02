@@ -231,9 +231,7 @@ module Jsapi
         openapi_paths =
           operations.group_by { |operation| operation.path || default_operation_path }
                     .transform_values do |operations_by_path|
-            operations_by_path.index_by(&:method).transform_values do |operation|
-              operation.to_openapi(version, self)
-            end
+            OpenAPI::PathItem.new(operations_by_path).to_openapi(version, self)
           end.presence
 
         openapi_objects =
@@ -271,10 +269,16 @@ module Jsapi
           else
             {
               # Order according to the OpenAPI specification 3.x
-              openapi: version.minor.zero? ? '3.0.3' : '3.1.1',
+              openapi:
+                case version.minor
+                when 0 then '3.0.3'
+                when 1 then '3.1.1'
+                when 2 then '3.2.0'
+                end,
               info: openapi_objects[:info],
-              servers: openapi_objects[:servers] ||
-                [default_server&.to_openapi].compact.presence,
+              servers:
+                openapi_objects[:servers] ||
+                [default_server&.to_openapi(version)].compact.presence,
               paths: openapi_paths,
               components: {
                 schemas: openapi_objects[:schemas],

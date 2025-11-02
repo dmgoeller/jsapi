@@ -7,7 +7,7 @@ module Jsapi
         # Specifies a security scheme based on bearer authentication.
         #
         # Note that Bearer authentication was introduced with \OpenAPI 3.0. Thus, a security
-        # scheme of this class is skipped when generating an \OpenAPI 2.0 document.
+        # scheme of this class is omitted when generating an \OpenAPI 2.0 document.
         class Bearer < Base
           include OpenAPI::Extensions
 
@@ -16,17 +16,17 @@ module Jsapi
           # The format of the bearer token.
           attribute :bearer_format, String
 
-          # Returns a hash representing the \OpenAPI security scheme object, or
-          # +nil+ if <code>version.major</code> is 2.
+          # Returns a hash representing the \OpenAPI security scheme object, or +nil+
+          # if <code>version</code> is less than \OpenAPI 3.0.
           def to_openapi(version, *)
             version = OpenAPI::Version.from(version)
-            return if version.major == 2
+            return if version < OpenAPI::V3_0
 
             with_openapi_extensions(
-              type: 'http',
-              scheme: 'bearer',
-              bearerFormat: bearer_format,
-              description: description
+              base_openapi_fields('http', version).merge(
+                scheme: 'bearer',
+                bearerFormat: bearer_format
+              )
             )
           end
         end

@@ -6,6 +6,8 @@ module Jsapi
   module Meta
     module RequestBody
       class BaseTest < Minitest::Test
+        include OpenAPITestHelper
+
         def test_type
           request_body = Base.new(type: 'string')
           assert_equal('string', request_body.type)
@@ -69,19 +71,22 @@ module Jsapi
         def test_minimal_openapi_request_body_object
           request_body = Base.new(type: 'string', existence: true)
 
-          assert_equal(
-            {
-              content: {
-                'application/json' => {
-                  schema: {
-                    type: 'string'
+          each_openapi_version(from: OpenAPI::V3_0) do |version|
+            assert_openapi_equal(
+              {
+                content: {
+                  'application/json' => {
+                    schema: {
+                      type: 'string'
+                    }
                   }
-                }
+                },
+                required: true
               },
-              required: true
-            },
-            request_body.to_openapi('3.0')
-          )
+              request_body,
+              version
+            )
+          end
         end
 
         def test_full_openapi_request_body_object
@@ -92,27 +97,35 @@ module Jsapi
             example: 'foo',
             openapi_extensions: { 'foo' => 'bar' }
           )
-          assert_equal(
-            {
-              description: 'Foo',
-              content: {
-                'application/foo' => {
-                  schema: {
-                    type: 'string',
-                    nullable: true
-                  },
-                  examples: {
-                    'default' => {
-                      value: 'foo'
+          each_openapi_version(from: OpenAPI::V3_0) do |version|
+            assert_openapi_equal(
+              {
+                description: 'Foo',
+                content: {
+                  'application/foo' => {
+                    schema:
+                      if version < OpenAPI::V3_1
+                        {
+                          type: 'string',
+                          nullable: true
+                        }
+                      else
+                        { type: %w[string null] }
+                      end,
+                    examples: {
+                      'default' => {
+                        value: 'foo'
+                      }
                     }
                   }
-                }
+                },
+                required: false,
+                'x-foo': 'bar'
               },
-              required: false,
-              'x-foo': 'bar'
-            },
-            request_body.to_openapi('3.0')
-          )
+              request_body,
+              version
+            )
+          end
         end
       end
     end

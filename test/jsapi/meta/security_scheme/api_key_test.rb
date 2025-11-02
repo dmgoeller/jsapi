@@ -6,13 +6,16 @@ module Jsapi
   module Meta
     module SecurityScheme
       class APIKeyTest < Minitest::Test
+        include OpenAPITestHelper
+
         def test_minimal_openapi_security_scheme_object
           security_scheme = APIKey.new
 
-          %w[2.0 3.0].each do |version|
-            assert_equal(
+          each_openapi_version do |version|
+            assert_openapi_equal(
               { type: 'apiKey' },
-              security_scheme.to_openapi(version)
+              security_scheme,
+              version
             )
           end
         end
@@ -22,18 +25,27 @@ module Jsapi
             name: 'X-API-Key',
             in: 'header',
             description: 'Foo',
+            deprecated: true,
             openapi_extensions: { 'foo' => 'bar' }
           )
-          %w[2.0 3.0].each do |version|
-            assert_equal(
-              {
-                type: 'apiKey',
-                name: 'X-API-Key',
-                in: 'header',
-                description: 'Foo',
-                'x-foo': 'bar'
-              },
-              security_scheme.to_openapi(version)
+          expected_openapi_security_scheme_object = {
+            type: 'apiKey',
+            name: 'X-API-Key',
+            in: 'header',
+            description: 'Foo',
+            'x-foo': 'bar'
+          }
+          each_openapi_version do |version|
+            assert_openapi_equal(
+              if version < OpenAPI::V3_2
+                expected_openapi_security_scheme_object
+              else
+                expected_openapi_security_scheme_object.merge(
+                  deprecated: true
+                )
+              end,
+              security_scheme,
+              version
             )
           end
         end

@@ -5,6 +5,8 @@ require 'test_helper'
 module Jsapi
   module Meta
     class DefinitionsTest < Minitest::Test
+      include OpenAPITestHelper
+
       # Inheritance and inclusion
 
       def test_ancestors
@@ -290,18 +292,24 @@ module Jsapi
 
       def test_minimal_openapi_document
         definitions = Definitions.new
-        assert_equal(
-          { swagger: '2.0' },
-          definitions.openapi_document('2.0')
-        )
-        assert_equal(
-          { openapi: '3.0.3' },
-          definitions.openapi_document('3.0')
-        )
-        assert_equal(
-          { openapi: '3.1.1' },
-          definitions.openapi_document('3.1')
-        )
+
+        each_openapi_version do |version|
+          assert_openapi_equal(
+            case version
+            when OpenAPI::V2_0
+              { swagger: '2.0' }
+            when OpenAPI::V3_0
+              { openapi: '3.0.3' }
+            when OpenAPI::V3_1
+              { openapi: '3.1.1' }
+            when OpenAPI::V3_2
+              { openapi: '3.2.0' }
+            end,
+            definitions,
+            version,
+            method: :openapi_document
+          )
+        end
       end
 
       def test_full_openapi_document
@@ -339,6 +347,10 @@ module Jsapi
                 200 => { ref: 'response' },
                 400 => { ref: 'error_response' }
               }
+            },
+            'additional_operation' => {
+              path: '/bar',
+              method: 'CUSTOM'
             }
           },
           request_bodies: {
@@ -371,234 +383,506 @@ module Jsapi
             { name: 'Foo' }
           ]
         )
-        # OpenAPI 2.0
-        assert_equal(
-          {
-            swagger: '2.0',
-            info: {
-              title: 'Foo',
-              version: '1'
-            },
-            host: 'https://foo.bar',
-            basePath: '/foo',
-            schemes: %w[https],
-            consumes: %w[application/json],
-            produces: %w[application/json application/problem+json],
-            paths: {
-              '/bar' => {
-                'post' => {
-                  operationId: 'operation',
-                  consumes: %w[application/json],
-                  produces: %w[application/json application/problem+json],
-                  parameters: [
-                    {
-                      '$ref': '#/parameters/parameter'
-                    },
-                    {
-                      name: 'body',
-                      in: 'body',
-                      required: false,
-                      type: 'string'
-                    }
-                  ],
-                  responses: {
-                    '200' => {
-                      '$ref': '#/responses/response'
-                    },
-                    '400' => {
-                      '$ref': '#/responses/error_response'
-                    }
-                  }
-                }
-              }
-            },
-            definitions: {
-              'response_schema' => {
-                type: 'object',
-                properties: {},
-                required: []
-              }
-            },
-            parameters: {
-              'parameter' => {
-                name: 'parameter',
-                in: 'query',
-                type: 'string',
-                allowEmptyValue: true
-              }
-            },
-            responses: {
-              'response' => {
-                schema: {
-                  '$ref': '#/definitions/response_schema'
-                }
-              },
-              'error_response' => {
-                schema: {
-                  type: 'string'
-                }
-              }
-            },
-            securityDefinitions: {
-              'http_basic' => {
-                type: 'basic'
-              }
-            },
-            security: [
+        each_openapi_version do |version|
+          assert_openapi_equal(
+            case version
+            when OpenAPI::V2_0
               {
-                'http_basic' => []
-              }
-            ],
-            tags: [
-              { name: 'Foo' }
-            ],
-            externalDocs: {
-              url: 'https://foo.bar/docs'
-            },
-            'x-foo': 'bar'
-          },
-          definitions.openapi_document('2.0')
-        )
-        # OpenAPI 3.0
-        assert_equal(
-          {
-            openapi: '3.0.3',
-            info: {
-              title: 'Foo',
-              version: '1'
-            },
-            servers: [
-              {
-                url: 'https://foo.bar/foo'
-              }
-            ],
-            paths: {
-              '/bar' => {
-                'post' => {
-                  operationId: 'operation',
-                  parameters: [
-                    {
-                      '$ref': '#/components/parameters/parameter'
-                    }
-                  ],
-                  request_body: {
-                    '$ref': '#/components/requestBodies/request_body'
-                  },
-                  responses: {
-                    '200' => {
-                      '$ref': '#/components/responses/response'
-                    },
-                    '400' => {
-                      '$ref': '#/components/responses/error_response'
-                    }
-                  }
-                }
-              }
-            },
-            components: {
-              schemas: {
-                'response_schema' => {
-                  type: 'object',
-                  nullable: true,
-                  properties: {},
-                  required: []
-                }
-              },
-              responses: {
-                'response' => {
-                  content: {
-                    'application/json' => {
-                      schema: {
-                        '$ref': '#/components/schemas/response_schema'
+                swagger: '2.0',
+                info: {
+                  title: 'Foo',
+                  version: '1'
+                },
+                host: 'https://foo.bar',
+                basePath: '/foo',
+                schemes: %w[https],
+                consumes: %w[application/json],
+                produces: %w[application/json application/problem+json],
+                paths: {
+                  '/bar' => {
+                    'post' => {
+                      operationId: 'operation',
+                      consumes: %w[application/json],
+                      produces: %w[application/json application/problem+json],
+                      parameters: [
+                        {
+                          '$ref': '#/parameters/parameter'
+                        },
+                        {
+                          name: 'body',
+                          in: 'body',
+                          required: false,
+                          type: 'string'
+                        }
+                      ],
+                      responses: {
+                        '200' => {
+                          '$ref': '#/responses/response'
+                        },
+                        '400' => {
+                          '$ref': '#/responses/error_response'
+                        }
                       }
                     }
                   }
                 },
-                'error_response' => {
-                  content: {
-                    'application/problem+json' => {
-                      schema: {
-                        type: 'string',
-                        nullable: true
-                      }
-                    }
+                definitions: {
+                  'response_schema' => {
+                    type: 'object',
+                    properties: {},
+                    required: []
                   }
-                }
-              },
-              parameters: {
-                'parameter' => {
-                  name: 'parameter',
-                  in: 'query',
-                  schema: {
+                },
+                parameters: {
+                  'parameter' => {
+                    name: 'parameter',
+                    in: 'query',
                     type: 'string',
-                    nullable: true
-                  },
-                  allowEmptyValue: true
-                }
-              },
-              examples: {
-                'foo' => {
-                  value: 'bar'
-                }
-              },
-              requestBodies: {
-                'request_body' => {
-                  content: {
-                    'application/json' => {
-                      schema: {
-                        type: 'string',
-                        nullable: true
-                      }
+                    allowEmptyValue: true
+                  }
+                },
+                responses: {
+                  'response' => {
+                    schema: {
+                      '$ref': '#/definitions/response_schema'
                     }
                   },
-                  required: false
-                }
-              },
-              headers: {
-                'X-Foo' => {
-                  schema: {
-                    type: 'string',
-                    nullable: true
-                  }
-                }
-              },
-              securitySchemes: {
-                'http_basic' => {
-                  type: 'http',
-                  scheme: 'basic'
-                }
-              },
-              links: {
-                'foo' => {
-                  operationId: 'foo'
-                }
-              },
-              callbacks: {
-                'onFoo' => {
-                  '{$request.query.foo}' => {
-                    'get' => {
-                      parameters: [],
-                      responses: {}
+                  'error_response' => {
+                    schema: {
+                      type: 'string'
                     }
                   }
-                }
+                },
+                securityDefinitions: {
+                  'http_basic' => {
+                    type: 'basic'
+                  }
+                },
+                security: [
+                  {
+                    'http_basic' => []
+                  }
+                ],
+                tags: [
+                  { name: 'Foo' }
+                ],
+                externalDocs: {
+                  url: 'https://foo.bar/docs'
+                },
+                'x-foo': 'bar'
               }
-            },
-            security: [
+            when OpenAPI::V3_0
               {
-                'http_basic' => []
+                openapi: '3.0.3',
+                info: {
+                  title: 'Foo',
+                  version: '1'
+                },
+                servers: [
+                  {
+                    url: 'https://foo.bar/foo'
+                  }
+                ],
+                paths: {
+                  '/bar' => {
+                    'post' => {
+                      operationId: 'operation',
+                      parameters: [
+                        {
+                          '$ref': '#/components/parameters/parameter'
+                        }
+                      ],
+                      request_body: {
+                        '$ref': '#/components/requestBodies/request_body'
+                      },
+                      responses: {
+                        '200' => {
+                          '$ref': '#/components/responses/response'
+                        },
+                        '400' => {
+                          '$ref': '#/components/responses/error_response'
+                        }
+                      }
+                    }
+                  }
+                },
+                components: {
+                  schemas: {
+                    'response_schema' => {
+                      type: 'object',
+                      nullable: true,
+                      properties: {},
+                      required: []
+                    }
+                  },
+                  responses: {
+                    'response' => {
+                      content: {
+                        'application/json' => {
+                          schema: {
+                            '$ref': '#/components/schemas/response_schema'
+                          }
+                        }
+                      }
+                    },
+                    'error_response' => {
+                      content: {
+                        'application/problem+json' => {
+                          schema: {
+                            type: 'string',
+                            nullable: true
+                          }
+                        }
+                      }
+                    }
+                  },
+                  parameters: {
+                    'parameter' => {
+                      name: 'parameter',
+                      in: 'query',
+                      schema: {
+                        type: 'string',
+                        nullable: true
+                      },
+                      allowEmptyValue: true
+                    }
+                  },
+                  examples: {
+                    'foo' => {
+                      value: 'bar'
+                    }
+                  },
+                  requestBodies: {
+                    'request_body' => {
+                      content: {
+                        'application/json' => {
+                          schema: {
+                            type: 'string',
+                            nullable: true
+                          }
+                        }
+                      },
+                      required: false
+                    }
+                  },
+                  headers: {
+                    'X-Foo' => {
+                      schema: {
+                        type: 'string',
+                        nullable: true
+                      }
+                    }
+                  },
+                  securitySchemes: {
+                    'http_basic' => {
+                      type: 'http',
+                      scheme: 'basic'
+                    }
+                  },
+                  links: {
+                    'foo' => {
+                      operationId: 'foo'
+                    }
+                  },
+                  callbacks: {
+                    'onFoo' => {
+                      '{$request.query.foo}' => {
+                        'get' => {
+                          parameters: [],
+                          responses: {}
+                        }
+                      }
+                    }
+                  }
+                },
+                security: [
+                  {
+                    'http_basic' => []
+                  }
+                ],
+                tags: [
+                  { name: 'Foo' }
+                ],
+                externalDocs: {
+                  url: 'https://foo.bar/docs'
+                },
+                'x-foo': 'bar'
               }
-            ],
-            tags: [
-              { name: 'Foo' }
-            ],
-            externalDocs: {
-              url: 'https://foo.bar/docs'
-            },
-            'x-foo': 'bar'
-          },
-          definitions.openapi_document('3.0')
-        )
+            when OpenAPI::V3_1
+              {
+                openapi: '3.1.1',
+                info: {
+                  title: 'Foo',
+                  version: '1'
+                },
+                servers: [
+                  {
+                    url: 'https://foo.bar/foo'
+                  }
+                ],
+                paths: {
+                  '/bar' => {
+                    'post' => {
+                      operationId: 'operation',
+                      parameters: [
+                        {
+                          '$ref': '#/components/parameters/parameter'
+                        }
+                      ],
+                      request_body: {
+                        '$ref': '#/components/requestBodies/request_body'
+                      },
+                      responses: {
+                        '200' => {
+                          '$ref': '#/components/responses/response'
+                        },
+                        '400' => {
+                          '$ref': '#/components/responses/error_response'
+                        }
+                      }
+                    }
+                  }
+                },
+                components: {
+                  schemas: {
+                    'response_schema' => {
+                      type: %w[object null],
+                      properties: {},
+                      required: []
+                    }
+                  },
+                  responses: {
+                    'response' => {
+                      content: {
+                        'application/json' => {
+                          schema: {
+                            '$ref': '#/components/schemas/response_schema'
+                          }
+                        }
+                      }
+                    },
+                    'error_response' => {
+                      content: {
+                        'application/problem+json' => {
+                          schema: {
+                            type: %w[string null]
+                          }
+                        }
+                      }
+                    }
+                  },
+                  parameters: {
+                    'parameter' => {
+                      name: 'parameter',
+                      in: 'query',
+                      allowEmptyValue: true,
+                      schema: {
+                        type: %w[string null]
+                      }
+                    }
+                  },
+                  examples: {
+                    'foo' => {
+                      value: 'bar'
+                    }
+                  },
+                  requestBodies: {
+                    'request_body' => {
+                      content: {
+                        'application/json' => {
+                          schema: {
+                            type: %w[string null]
+                          }
+                        }
+                      },
+                      required: false
+                    }
+                  },
+                  headers: {
+                    'X-Foo' => {
+                      schema: {
+                        type: %w[string null]
+                      }
+                    }
+                  },
+                  securitySchemes: {
+                    'http_basic' => {
+                      type: 'http', scheme: 'basic'
+                    }
+                  },
+                  links: {
+                    'foo' => {
+                      operationId: 'foo'
+                    }
+                  },
+                  callbacks: {
+                    'onFoo' => {
+                      '{$request.query.foo}' => {
+                        'get' => {
+                          parameters: [],
+                          responses: {}
+                        }
+                      }
+                    }
+                  }
+                },
+                security: [
+                  {
+                    'http_basic' => []
+                  }
+                ],
+                tags: [
+                  { name: 'Foo' }
+                ],
+                externalDocs: {
+                  url: 'https://foo.bar/docs'
+                },
+                'x-foo': 'bar'
+              }
+            when OpenAPI::V3_2
+              {
+                openapi: '3.2.0',
+                info: {
+                  title: 'Foo',
+                  version: '1'
+                },
+                servers: [
+                  {
+                    url: 'https://foo.bar/foo'
+                  }
+                ],
+                paths: {
+                  '/bar' => {
+                    'post' => {
+                      operationId: 'operation',
+                      parameters: [
+                        {
+                          '$ref': '#/components/parameters/parameter'
+                        }
+                      ],
+                      request_body: {
+                        '$ref': '#/components/requestBodies/request_body'
+                      },
+                      responses: {
+                        '200' => {
+                          '$ref': '#/components/responses/response'
+                        },
+                        '400' => {
+                          '$ref': '#/components/responses/error_response'
+                        }
+                      }
+                    },
+                    :additionalOperations => {
+                      'CUSTOM' => {
+                        operationId: 'additional_operation',
+                        parameters: [],
+                        responses: {}
+                      }
+                    }
+                  }
+                },
+                components: {
+                  schemas: {
+                    'response_schema' => {
+                      type: %w[object null],
+                      properties: {},
+                      required: []
+                    }
+                  },
+                  responses: {
+                    'response' => {
+                      content: {
+                        'application/json' => {
+                          schema: {
+                            '$ref': '#/components/schemas/response_schema'
+                          }
+                        }
+                      }
+                    },
+                    'error_response' => {
+                      content: {
+                        'application/problem+json' => {
+                          schema: {
+                            type: %w[string null]
+                          }
+                        }
+                      }
+                    }
+                  },
+                  parameters: {
+                    'parameter' => {
+                      name: 'parameter',
+                      in: 'query',
+                      allowEmptyValue: true,
+                      schema: {
+                        type: %w[string null]
+                      }
+                    }
+                  },
+                  examples: {
+                    'foo' => {
+                      value: 'bar'
+                    }
+                  },
+                  requestBodies: {
+                    'request_body' => {
+                      content: {
+                        'application/json' => {
+                          schema: {
+                            type: %w[string null]
+                          }
+                        }
+                      },
+                      required: false
+                    }
+                  },
+                  headers: {
+                    'X-Foo' => {
+                      schema: {
+                        type: %w[string null]
+                      }
+                    }
+                  },
+                  securitySchemes: {
+                    'http_basic' => {
+                      type: 'http', scheme: 'basic'
+                    }
+                  },
+                  links: {
+                    'foo' => {
+                      operationId: 'foo'
+                    }
+                  },
+                  callbacks: {
+                    'onFoo' => {
+                      '{$request.query.foo}' => {
+                        'get' => {
+                          parameters: [],
+                          responses: {}
+                        }
+                      }
+                    }
+                  }
+                },
+                security: [
+                  {
+                    'http_basic' => []
+                  }
+                ],
+                tags: [
+                  { name: 'Foo' }
+                ],
+                externalDocs: {
+                  url: 'https://foo.bar/docs'
+                },
+                'x-foo': 'bar'
+              }
+            end,
+            definitions,
+            version,
+            method: :openapi_document
+          )
+        end
       end
 
       def test_openapi_document_on_inheritance
@@ -620,7 +904,7 @@ module Jsapi
           ]
         )
         # OpenAPI 2.0
-        assert_equal(
+        assert_openapi_equal(
           {
             swagger: '2.0',
             info: {
@@ -647,10 +931,13 @@ module Jsapi
               { name: 'Bar' },
               { name: 'Foo' }
             ]
-          }, definitions.openapi_document('2.0')
+          },
+          definitions,
+          '2.0',
+          method: :openapi_document
         )
         # OpenAPI 3.0
-        assert_equal(
+        assert_openapi_equal(
           {
             openapi: '3.0.3',
             info: {
@@ -677,7 +964,10 @@ module Jsapi
               { name: 'Bar' },
               { name: 'Foo' }
             ]
-          }, definitions.openapi_document('3.0')
+          },
+          definitions,
+          '3.0',
+          method: :openapi_document
         )
       end
 

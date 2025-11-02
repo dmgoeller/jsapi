@@ -121,7 +121,7 @@ module Jsapi
                 deprecated: deprecated?.presence
               }
             else
-              # OpenAPI 3.1
+              # OpenAPI 3.1 and higher
               {
                 type: nullable? ? [type, 'null'] : type,
                 examples: examples.presence,

@@ -1,5 +1,21 @@
 # Change log
 
+## 1.3 (2025-11-02)
+
+### New Features
+
+- The new OpenAPI version 3.2 is supported, in particalur:
+
+  - Streaming of responses in JSON sequence text format as specified by RFC 7464
+  - Defining of parameters representing the entire query string
+  - Specifying the default mapping of a discriminator
+
+### Breaking changes
+
+- The default location of API definitions has been changed from `app/api_defs` to
+  `jsapi/api_defs` to prevent API definitions to be loaded automatically by
+  Zeitwerk.
+
 ## 1.2 (2025-08-30)
 
 ### New features

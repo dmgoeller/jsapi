@@ -9,34 +9,50 @@ module Jsapi
 
         ##
         # :attr: oauth_flows
-        # The hash containing the OAuth flows. Possible keys are:
+        # Maps one or more of the following keys to OAuthFlow objects.
         #
         # - <code>"authorization_code"</code>
         # - <code>"client_credentials"</code>
+        # - <code>"device_authorization"</code>
         # - <code>"implicit"</code>
         # - <code>"password"</code>
         #
-        # Values are OAuthFlow objects.
+        # Note that <code>"device_authorization"</code> was introduced with \OpenAPI 3.2.
+        # This entry is omitted when generating an \OpenAPI document with a lower version.
         attribute :oauth_flows, { String => OAuthFlow },
-                  keys: %w[authorization_code client_credentials implicit password]
+                  keys: %w[authorization_code
+                           client_credentials
+                           device_authorization
+                           implicit
+                           password]
+        ##
+        # :attr: oauth2_metadata_url
+        # The URL of the OAuth2 authorization server metadata.
+        # Applies to \OpenAPI 3.2 and higher.
+        attribute :oauth2_metadata_url, String
 
         # Returns a hash representing the \OpenAPI security scheme object.
         def to_openapi(version, *)
           version = OpenAPI::Version.from(version)
 
-          with_openapi_extensions(type: 'oauth2', description: description).tap do |h|
-            if oauth_flows.any?
-              if version.major == 2
-                key, oauth_flow = oauth_flows.first
-                h[:flow] = key.to_s
-                h.merge!(oauth_flow.to_openapi(version))
-              else
-                h[:flows] = oauth_flows.to_h do |key, value|
+          with_openapi_extensions(
+            base_openapi_fields('oauth2', version).tap do |fields|
+              flows = oauth_flows
+              flows = flows.except('device_authorization') unless version >= OpenAPI::V3_2
+
+              if version >= OpenAPI::V3_0
+                fields[:flows] = flows.to_h do |key, value|
                   [key.to_s.camelize(:lower).to_sym, value.to_openapi(version)]
-                end
+                end if flows.any?
+
+                fields[:oauth2MetadataUrl] = oauth2_metadata_url if version >= OpenAPI::V3_2
+              elsif flows.one?
+                key, flow = flows.first
+                fields[:flow] = key.to_s
+                fields.merge!(flow.to_openapi(version))
               end
             end
-          end
+          )
         end
       end
     end

@@ -15,7 +15,9 @@ module Jsapi
       # Performs an API operation by calling the given block. The request parameters are
       # passed as an instance of the operation's model class to the block. The object
       # returned by the block is implicitly rendered according to the appropriate +response+
-      # specification when the content type is a JSON MIME type.
+      # specification when the content type is a JSON MIME type. When content type is
+      # <code>application/json-seq</code>, the object returned by the block is streamed in
+      # JSON sequence text format.
       #
       #   api_operation('foo') do |api_params|
       #     # ...
@@ -153,18 +155,29 @@ module Jsapi
         end
 
         # Write response
-        return unless response_model.json_type?
+        return unless response_model.json_type? || response_model.json_seq_type?
 
         response = Response.new(result, response_model, definitions, omit: omit)
         self.content_type = response_model.content_type
-        render(json: response, status: status)
+
+        if response_model.json_seq_type?
+          self.response.status = status
+
+          self.response.stream.tap do |stream|
+            response.write_json_seq_to(stream)
+          ensure
+            stream.close
+          end
+        else
+          render(json: response, status: status)
+        end
       end
 
       def _api_params(operation, definitions, strong:)
         (operation.model || Model::Base).new(
           Parameters.new(
             params.except(:action, :controller, :format).permit!,
-            request.headers,
+            request,
             operation,
             definitions,
             strong: strong

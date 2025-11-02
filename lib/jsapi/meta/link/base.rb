@@ -33,13 +33,15 @@ module Jsapi
         attribute :server, Server
 
         # Returns a hash representing the \OpenAPI link object.
-        def to_openapi(*)
+        def to_openapi(version, *)
+          version = OpenAPI::Version.from(version)
+
           with_openapi_extensions(
             operationId: operation_id,
             parameters: parameters.presence,
             requestBody: request_body,
             description: description,
-            server: server&.to_openapi
+            server: server&.to_openapi(version)
           )
         end
       end

@@ -5,6 +5,8 @@ require 'test_helper'
 module Jsapi
   module Meta
     class ExternalDocumentationTest < Minitest::Test
+      include OpenAPITestHelper
+
       def test_empty_openapi_external_documentation_object
         assert_equal({}, ExternalDocumentation.new.to_openapi)
       end
@@ -15,13 +17,14 @@ module Jsapi
           description: 'Foo',
           openapi_extensions: { 'foo' => 'bar' }
         )
-        assert_equal(
+        assert_openapi_equal(
           {
             url: 'https://foo.bar/docs',
             description: 'Foo',
             'x-foo': 'bar'
           },
-          external_documentation.to_openapi
+          external_documentation,
+          nil
         )
       end
     end

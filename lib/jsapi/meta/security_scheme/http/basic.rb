@@ -13,17 +13,10 @@ module Jsapi
             version = OpenAPI::Version.from(version)
 
             with_openapi_extensions(
-              if version.major == 2
-                {
-                  type: 'basic',
-                  description: description
-                }
+              if version < OpenAPI::V3_0
+                base_openapi_fields('basic', version)
               else
-                {
-                  type: 'http',
-                  scheme: 'basic',
-                  description: description
-                }
+                base_openapi_fields('http', version).merge(scheme: 'basic')
               end
             )
           end

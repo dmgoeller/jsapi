@@ -10,13 +10,13 @@ module Jsapi
       end
       Rails.stub(:root, Pathname.new('/rails')) do
         pathname = Jsapi.configuration.pathname
-        assert_equal(Pathname.new('/rails/app/api_defs'), pathname)
+        assert_equal(Pathname.new('/rails/jsapi/api_defs'), pathname)
 
         pathname = Jsapi.configuration.pathname('foo.rb')
-        assert_equal(Pathname.new('/rails/app/api_defs/foo.rb'), pathname)
+        assert_equal(Pathname.new('/rails/jsapi/api_defs/foo.rb'), pathname)
 
         pathname = Jsapi.configuration.pathname('foo', 'bar.rb')
-        assert_equal(Pathname.new('/rails/app/api_defs/foo/bar.rb'), pathname)
+        assert_equal(Pathname.new('/rails/jsapi/api_defs/foo/bar.rb'), pathname)
       end
     end
   end

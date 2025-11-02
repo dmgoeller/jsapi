@@ -5,6 +5,8 @@ require 'test_helper'
 module Jsapi
   module Meta
     class SecurityRequirementTest < Minitest::Test
+      include OpenAPITestHelper
+
       def test_empty_openapi_security_requirement_object
         assert_equal({}, SecurityRequirement.new.to_openapi)
       end
@@ -26,12 +28,13 @@ module Jsapi
             'bar' => { scopes: %w[read:bar] }
           }
         )
-        assert_equal(
+        assert_openapi_equal(
           {
             'foo' => %w[read:foo],
             'bar' => %w[read:bar]
           },
-          security_requirement.to_openapi
+          security_requirement,
+          nil
         )
       end
     end

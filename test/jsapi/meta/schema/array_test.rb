@@ -6,6 +6,8 @@ module Jsapi
   module Meta
     module Schema
       class ArrayTest < Minitest::Test
+        include OpenAPITestHelper
+
         def test_items
           assert_equal('string', Array.new(items: { type: 'string' }).items.type)
           assert_equal('foo', Array.new(items: { ref: 'foo' }).items.ref)
@@ -61,49 +63,52 @@ module Jsapi
         def test_minimal_openapi_schema_object
           schema = Array.new(existence: true)
 
-          # OpenAPI 2.0
-          assert_equal(
-            {
-              type: 'array',
-              items: {}
-            },
-            schema.to_openapi('2.0')
-          )
-          # OpenAPI 3.0
-          assert_equal(
-            {
-              type: 'array',
-              items: {}
-            },
-            schema.to_openapi('3.0')
-          )
+          each_openapi_version do |version|
+            assert_openapi_equal(
+              {
+                type: 'array',
+                items: {}
+              },
+              schema,
+              version
+            )
+          end
         end
 
         def test_openapi_schema_object
           schema = Array.new(items: { type: 'string' }, existence: false)
 
-          # OpenAPI 2.0
-          assert_equal(
-            {
-              type: 'array',
-              items: {
-                type: 'string'
-              }
-            },
-            schema.to_openapi('2.0')
-          )
-          # OpenAPI 3.0
-          assert_equal(
-            {
-              type: 'array',
-              nullable: true,
-              items: {
-                type: 'string',
-                nullable: true
-              }
-            },
-            schema.to_openapi('3.0')
-          )
+          each_openapi_version do |version|
+            assert_openapi_equal(
+              case version
+              when OpenAPI::V2_0
+                {
+                  type: 'array',
+                  items: {
+                    type: 'string'
+                  }
+                }
+              when OpenAPI::V3_0
+                {
+                  type: 'array',
+                  nullable: true,
+                  items: {
+                    type: 'string',
+                    nullable: true
+                  }
+                }
+              else
+                {
+                  type: %w[array null],
+                  items: {
+                    type: %w[string null]
+                  }
+                }
+              end,
+              schema,
+              version
+            )
+          end
         end
       end
     end

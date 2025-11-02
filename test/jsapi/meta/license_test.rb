@@ -5,6 +5,8 @@ require 'test_helper'
 module Jsapi
   module Meta
     class LicenseTest < Minitest::Test
+      include OpenAPITestHelper
+
       # Identifier and URL
 
       def test_initialize_raises_an_error_when_identifier_and_url_are_specified_together
@@ -35,8 +37,8 @@ module Jsapi
       # OpenAPI objects
 
       def test_empty_openapi_license_object
-        %w[2.0 3.0 3.1].each do |version|
-          assert_equal({}, License.new.to_openapi(version))
+        each_openapi_version do |version|
+          assert_openapi_equal({}, License.new, version)
         end
       end
 
@@ -46,14 +48,15 @@ module Jsapi
           url: 'https://spdx.org/licenses/MIT.html',
           openapi_extensions: { 'foo' => 'bar' }
         )
-        %w[2.0 3.0 3.1].each do |version|
-          assert_equal(
+        each_openapi_version do |version|
+          assert_openapi_equal(
             {
               name: 'MIT License',
               url: 'https://spdx.org/licenses/MIT.html',
               'x-foo': 'bar'
             },
-            license.to_openapi(version)
+            license,
+            version
           )
         end
       end
@@ -63,13 +66,16 @@ module Jsapi
           name: 'MIT License',
           identifier: 'MIT'
         )
-        assert_equal(
-          {
-            name: 'MIT License',
-            identifier: 'MIT'
-          },
-          license.to_openapi('3.1')
-        )
+        each_openapi_version(from: OpenAPI::V3_1) do |version|
+          assert_openapi_equal(
+            {
+              name: 'MIT License',
+              identifier: 'MIT'
+            },
+            license,
+            version
+          )
+        end
       end
     end
   end

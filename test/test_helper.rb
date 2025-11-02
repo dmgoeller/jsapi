@@ -41,6 +41,9 @@ require 'dummies/rails'
 # This gem
 require 'jsapi'
 
+# Test helpers
+require_relative 'helpers/openapi_test_helper'
+
 # Pry
 require 'pry'
 

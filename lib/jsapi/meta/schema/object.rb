@@ -57,17 +57,36 @@ module Jsapi
 
           properties = resolve_properties(definitions, context: context)
 
-          property = properties[discriminator.property_name]
-          raise InvalidValueError.new('discriminator property',
-                                      discriminator.property_name,
-                                      valid_values: properties.keys) if property.nil?
+          discriminating_property = properties[discriminator.property_name]
+          if discriminating_property.nil?
+            raise InvalidValueError.new('discriminator property',
+                                        discriminator.property_name,
+                                        valid_values: properties.keys)
+          end
 
-          value = property.reader.call(object)
-          value = property.default_value(definitions, context: context) if value.nil?
-          raise "#{discriminator.property_name} can't be nil" if value.nil?
+          discriminating_value = discriminating_property.reader.call(object)
+          if discriminating_value.nil?
+            discriminating_value = discriminating_property.default_value(
+              definitions,
+              context: context
+            )
+            if discriminating_value.nil? && discriminator.default_mapping.nil?
+              raise "discriminating value can't be nil"
+            end
+          end
 
-          schema = definitions.find_schema(discriminator.mapping(value) || value)
-          raise "inheriting schema couldn't be found: #{value.inspect}" if schema.nil?
+          schema_name = discriminator.mapping(discriminating_value) || discriminating_value
+
+          schema = definitions.find_schema(schema_name)
+          if schema.nil?
+            default_mapping = discriminator.default_mapping
+            schema = definitions.find_schema(default_mapping) unless default_mapping.nil?
+
+            if schema.nil?
+              raise "inheriting schema couldn't be found: " \
+                    "#{[schema_name, default_mapping].compact.map(&:inspect).join(' or ')}"
+            end
+          end
 
           schema.resolve(definitions).resolve_schema(object, definitions, context: context)
         end

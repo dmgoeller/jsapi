@@ -19,6 +19,8 @@ module Jsapi
             new(3, 0)
           when '3.1'
             new(3, 1)
+          when '3.2'
+            new(3, 2)
           else
             raise ArgumentError, "unsupported OpenAPI version: #{version.inspect}"
           end
@@ -44,6 +46,10 @@ module Jsapi
           return result unless result.zero?
 
           minor <=> other.minor
+        end
+
+        def inspect
+          "<#{self.class.name} #{self}>"
         end
 
         def to_s # :nodoc:

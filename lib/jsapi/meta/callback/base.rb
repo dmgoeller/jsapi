@@ -23,7 +23,7 @@ module Jsapi
         # Returns a hash representing the \OpenAPI callback object.
         def to_openapi(version, definitions)
           operations.transform_values do |operation|
-            { operation.method => operation.to_openapi(version, definitions) }
+            OpenAPI::PathItem.new([operation]).to_openapi(version, definitions)
           end
         end
       end

@@ -6,6 +6,8 @@ module Jsapi
   module Meta
     module Schema
       class NumericTest < Minitest::Test
+        include OpenAPITestHelper
+
         def test_maximum
           schema = Numeric.new(type: 'integer', maximum: 0)
           maximum = schema.validations['maximum']
@@ -65,24 +67,23 @@ module Jsapi
         def test_openapi_schema_object
           schema = Numeric.new(type: 'integer')
 
-          # OpenAPI 2.0
-          assert_equal(
-            { type: 'integer' },
-            schema.to_openapi('2.0')
-          )
-          # OpenAPI 3.0
-          assert_equal(
-            {
-              type: 'integer',
-              nullable: true
-            },
-            schema.to_openapi('3.0')
-          )
-          # OpenAPI 3.1
-          assert_equal(
-            { type: %w[integer null] },
-            schema.to_openapi('3.1')
-          )
+          each_openapi_version do |version|
+            assert_openapi_equal(
+              case version
+              when OpenAPI::V2_0
+                { type: 'integer' }
+              when OpenAPI::V3_0
+                {
+                  type: 'integer',
+                  nullable: true
+                }
+              else
+                { type: %w[integer null] }
+              end,
+              schema,
+              version
+            )
+          end
         end
       end
     end

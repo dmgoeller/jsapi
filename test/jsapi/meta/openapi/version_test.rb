@@ -16,6 +16,9 @@ module Jsapi
           version = Version.from('3.1')
           assert_equal([3, 1], [version.major, version.minor])
 
+          version = Version.from('3.2')
+          assert_equal([3, 2], [version.major, version.minor])
+
           error = assert_raises(ArgumentError) { Version.from('1.0') }
           assert_equal('unsupported OpenAPI version: "1.0"', error.message)
         end
@@ -31,6 +34,10 @@ module Jsapi
           assert(Version.new(3, 0) < Version.new(3, 1))
 
           assert_raises(ArgumentError) { assert_nil(Version.new(2, 0) < 3) }
+        end
+
+        def test_inspect
+          assert_equal('<Jsapi::Meta::OpenAPI::Version 2.0>', Version.new(2, 0).inspect)
         end
 
         def test_to_s

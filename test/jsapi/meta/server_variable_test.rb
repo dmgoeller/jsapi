@@ -5,8 +5,12 @@ require 'test_helper'
 module Jsapi
   module Meta
     class ServerVariableTest < Minitest::Test
+      include OpenAPITestHelper
+
       def test_empty_openapi_server_variable_object
-        assert_equal({}, ServerVariable.new.to_openapi)
+        server_variable = ServerVariable.new
+
+        assert_openapi_equal({}, server_variable, nil)
       end
 
       def test_full_openapi_server_object
@@ -16,14 +20,15 @@ module Jsapi
           description: 'Foo',
           openapi_extensions: { 'foo' => 'bar' }
         )
-        assert_equal(
+        assert_openapi_equal(
           {
             enum: %w[foo bar],
             default: 'foo',
             description: 'Foo',
             'x-foo': 'bar'
           },
-          server_variable.to_openapi
+          server_variable,
+          nil
         )
       end
     end

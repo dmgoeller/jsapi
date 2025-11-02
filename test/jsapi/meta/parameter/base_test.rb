@@ -6,6 +6,8 @@ module Jsapi
   module Meta
     module Parameter
       class BaseTest < Minitest::Test
+        include OpenAPITestHelper
+
         def test_name_and_type
           parameter = Base.new('foo', type: 'string')
           assert_equal('foo', parameter.name)
@@ -42,87 +44,109 @@ module Jsapi
 
         # OpenAPI objects
 
-        def test_minimal_openapi_parameters
+        def test_minimal_openapi_parameter_object
           definitions = Definitions.new
 
           # Query parameter
-
           parameter = Base.new('foo', type: 'string', in: 'query')
 
-          # OpenAPI 2.0
-          expected_openapi_parameter = {
-            name: 'foo',
-            in: 'query',
-            type: 'string',
-            allowEmptyValue: true
-          }
-          assert_equal(
-            expected_openapi_parameter,
-            parameter.to_openapi('2.0', definitions)
-          )
-          assert_equal(
-            [expected_openapi_parameter],
-            parameter.to_openapi_parameters('2.0', definitions)
-          )
-          # OpenAPI 3.0
-          expected_openapi_parameter = {
-            name: 'foo',
-            in: 'query',
-            schema: {
-              type: 'string',
-              nullable: true
-            },
-            allowEmptyValue: true
-          }
-          assert_equal(
-            expected_openapi_parameter,
-            parameter.to_openapi('3.0', definitions)
-          )
-          assert_equal(
-            [expected_openapi_parameter],
-            parameter.to_openapi_parameters('3.0', definitions)
-          )
+          each_openapi_version do |version|
+            expected_openapi_parameter_object =
+              case version
+              when OpenAPI::V2_0
+                {
+                  name: 'foo',
+                  in: 'query',
+                  type: 'string',
+                  allowEmptyValue: true
+                }
+              when OpenAPI::V3_0
+                {
+                  name: 'foo',
+                  in: 'query',
+                  schema: {
+                    type: 'string',
+                    nullable: true
+                  },
+                  allowEmptyValue: true
+                }
+              else
+                {
+                  name: 'foo',
+                  in: 'query',
+                  schema: {
+                    type: %w[string null]
+                  },
+                  allowEmptyValue: true
+                }
+              end
+
+            assert_openapi_equal(
+              expected_openapi_parameter_object,
+              parameter,
+              version,
+              definitions
+            )
+            assert_openapi_equal(
+              [expected_openapi_parameter_object],
+              parameter,
+              version,
+              definitions,
+              method: :to_openapi_parameters
+            )
+          end
 
           # Path parameter
-
           parameter = Base.new('foo', type: 'string', in: 'path')
 
-          # OpenAPI 2.0
-          expected_openapi_parameter = {
-            name: 'foo',
-            in: 'path',
-            required: true,
-            type: 'string'
-          }
-          assert_equal(
-            expected_openapi_parameter,
-            parameter.to_openapi('2.0', definitions)
-          )
-          assert_equal(
-            [expected_openapi_parameter],
-            parameter.to_openapi_parameters('2.0', definitions)
-          )
-          # OpenAPI 3.0
-          expected_openapi_parameter = {
-            name: 'foo',
-            in: 'path',
-            required: true,
-            schema: {
-              type: 'string',
-              nullable: true
-            }
-          }
-          assert_equal(
-            expected_openapi_parameter,
-            parameter.to_openapi('3.0', definitions)
-          )
-          assert_equal(
-            [expected_openapi_parameter],
-            parameter.to_openapi_parameters('3.0', definitions)
-          )
+          each_openapi_version do |version|
+            expected_openapi_parameter_object =
+              case version
+              when OpenAPI::V2_0
+                {
+                  name: 'foo',
+                  in: 'path',
+                  required: true,
+                  type: 'string'
+                }
+              when OpenAPI::V3_0
+                {
+                  name: 'foo',
+                  in: 'path',
+                  required: true,
+                  schema: {
+                    type: 'string',
+                    nullable: true
+                  }
+                }
+              else
+                {
+                  name: 'foo',
+                  in: 'path',
+                  required: true,
+                  schema: {
+                    type: %w[string null]
+                  }
+                }
+              end
+
+            assert_openapi_equal(
+              expected_openapi_parameter_object,
+              parameter,
+              version,
+              definitions
+            )
+            assert_openapi_equal(
+              [expected_openapi_parameter_object],
+              parameter,
+              version,
+              definitions,
+              method: :to_openapi_parameters
+            )
+          end
         end
 
-        def test_minimal_openapi_parameters_on_object
+        def test_minimal_openapi_parameter_object_on_object
           definitions = Definitions.new
 
           parameter = Base.new(
@@ -133,67 +157,95 @@ module Jsapi
               'bar' => { type: 'string' }
             }
           )
+          each_openapi_version do |version|
+            # #to_openapi
+            case version
+            when OpenAPI::V2_0
+              error = assert_raises(RuntimeError) do
+                parameter.to_openapi(version, definitions)
+              end
+              assert_equal(
+                "OpenAPI 2.0 doesn't allow object parameters in query",
+                error.message
+              )
+            when OpenAPI::V3_0
+              assert_equal(
+                {
+                  name: 'foo',
+                  in: 'query',
+                  schema: {
+                    type: 'object',
+                    nullable: true,
+                    properties: {
+                      'bar' => { type: 'string', nullable: true }
+                    },
+                    required: []
+                  },
+                  allowEmptyValue: true
+                },
+                parameter.to_openapi(version, definitions)
+              )
+            else
+              assert_openapi_equal(
+                {
+                  name: 'foo',
+                  in: 'query',
+                  schema: {
+                    type: %w[object null],
+                    properties: {
+                      'bar' => { type: %w[string null] }
+                    },
+                    required: []
+                  },
+                  allowEmptyValue: true
+                },
+                parameter,
+                version,
+                definitions
+              )
+            end
 
-          # #to_openapi
-
-          # OpenAPI 2.0
-          error = assert_raises(RuntimeError) do
-            parameter.to_openapi('2.0', definitions)
+            # #to_openapi_parameters
+            assert_openapi_equal(
+              [
+                case version
+                when OpenAPI::V2_0
+                  {
+                    name: 'foo[bar]',
+                    in: 'query',
+                    type: 'string',
+                    allowEmptyValue: true
+                  }
+                when OpenAPI::V3_0
+                  {
+                    name: 'foo[bar]',
+                    in: 'query',
+                    schema: {
+                      type: 'string',
+                      nullable: true
+                    },
+                    allowEmptyValue: true
+                  }
+                else
+                  {
+                    name: 'foo[bar]',
+                    in: 'query',
+                    schema: {
+                      type: %w[string null]
+                    },
+                    allowEmptyValue: true
+                  }
+                end
+              ],
+              parameter,
+              version,
+              definitions,
+              method: :to_openapi_parameters
+            )
           end
-          assert_equal(
-            "OpenAPI 2.0 doesn't allow object parameters in query",
-            error.message
-          )
-          # OpenAPI 3.0
-          assert_equal(
-            {
-              name: 'foo',
-              in: 'query',
-              schema: {
-                type: 'object',
-                nullable: true,
-                properties: {
-                  'bar' => { type: 'string', nullable: true }
-                },
-                required: []
-              },
-              allowEmptyValue: true
-            },
-            parameter.to_openapi('3.0', definitions)
-          )
-
-          # #to_openapi_parameters
-
-          # OpenAPI 2.0
-          assert_equal(
-            [
-              {
-                name: 'foo[bar]',
-                in: 'query',
-                type: 'string',
-                allowEmptyValue: true
-              }
-            ],
-            parameter.to_openapi_parameters('2.0', definitions)
-          )
-          # OpenAPI 3.0
-          assert_equal(
-            [
-              {
-                name: 'foo[bar]',
-                in: 'query',
-                schema: {
-                  type: 'string',
-                  nullable: true
-                },
-                allowEmptyValue: true
-              }
-            ],
-            parameter.to_openapi_parameters('3.0', definitions)
-          )
         end
 
-        def test_full_openapi_parameters
+        def test_full_openapi_parameter_object
           definitions = Definitions.new
 
           parameter = Base.new(
@@ -205,51 +257,53 @@ module Jsapi
             example: 'bar',
             openapi_extensions: { 'foo' => 'bar' }
           )
-          # OpenAPI 2.0
-          expected_openapi_parameter = {
-            name: 'foo',
-            in: 'query',
-            description: 'Lorem ipsum',
-            required: true,
-            type: 'string',
-            'x-foo': 'bar'
-          }
-          assert_equal(
-            expected_openapi_parameter,
-            parameter.to_openapi('2.0', definitions)
-          )
-          assert_equal(
-            [expected_openapi_parameter],
-            parameter.to_openapi_parameters('2.0', definitions)
-          )
-          # OpenAPI 3.0
-          expected_openapi_parameter = {
-            name: 'foo',
-            in: 'query',
-            description: 'Lorem ipsum',
-            required: true,
-            deprecated: true,
-            schema: {
-              type: 'string'
-            },
-            examples: {
-              'default' => {
-                value: 'bar'
-              }
-            },
-            'x-foo': 'bar'
-          }
-          assert_equal(
-            expected_openapi_parameter,
-            parameter.to_openapi('3.0', definitions)
-          )
-          assert_equal(
-            [expected_openapi_parameter],
-            parameter.to_openapi_parameters('3.0', definitions)
-          )
+          each_openapi_version do |version|
+            expected_openapi_parameter_object =
+              if version < OpenAPI::V3_0
+                {
+                  name: 'foo',
+                  in: 'query',
+                  description: 'Lorem ipsum',
+                  required: true,
+                  type: 'string',
+                  'x-foo': 'bar'
+                }
+              else
+                {
+                  name: 'foo',
+                  in: 'query',
+                  description: 'Lorem ipsum',
+                  required: true,
+                  deprecated: true,
+                  schema: {
+                    type: 'string'
+                  },
+                  examples: {
+                    'default' => {
+                      value: 'bar'
+                    }
+                  },
+                  'x-foo': 'bar'
+                }
+              end
+
+            assert_openapi_equal(
+              expected_openapi_parameter_object,
+              parameter,
+              version,
+              definitions
+            )
+            assert_openapi_equal(
+              [expected_openapi_parameter_object],
+              parameter,
+              version,
+              definitions,
+              method: :to_openapi_parameters
+            )
+          end
         end
 
-        def test_full_openapi_parameters_on_object
+        def test_full_openapi_parameter_object_on_object
           definitions = Definitions.new
 
           parameter = Base.new(
@@ -270,93 +324,344 @@ module Jsapi
             example: { 'bar' => 'consectetur adipisici elit' },
             openapi_extensions: { 'foo' => 'bar' }
           )
-
           # #to_openapi
-
-          assert_equal(
-            {
-              name: 'foo',
-              in: 'query',
-              description: 'lorem ipsum',
-              required: true,
-              deprecated: true,
-              schema: {
-                type: 'object',
-                properties: {
-                  'bar' => {
-                    type: 'string',
-                    description: 'dolor sit amet',
-                    deprecated: true,
-                    'x-bar': 'foo'
-                  }
-                },
-                required: %w[bar]
-              },
-              examples: {
-                'default' => {
-                  value: { 'bar' => 'consectetur adipisici elit' }
-                }
-              },
-              'x-foo': 'bar'
-            },
-            parameter.to_openapi('3.0', definitions)
-          )
-
-          # #to_openapi_parameters
-
-          # OpenAPI 2.0
-          assert_equal(
-            [
+          each_openapi_version(from: OpenAPI::V3_0) do |version|
+            assert_openapi_equal(
               {
-                name: 'foo[bar]',
+                name: 'foo',
                 in: 'query',
-                description: 'dolor sit amet',
-                required: true,
-                type: 'string',
-                'x-foo': 'bar',
-                'x-bar': 'foo'
-              }
-            ],
-            parameter.to_openapi_parameters('2.0', definitions)
-          )
-          # OpenAPI 3.0
-          assert_equal(
-            [
-              {
-                name: 'foo[bar]',
-                in: 'query',
-                description: 'dolor sit amet',
+                description: 'lorem ipsum',
                 required: true,
                 deprecated: true,
                 schema: {
-                  type: 'string',
-                  description: 'dolor sit amet',
-                  'x-bar': 'foo'
+                  type: 'object',
+                  properties: {
+                    'bar' => {
+                      type: 'string',
+                      description: 'dolor sit amet',
+                      deprecated: true,
+                      'x-bar': 'foo'
+                    }
+                  },
+                  required: %w[bar]
+                },
+                examples: {
+                  'default' => {
+                    value: { 'bar' => 'consectetur adipisici elit' }
+                  }
                 },
                 'x-foo': 'bar'
-              }
-            ],
-            parameter.to_openapi_parameters('3.0', definitions)
-          )
+              },
+              parameter,
+              version,
+              definitions
+            )
+          end
+
+          # #to_openapi_parameters
+          each_openapi_version do |version|
+            assert_openapi_equal(
+              [
+                if version < OpenAPI::V3_0
+                  {
+                    name: 'foo[bar]',
+                    in: 'query',
+                    description: 'dolor sit amet',
+                    required: true,
+                    type: 'string',
+                    'x-foo': 'bar',
+                    'x-bar': 'foo'
+                  }
+                else
+                  {
+                    name: 'foo[bar]',
+                    in: 'query',
+                    description: 'dolor sit amet',
+                    required: true,
+                    deprecated: true,
+                    schema: {
+                      type: 'string',
+                      description: 'dolor sit amet',
+                      'x-bar': 'foo'
+                    },
+                    'x-foo': 'bar'
+                  }
+                end
+              ],
+              parameter,
+              version,
+              definitions,
+              method: :to_openapi_parameters
+            )
+          end
         end
 
-        def test_openapi_parameters_on_directional_properties
-          openapi_parameters = Base.new(
-            'foo',
-            type: 'object',
+        def test_openapi_parameter_object_on_querystring
+          parameter = Base.new('query', type: 'string', in: 'querystring')
+
+          each_openapi_version do |version|
+            if version < OpenAPI::V3_2
+              assert_openapi_equal(nil, parameter, version, nil)
+              assert_openapi_equal(
+                [],
+                parameter,
+                version,
+                nil,
+                method: :to_openapi_parameters
+              )
+            else
+              expected_openapi_parameter_object = {
+                name: 'query',
+                in: 'querystring',
+                content: {
+                  'text/plain' => {
+                    schema: {
+                      type: %w[string null]
+                    }
+                  }
+                }
+              }
+              assert_openapi_equal(
+                expected_openapi_parameter_object,
+                parameter,
+                version,
+                nil
+              )
+              assert_openapi_equal(
+                [expected_openapi_parameter_object],
+                parameter,
+                version,
+                nil,
+                method: :to_openapi_parameters
+              )
+            end
+          end
+        end
+
+        def test_openapi_parameter_object_on_querystring_as_string
+          parameter = Base.new(
+            'query',
+            in: 'querystring',
+            type: 'string',
+            existence: :allow_empty
+          )
+
+          each_openapi_version do |version|
+            if version < OpenAPI::V3_2
+              assert_openapi_equal(nil, parameter, version, nil)
+              assert_openapi_equal(
+                [],
+                parameter,
+                version,
+                nil,
+                method: :to_openapi_parameters
+              )
+            else
+              expected_openapi_parameter_object = {
+                name: 'query',
+                in: 'querystring',
+                required: true,
+                content: {
+                  'text/plain' => {
+                    schema: {
+                      type: 'string'
+                    }
+                  }
+                }
+              }
+              assert_openapi_equal(
+                expected_openapi_parameter_object,
+                parameter,
+                version,
+                nil
+              )
+              assert_openapi_equal(
+                [expected_openapi_parameter_object],
+                parameter,
+                version,
+                nil,
+                method: :to_openapi_parameters
+              )
+            end
+          end
+        end
+
+        def test_openapi_parameter_object_on_querystring_as_object
+          parameter = Base.new(
+            'query',
+            in: 'querystring',
             properties: {
-              'inbound' => {
+              'foo' => {
                 type: 'string',
-                write_only: true
+                existence: true
+              }
+            },
+            existence: true
+          )
+          each_openapi_version do |version|
+            if version < OpenAPI::V3_2
+              expected_openapi_parameter_objects = [
+                if version == OpenAPI::V2_0
+                  {
+                    name: 'foo',
+                    in: 'query',
+                    required: true,
+                    type: 'string'
+                  }
+                else
+                  {
+                    name: 'foo',
+                    in: 'query',
+                    required: true,
+                    schema: { type: 'string' }
+                  }
+                end
+              ]
+              assert_openapi_equal(nil, parameter, version, nil)
+              assert_openapi_equal(
+                expected_openapi_parameter_objects,
+                parameter,
+                version,
+                nil,
+                method: :to_openapi_parameters
+              )
+            else
+              expected_openapi_parameter_object = {
+                name: 'query',
+                in: 'querystring',
+                required: true,
+                content: {
+                  'text/plain' => {
+                    schema: {
+                      type: 'object',
+                      properties: {
+                        'foo' => {
+                          type: 'string'
+                        }
+                      },
+                      required: %w[foo]
+                    }
+                  }
+                }
+              }
+              assert_openapi_equal(
+                expected_openapi_parameter_object,
+                parameter,
+                version,
+                nil
+              )
+              assert_openapi_equal(
+                [expected_openapi_parameter_object],
+                parameter,
+                version,
+                nil,
+                method: :to_openapi_parameters
+              )
+            end
+          end
+        end
+
+        def test_openapi_parameter_object_with_minimal_content
+          parameter = Base.new(
+            'foo',
+            type: 'string',
+            content_type: 'text/plain'
+          )
+          each_openapi_version(from: OpenAPI::V3_0) do |version|
+            assert_openapi_equal(
+              {
+                name: 'foo',
+                in: 'query',
+                allowEmptyValue: true,
+                content: {
+                  'text/plain' => {
+                    schema:
+                      if version == OpenAPI::V3_0
+                        {
+                          type: 'string',
+                          nullable: true
+                        }
+                      else
+                        {
+                          type: %w[string null]
+                        }
+                      end
+                  }
+                }
               },
-              'outbound' => {
-                type: 'string',
-                read_only: true
+              parameter,
+              version,
+              nil
+            )
+          end
+        end
+
+        def test_openapi_parameter_object_with_full_content
+          parameter = Base.new(
+            'foo',
+            type: 'string',
+            content_type: 'text/plain',
+            example: 'bar'
+          )
+          each_openapi_version(from: OpenAPI::V3_0) do |version|
+            assert_openapi_equal(
+              {
+                name: 'foo',
+                in: 'query',
+                allowEmptyValue: true,
+                content: {
+                  'text/plain' => {
+                    schema:
+                      if version == OpenAPI::V3_0
+                        {
+                          type: 'string',
+                          nullable: true
+                        }
+                      else
+                        {
+                          type: %w[string null]
+                        }
+                      end,
+                    examples: {
+                      'default' => {
+                        value: 'bar'
+                      }
+                    }
+                  }
+                }
+              },
+              parameter,
+              version,
+              nil
+            )
+          end
+        end
+
+        def test_openapi_parameter_object_on_directional_properties
+          definitions = Definitions.new(
+            schemas: {
+              'Foo' => {
+                properties: {
+                  'inbound' => {
+                    type: 'string',
+                    write_only: true
+                  },
+                  'outbound' => {
+                    type: 'string',
+                    read_only: true
+                  }
+                }
               }
             }
-          ).to_openapi_parameters('3.0', Definitions.new)
+          )
+          parameter = Base.new('foo', schema: 'Foo')
 
-          assert_equal(%w[foo[inbound]], openapi_parameters.map { |p| p[:name] })
+          each_openapi_version(from: OpenAPI::V3_0) do |version|
+            assert_equal(
+              %w[foo[inbound]],
+              parameter.to_openapi_parameters(version, definitions).map { |p| p[:name] }
+            )
+          end
         end
 
         def test_openapi_parameter_name_on_array

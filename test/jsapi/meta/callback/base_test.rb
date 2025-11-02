@@ -6,6 +6,8 @@ module Jsapi
   module Meta
     module Callback
       class BaseTest < Minitest::Test
+        include OpenAPITestHelper
+
         def test_operations
           expression = '{$request.query.foo}'
 
@@ -29,8 +31,8 @@ module Jsapi
           callback = Base.new
           callback.add_operation(expression)
 
-          %w[3.0 3.1].each do |version|
-            assert_equal(
+          each_openapi_version(from: OpenAPI::V3_0) do |version|
+            assert_openapi_equal(
               {
                 expression => {
                   'get' => {
@@ -39,7 +41,9 @@ module Jsapi
                   }
                 }
               },
-              callback.to_openapi(version, nil)
+              callback,
+              version,
+              nil
             )
           end
         end

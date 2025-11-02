@@ -352,6 +352,32 @@ module Jsapi
         assert_equal('response body has an invalid type: "foo"', error.message)
       end
 
+      # #write_json_seq_to
+
+      def test_write_json_seq_to
+        response_model = Meta::Response.new(type: 'string')
+        response = Response.new('foo', response_model, definitions)
+
+        assert_equal(
+          "\u001E\"foo\"\n",
+          StringIO.new.tap do |stream|
+            response.write_json_seq_to(stream)
+          end.string
+        )
+      end
+
+      def test_write_json_seq_to_on_array
+        response_model = Meta::Response.new(type: 'array', items: { type: 'string' })
+        response = Response.new(%w[foo bar], response_model, definitions)
+
+        assert_equal(
+          "\u001E\"foo\"\n\u001E\"bar\"\n",
+          StringIO.new.tap do |stream|
+            response.write_json_seq_to(stream)
+          end.string
+        )
+      end
+
       # I18n
 
       def test_i18n
@@ -367,6 +393,12 @@ module Jsapi
         )
         response = Response.new(object, response_model, definitions)
         assert_equal('{"foo":"Hello world"}', response.to_json)
+        assert_equal(
+          "\u001E{\"foo\":\"Hello world\"}\n",
+          StringIO.new.tap do |stream|
+            response.write_json_seq_to(stream)
+          end.string
+        )
 
         response_model = Meta::Response.new(
           type: 'object',
@@ -377,6 +409,12 @@ module Jsapi
         )
         response = Response.new(object, response_model, definitions)
         assert_equal('{"foo":"Hallo Welt"}', response.to_json)
+        assert_equal(
+          "\u001E{\"foo\":\"Hallo Welt\"}\n",
+          StringIO.new.tap do |stream|
+            response.write_json_seq_to(stream)
+          end.string
+        )
       end
 
       # Inspection

@@ -10,6 +10,11 @@ module Jsapi
         delegate_missing_to :schema
 
         ##
+        # :attr: content_type
+        # The content type used to describe complex parameters in \OpenAPI 3.0 and higher.
+        attribute :content_type, String
+
+        ##
         # :attr: deprecated
         # Specifies whether or not the parameter is deprecated.
         attribute :deprecated, values: [true, false]
@@ -31,9 +36,10 @@ module Jsapi
         # - <code>"header"</code>
         # - <code>"path"</code>
         # - <code>"query"</code>
+        # - <code>"querystring"</code>
         #
         # The default location is <code>"query"</code>.
-        attribute :in, String, values: %w[header path query], default: 'query'
+        attribute :in, String, values: %w[header path query querystring], default: 'query'
 
         ##
         # :attr_reader: name
@@ -54,8 +60,16 @@ module Jsapi
           @name = name.to_s
 
           keywords = keywords.dup
-          super(keywords.extract!(:deprecated, :description, :examples, :in, :openapi_extensions))
-
+          super(
+            keywords.extract!(
+              :content_type,
+              :deprecated,
+              :description,
+              :examples,
+              :in,
+              :openapi_extensions
+            )
+          )
           add_example(value: keywords.delete(:example)) if keywords.key?(:example)
           keywords[:ref] = keywords.delete(:schema) if keywords.key?(:schema)
 
@@ -75,12 +89,13 @@ module Jsapi
         # Returns a hash representing the \OpenAPI parameter object.
         def to_openapi(version, definitions)
           version = OpenAPI::Version.from(version)
-          schema = self.schema.resolve(definitions)
 
-          openapi_parameter(
+          openapi_parameter_object(
             name,
-            schema,
+            schema.resolve(definitions),
             version,
+            location: self.in,
+            content_type: content_type || ('text/plain' if self.in == 'querystring'),
             description: description,
             required: required?,
             deprecated: deprecated?,
@@ -92,39 +107,30 @@ module Jsapi
         # Returns an array of hashes representing the \OpenAPI parameter objects.
         def to_openapi_parameters(version, definitions)
           version = OpenAPI::Version.from(version)
+          is_querystring = self.in == 'querystring'
           schema = self.schema.resolve(definitions)
 
-          if schema.object?
+          if schema.object? && (version < OpenAPI::V3_2 || !is_querystring)
             explode_parameter(
-              name,
+              is_querystring ? nil : name,
               schema,
               version,
               definitions,
+              location: is_querystring ? 'query' : self.in,
               required: required?,
               deprecated: deprecated?
             )
           else
-            [
-              openapi_parameter(
-                name,
-                schema,
-                version,
-                description: description,
-                required: required?,
-                deprecated: deprecated?,
-                allow_empty_value: allow_empty_value?,
-                examples: examples
-              )
-            ]
-          end
+            [to_openapi(version, definitions)]
+          end.compact
         end
 
         private
 
-        def explode_parameter(name, schema, version, definitions, required:, deprecated:)
+        def explode_parameter(name, schema, version, definitions, location:, required:, deprecated:)
           schema.resolve_properties(definitions, context: :request).values.flat_map do |property|
             property_schema = property.schema.resolve(definitions)
-            parameter_name = "#{name}[#{property.name}]"
+            parameter_name = name ? "#{name}[#{property.name}]" : property.name
             required = (required && property.required?).presence
             deprecated = (deprecated || property_schema.deprecated?).presence
 
@@ -134,62 +140,79 @@ module Jsapi
                 property_schema,
                 version,
                 definitions,
+                location: location,
                 required: required,
                 deprecated: deprecated
               )
             else
               [
-                openapi_parameter(
+                openapi_parameter_object(
                   parameter_name,
                   property_schema,
                   version,
+                  location: location,
                   description: property_schema.description,
                   required: required,
                   deprecated: deprecated,
                   allow_empty_value: property.schema.existence <= Existence::ALLOW_EMPTY
                 )
               ]
-            end
+            end.compact
           end
         end
 
-        def openapi_parameter(name, schema, version,
-                              allow_empty_value:,
-                              deprecated:,
-                              description:,
-                              required:,
-                              examples: nil)
+        def openapi_parameter_object(name, schema, version,
+                                     allow_empty_value:,
+                                     deprecated:,
+                                     description:,
+                                     location:,
+                                     required:,
+                                     content_type: nil,
+                                     examples: nil)
 
-          name = schema.array? ? "#{name}[]" : name
+          return if location == 'querystring' && version < OpenAPI::V3_2
+
+          if schema.object? && version == OpenAPI::V2_0
+            raise "OpenAPI 2.0 doesn't allow object parameters in #{location}"
+          end
+
+          name = "#{name}[]" if schema.array?
 
           with_openapi_extensions(
-            if version.major == 2
-              raise "OpenAPI 2.0 doesn't allow object parameters " \
-                    "in #{self.in}" if schema.object?
-
-              {
-                name: name,
-                in: self.in,
-                description: description,
-                required: required.presence,
-                allowEmptyValue: allow_empty_value.presence,
-                collectionFormat: ('multi' if schema.array?)
-              }.merge(schema.to_openapi(version))
-            else
-              {
-                name: name,
-                in: self.in,
-                description: description,
-                required: required.presence,
-                allowEmptyValue: allow_empty_value.presence,
-                deprecated: deprecated.presence,
-                schema: schema.to_openapi(version).except(:deprecated),
-                examples: examples&.transform_values(&:to_openapi).presence
-
-                # NOTE: collectionFormat is replaced by 'style' and 'explode'.
-                #       The default values are equal to 'multi'.
-              }
-            end
+            name: name,
+            in: location,
+            description: description,
+            required: required.presence,
+            allowEmptyValue: allow_empty_value.presence,
+            **if version == OpenAPI::V2_0
+                {
+                  collectionFormat: ('multi' if schema.array?),
+                  **schema.to_openapi(version)
+                }
+              else
+                openapi_schema = schema.to_openapi(version).except(:deprecated)
+                openapi_examples = examples&.transform_values(&:to_openapi).presence
+                {
+                  deprecated: deprecated.presence,
+                  **if content_type.blank?
+                      # simple scenario
+                      {
+                        schema: openapi_schema,
+                        examples: openapi_examples
+                      }
+                    else
+                      # complex scenario
+                      {
+                        content: {
+                          content_type => {
+                            schema: openapi_schema,
+                            examples: openapi_examples
+                          }.compact
+                        }
+                      }
+                    end
+                }
+              end
           )
         end
       end

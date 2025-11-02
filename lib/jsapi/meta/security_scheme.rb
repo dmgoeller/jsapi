@@ -3,6 +3,7 @@
 require_relative 'security_scheme/base'
 require_relative 'security_scheme/api_key'
 require_relative 'security_scheme/http'
+require_relative 'security_scheme/mutual_tls'
 require_relative 'security_scheme/oauth2'
 require_relative 'security_scheme/open_id_connect'
 
@@ -31,6 +32,8 @@ module Jsapi
             HTTP.new(keywords.merge(scheme: 'basic'))
           when 'http' # OpenAPI 3.0 and higher
             HTTP.new(keywords)
+          when 'mutual_tls' # OpenAPI 3.1 and higher
+            MutualTLS.new(keywords)
           when 'oauth2'
             OAuth2.new(keywords)
           when 'open_id_connect' # OpenAPI 3.0 and higher

@@ -6,6 +6,8 @@ module Jsapi
   module Meta
     module Schema
       class ObjectTest < Minitest::Test
+        include OpenAPITestHelper
+
         def test_add_property
           schema = Object.new
           property = schema.add_property('foo', type: 'string')
@@ -88,7 +90,26 @@ module Jsapi
           )
         end
 
-        def test_resolve_schema_raises_an_error_when_discriminator_property_does_not_exist
+        def test_resolve_schema_on_default_mapping
+          definitions = Definitions.new(
+            schemas: { 'Bar' => {} }
+          )
+          schema = Object.new(
+            discriminator: {
+              default_mapping: 'Bar',
+              property_name: 'foo'
+            },
+            properties: {
+              'foo' => { type: 'string' }
+            }
+          )
+          assert_equal(
+            definitions.find_schema('Bar'),
+            schema.resolve_schema({ foo: nil }, definitions)
+          )
+        end
+
+        def test_resolve_schema_raises_an_error_when_discriminating_property_is_missing
           schema = Object.new(
             discriminator: { property_name: 'foo' },
             properties: {
@@ -101,7 +122,7 @@ module Jsapi
           assert_equal('discriminator property must be "bar", is "foo"', error.message)
         end
 
-        def test_resolve_schema_raises_an_error_when_value_is_blank
+        def test_resolve_schema_raises_an_error_when_discriminating_value_is_nil
           schema = Object.new(
             discriminator: { property_name: 'foo' },
             properties: {
@@ -111,20 +132,38 @@ module Jsapi
           error = assert_raises(RuntimeError) do
             schema.resolve_schema({}, Definitions.new)
           end
-          assert_equal("foo can't be nil", error.message)
+          assert_equal("discriminating value can't be nil", error.message)
         end
 
-        def test_resolve_schema_raises_an_error_when_inheriting_schema_is_missing
+        def test_resolve_schema_raises_an_error_when_discriminating_value_could_not_be_resolved
           schema = Object.new(
-            discriminator: { property_name: 'foo' },
+            discriminator: {
+              property_name: 'foo'
+            },
             properties: {
               'foo' => { type: 'string' }
             }
           )
           error = assert_raises(RuntimeError) do
-            schema.resolve_schema({ foo: 'Bar' }, Definitions.new)
+            schema.resolve_schema({ foo: 'Foo' }, Definitions.new)
           end
-          assert_equal("inheriting schema couldn't be found: \"Bar\"", error.message)
+          assert_equal("inheriting schema couldn't be found: \"Foo\"", error.message)
+        end
+
+        def test_resolve_schema_raises_an_error_when_default_mapping_could_not_be_resolved
+          schema = Object.new(
+            discriminator: {
+              default_mapping: 'Bar',
+              property_name: 'foo'
+            },
+            properties: {
+              'foo' => { type: 'string' }
+            }
+          )
+          error = assert_raises(RuntimeError) do
+            schema.resolve_schema({ foo: 'Foo' }, Definitions.new)
+          end
+          assert_equal("inheriting schema couldn't be found: \"Foo\" or \"Bar\"", error.message)
         end
 
         # JSON Schema objects
@@ -184,24 +223,17 @@ module Jsapi
         def test_minimal_openapi_schema_object
           schema = Object.new(existence: true)
 
-          # OpenAPI 2.0
-          assert_equal(
-            {
-              type: 'object',
-              properties: {},
-              required: []
-            },
-            schema.to_openapi('2.0')
-          )
-          # OpenAPI 3.0
-          assert_equal(
-            {
-              type: 'object',
-              properties: {},
-              required: []
-            },
-            schema.to_openapi('3.0')
-          )
+          each_openapi_version do |version|
+            assert_openapi_equal(
+              {
+                type: 'object',
+                properties: {},
+                required: []
+              },
+              schema,
+              version
+            )
+          end
         end
 
         def test_full_openapi_schema_object
@@ -220,57 +252,81 @@ module Jsapi
             },
             additional_properties: { type: 'string' }
           )
-          # OpenAPI 2.0
-          assert_equal(
-            {
-              type: 'object',
-              allOf: [
-                { '$ref': '#/definitions/Foo' }
-              ],
-              discriminator: 'foo',
-              properties: {
-                'foo' => {
-                  type: 'string'
-                },
-                'bar' => {
-                  type: 'integer'
+          each_openapi_version do |version|
+            assert_openapi_equal(
+              case version
+              when OpenAPI::V2_0
+                {
+                  type: 'object',
+                  allOf: [
+                    { '$ref': '#/definitions/Foo' }
+                  ],
+                  discriminator: 'foo',
+                  properties: {
+                    'foo' => {
+                      type: 'string'
+                    },
+                    'bar' => {
+                      type: 'integer'
+                    }
+                  },
+                  additionalProperties: {
+                    type: 'string'
+                  },
+                  required: %w[foo]
                 }
-              },
-              additionalProperties: {
-                type: 'string'
-              },
-              required: %w[foo]
-            },
-            schema.to_openapi('2.0')
-          )
-          # OpenAPI 3.0
-          assert_equal(
-            {
-              type: 'object',
-              nullable: true,
-              allOf: [
-                { '$ref': '#/components/schemas/Foo' }
-              ],
-              discriminator: {
-                propertyName: 'foo'
-              },
-              properties: {
-                'foo' => {
-                  type: 'string'
-                },
-                'bar' => {
-                  type: 'integer',
-                  nullable: true
+              when OpenAPI::V3_0
+                {
+                  type: 'object',
+                  nullable: true,
+                  allOf: [
+                    { '$ref': '#/components/schemas/Foo' }
+                  ],
+                  discriminator: {
+                    propertyName: 'foo'
+                  },
+                  properties: {
+                    'foo' => {
+                      type: 'string'
+                    },
+                    'bar' => {
+                      type: 'integer',
+                      nullable: true
+                    }
+                  },
+                  additionalProperties: {
+                    type: 'string',
+                    nullable: true
+                  },
+                  required: %w[foo]
                 }
-              },
-              additionalProperties: {
-                type: 'string',
-                nullable: true
-              },
-              required: %w[foo]
-            },
-            schema.to_openapi('3.0')
-          )
+              else
+                {
+                  type: %w[object null],
+                  allOf: [
+                    { '$ref': '#/components/schemas/Foo' }
+                  ],
+                  discriminator: {
+                    propertyName: 'foo'
+                  },
+                  properties: {
+                    'foo' => {
+                      type: 'string'
+                    },
+                    'bar' => {
+                      type: %w[integer null]
+                    }
+                  },
+                  additionalProperties: {
+                    type: %w[string null]
+                  },
+                  required: %w[foo]
+                }
+              end,
+              schema,
+              version
+            )
+          end
         end
       end
     end

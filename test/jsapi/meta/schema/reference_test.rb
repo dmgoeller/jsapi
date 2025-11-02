@@ -6,6 +6,8 @@ module Jsapi
   module Meta
     module Schema
       class ReferenceTest < Minitest::Test
+        include OpenAPITestHelper
+
         # #resolve
 
         def test_resolve
@@ -60,16 +62,17 @@ module Jsapi
         def test_openapi_reference_object
           reference = Reference.new(ref: 'foo')
 
-          # OpenAPI 2.0
-          assert_equal(
-            { '$ref': '#/definitions/foo' },
-            reference.to_openapi('2.0')
-          )
-          # OpenAPI 3.0
-          assert_equal(
-            { '$ref': '#/components/schemas/foo' },
-            reference.to_openapi('3.0')
-          )
+          each_openapi_version do |version|
+            assert_openapi_equal(
+              if version == OpenAPI::V2_0
+                { '$ref': '#/definitions/foo' }
+              else
+                { '$ref': '#/components/schemas/foo' }
+              end,
+              reference,
+              version
+            )
+          end
         end
       end
     end

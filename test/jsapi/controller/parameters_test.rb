@@ -7,36 +7,87 @@ module Jsapi
     class ParametersTest < Minitest::Test
       # Initialization
 
-      def test_initialize_on_scalar_parameter
+      def test_initialize_on_header_parameter
+        operation.add_parameter('x-foo', type: 'string', in: 'header')
+
+        params = parameters(headers: { 'x-foo' => 'bar' })
+        assert_equal('bar', params['x-foo'])
+      end
+
+      def test_initialize_on_query_parameter
         operation.add_parameter('foo', type: 'string')
+
         params = parameters(foo: 'foo')
         assert_equal('foo', params['foo'])
       end
 
-      def test_initialize_on_object_parameter
-        definitions.add_schema('Foo').add_property('foo', type: 'string')
-        definitions.add_parameter('FooParameter', schema: 'Foo')
+      def test_initialize_on_query_parameter_as_object
+        operation.add_parameter(
+          'foo',
+          properties: {
+            'bar' => { type: 'string' }
+          }
+        )
+        params = parameters(foo: { 'bar' => 'Foo' })
+        assert_equal('Foo', params['foo'].bar)
+      end
 
-        operation.add_parameter('bar', ref: 'FooParameter')
+      def test_initialize_on_querystring_parameter
+        operation.add_parameter('query', in: 'querystring', type: 'string')
 
-        params = parameters(bar: { 'foo' => 'FOO' })
-        assert_equal('FOO', params['bar'].foo)
+        params = parameters(query_parameters: { foo: 'bar' })
+        assert_equal('foo=bar', params['query'])
+      end
+
+      def test_initialize_on_querystring_parameter_as_object
+        operation.add_parameter(
+          'query',
+          in: 'querystring',
+          properties: {
+            'foo' => {
+              properties: {
+                'bar' => { type: 'string' }
+              }
+            }
+          }
+        )
+        params = parameters(query_parameters: { foo: { bar: 'Foo' } })
+        assert_equal('Foo', params['query'].foo.bar)
       end
 
       def test_initialize_on_request_body
-        definitions.add_schema('Foo').add_property('foo', type: 'string')
-        definitions.add_request_body('FooBody', schema: 'Foo')
-
-        operation.request_body = { ref: 'FooBody' }
-
+        operation.request_body = {
+          type: 'object',
+          properties: {
+            'foo' => { type: 'string' }
+          }
+        }
         params = parameters(foo: 'bar')
         assert_equal('bar', params['foo'])
       end
 
-      def test_initialize_on_header_parameter
-        operation.add_parameter('x-foo', type: 'string', in: 'header')
-        params = parameters(headers: { 'x-foo' => 'bar' })
-        assert_equal('bar', params['x-foo'])
+      def test_initialize_on_query_parameter_and_request_body
+        operation.add_parameter('foo', type: 'string')
+        operation.request_body = {
+          additional_properties: { type: 'string' }
+        }
+        params = parameters(foo: 'Foo', bar: 'Bar')
+        assert_equal('Foo', params['foo'])
+        assert_equal({ 'bar' => 'Bar' }, params.additional_attributes)
+      end
+
+      def test_initialize_on_querystring_parameter_and_request_body
+        operation.add_parameter(
+          'query',
+          in: 'querystring',
+          additional_properties: { type: 'string' }
+        )
+        operation.request_body = {
+          additional_properties: { type: 'string' }
+        }
+        params = parameters(query_parameters: { foo: 'Foo' }, bar: 'Bar')
+        assert_equal({ 'foo' => 'Foo' }, params['query'].additional_attributes)
+        assert_equal({ 'bar' => 'Bar' }, params.additional_attributes)
       end
 
       # Attributes
@@ -130,9 +181,22 @@ module Jsapi
         @operation ||= definitions.add_operation('operation')
       end
 
-      def parameters(headers: {}, strong: false, **args)
-        params = ActionController::Parameters.new(**args)
-        Parameters.new(params, headers, operation, definitions, strong: strong)
+      def parameters(headers: {}, query_parameters: {}, strong: false, **params)
+        query_parameters = query_parameters.deep_stringify_keys
+
+        Parameters.new(
+          ActionController::Parameters.new(
+            **query_parameters,
+            **params.deep_stringify_keys
+          ),
+          ActionDispatch::Request.new(
+            headers: headers,
+            query_parameters: query_parameters
+          ),
+          operation,
+          definitions,
+          strong: strong
+        )
       end
     end
   end

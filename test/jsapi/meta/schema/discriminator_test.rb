@@ -6,6 +6,8 @@ module Jsapi
   module Meta
     module Schema
       class DiscriminatorTest < Minitest::Test
+        include OpenAPITestHelper
+
         # Mapping
 
         def test_mapping_on_string_keys
@@ -31,32 +33,54 @@ module Jsapi
         def test_minimal_openapi_discriminator_object
           discriminator = Discriminator.new(property_name: 'type')
 
-          # OpenAPI 2.0
-          assert_equal('type', discriminator.to_openapi('2.0'))
-
-          # OpenAPI 3.0
-          assert_equal(
-            { propertyName: 'type' },
-            discriminator.to_openapi('3.0')
-          )
+          each_openapi_version do |version|
+            assert_openapi_equal(
+              if version == OpenAPI::V2_0
+                'type'
+              else
+                { propertyName: 'type' }
+              end,
+              discriminator,
+              version
+            )
+          end
         end
 
         def test_full_openapi_discriminator_object
           discriminator = Discriminator.new(
             property_name: 'type',
-            mappings: { false => 'Foo', true => 'Bar' }
+            mappings: { false => 'Foo', true => 'Bar' },
+            default_mapping: 'Default',
+            openapi_extensions: { 'foo' => 'bar' }
           )
-          # OpenAPI 2.0
-          assert_equal('type', discriminator.to_openapi('2.0'))
-
-          # OpenAPI 3.0
-          assert_equal(
-            {
-              propertyName: 'type',
-              mapping: { 'false' => 'Foo', 'true' => 'Bar' }
-            },
-            discriminator.to_openapi('3.0')
-          )
+          each_openapi_version do |version|
+            assert_openapi_equal(
+              case version
+              when OpenAPI::V2_0
+                'type'
+              when OpenAPI::V3_0
+                {
+                  propertyName: 'type',
+                  mapping: { 'false' => 'Foo', 'true' => 'Bar' }
+                }
+              when OpenAPI::V3_1
+                {
+                  propertyName: 'type',
+                  mapping: { 'false' => 'Foo', 'true' => 'Bar' },
+                  'x-foo': 'bar'
+                }
+              else
+                {
+                  propertyName: 'type',
+                  mapping: { 'false' => 'Foo', 'true' => 'Bar' },
+                  defaultMapping: 'Default',
+                  'x-foo': 'bar'
+                }
+              end,
+              discriminator,
+              version
+            )
+          end
         end
       end
     end

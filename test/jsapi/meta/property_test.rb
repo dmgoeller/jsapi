@@ -5,6 +5,8 @@ require 'test_helper'
 module Jsapi
   module Meta
     class PropertyTest < Minitest::Test
+      include OpenAPITestHelper
+
       def test_initialize
         property = Property.new('foo', type: 'string')
         assert_equal('foo', property.name)
@@ -52,10 +54,14 @@ module Jsapi
           existence: true,
           read_only: true
         )
-        %w[2.0 3.0].each do |version|
-          assert_equal(
-            { type: 'string', readOnly: true },
-            property.to_openapi(version)
+        each_openapi_version do |version|
+          assert_openapi_equal(
+            {
+              type: 'string',
+              readOnly: true
+            },
+            property,
+            version
           )
         end
       end
@@ -67,16 +73,20 @@ module Jsapi
           existence: true,
           write_only: true
         )
-        # OpenAPI 2.0
-        assert_equal(
-          { type: 'string' },
-          property.to_openapi('2.0')
-        )
-        # OpenAPI 3.0
-        assert_equal(
-          { type: 'string', writeOnly: true },
-          property.to_openapi('3.0')
-        )
+        each_openapi_version do |version|
+          assert_openapi_equal(
+            if version == OpenAPI::V2_0
+              { type: 'string' }
+            else
+              {
+                type: 'string',
+                writeOnly: true
+              }
+            end,
+            property,
+            version
+          )
+        end
       end
     end
   end

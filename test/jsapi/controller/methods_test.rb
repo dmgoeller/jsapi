@@ -143,6 +143,21 @@ module Jsapi
           assert_equal('foo', error.message)
         end
 
+        define_method("test_#{name}_on_json_seq") do
+          controller = dummy_controller do
+            api_operation do
+              response 200, type: 'string', content_type: 'application/json-seq'
+            end
+          end
+          controller.send(method, status: 200) { 'foo' }
+          response = controller.response
+
+          assert_equal(200, response.status)
+          assert_equal('application/json-seq', response.content_type)
+          assert_equal("\u001E\"foo\"\n", response.stream.string)
+          assert_predicate(response.stream, :closed?)
+        end
+
         define_method("test_#{name}_on_other_type_than_json") do
           controller = dummy_controller do
             api_operation do

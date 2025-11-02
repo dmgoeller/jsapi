@@ -6,12 +6,15 @@ module Jsapi
   module Meta
     module Example
       class BaseTest < Minitest::Test
+        include OpenAPITestHelper
+
         def test_minimal_openapi_example_object
           example = Base.new(value: 'foo')
 
-          assert_equal(
+          assert_openapi_equal(
             { value: 'foo' },
-            example.to_openapi
+            example,
+            nil
           )
         end
 
@@ -38,9 +41,10 @@ module Jsapi
             value: '/foo/bar',
             external: true
           )
-          assert_equal(
-            { external_value: '/foo/bar' },
-            example.to_openapi
+          assert_openapi_equal(
+            { externalValue: '/foo/bar' },
+            example,
+            nil
           )
         end
       end

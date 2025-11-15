@@ -65,6 +65,9 @@ Style/Lambda:
 Style/MultilineIfModifier:
   Enabled: false
 
+Style/ParallelAssignment:
+  Enabled: false
+
 Style/NestedTernaryOperator:
   Enabled: false
 

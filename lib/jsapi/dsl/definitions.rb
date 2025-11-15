@@ -155,6 +155,20 @@ module Jsapi
         end
       end
 
+      # Groups operations by path.
+      #
+      #   path 'api' do
+      #     operation 'foo'
+      #     operation 'bar'
+      #   end
+      #
+      def path(name = nil, &block)
+        define('path', name&.inspect) do
+          path_model = @meta_model.add_path(name)
+          Path.new(path_model, &block) if block
+        end
+      end
+
       # Specifies a reusable request body.
       #
       #   request_body 'foo', type: 'string'

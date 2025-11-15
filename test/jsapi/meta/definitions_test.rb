@@ -56,7 +56,7 @@ module Jsapi
         assert_equal('detected circular dependency between 1 and 3', error.message)
       end
 
-      def test_include_would_not_raise_an_exception_when_including_parent
+      def test_include_does_not_raise_an_exception_when_including_parent
         base_definitions = Definitions.new
 
         definitions = Definitions.new(parent: base_definitions)
@@ -65,41 +65,37 @@ module Jsapi
         assert_equal([definitions, base_definitions], definitions.ancestors)
       end
 
-      # Caching
-
-      def test_invalidates_caches
-        definitions = Definitions.new
-        child_definitions = Definitions.new(parent: definitions)
-        dependent_definitions = Definitions.new(include: definitions)
-
-        counter = 0
-        increase_counter = -> { counter += 1 }
-
-        # Expected #invalidate_ancestors to be called when another_instance_is_included
-        dependent_definitions.stub(:invalidate_ancestors, increase_counter) do
-          child_definitions.stub(:invalidate_ancestors, increase_counter) do
-            definitions.include(Definitions.new)
-          end
-        end
-        assert_equal(2, counter)
-
-        counter = 0
-
-        # Expected #invalidate_objects to be called when_an_attribute_is_changed
-        dependent_definitions.stub(:invalidate_objects, increase_counter) do
-          child_definitions.stub(:invalidate_objects, increase_counter) do
-            definitions.add_schema('foo')
-          end
-        end
-        assert_equal(2, counter)
-      end
-
       # Operations
 
       def test_add_operation
         definitions = Definitions.new
-        definitions.add_operation('foo')
-        assert(definitions.operations.key?('foo'))
+        operation = definitions.add_operation('foo')
+        assert(operation.equal?(definitions.operation('foo')))
+      end
+
+      def test_add_operation_with_parent_path
+        definitions = Definitions.new
+        operation = definitions.add_operation('foo', 'bar')
+        assert_equal(Pathname.new('/bar'), operation.parent_path)
+      end
+
+      def test_default_operation_name
+        definitions = Definitions.new(
+          owner: Struct.new(:name).new('Foo::Bar::FooBarController')
+        )
+        operation = definitions.add_operation nil
+        assert_equal('foo_bar', operation.name)
+      end
+
+      def test_default_parent_path
+        definitions = Definitions.new(
+          owner: Struct.new(:name).new('Foo::Bar::FooBarController')
+        )
+        operation = definitions.add_operation nil
+        assert_equal(Pathname.new('/foo_bar'), operation.parent_path)
+
+        operation = definitions.add_operation nil, path: 'foo'
+        assert_equal(Pathname.new, operation.parent_path)
       end
 
       def test_find_operation
@@ -111,18 +107,164 @@ module Jsapi
         assert_equal('foo', definitions.find_operation('foo').name)
       end
 
-      def test_default_operation_name_and_path
+      # Paths
+
+      def test_add_path
+        definitions = Definitions.new
+        path = definitions.add_path('foo')
+
+        assert(path.equal?(definitions.path('foo')))
+        assert_equal(Pathname.new('foo'), path.name)
+      end
+
+      %i[description summary].each do |name|
+        define_method("test_path_#{name}") do
+          definitions = Definitions.new(
+            paths: {
+              '/foo' => {
+                name => 'Lorem ipsum'
+              }
+            }
+          )
+          assert_equal('Lorem ipsum', definitions.send(:"path_#{name}", '/foo'))
+        end
+
+        define_method("test_path_#{name}_on_inheritance") do
+          definitions = Definitions.new(
+            parent: Definitions.new(
+              paths: {
+                '/foo' => {
+                  name => 'Lorem ipsum'
+                }
+              }
+            ),
+            paths: {
+              '/foo' => {}
+            }
+          )
+          assert_equal('Lorem ipsum', definitions.send(:"path_#{name}", '/foo'))
+        end
+      end
+
+      def test_path_parameters
         definitions = Definitions.new(
-          owner: Struct.new(:name).new('Foo::Bar::FooBarController')
+          paths: {
+            '/foo' => {
+              parameters: {
+                'foo' => { type: 'string' }
+              }
+            },
+            'foo/bar' => {
+              parameters: {
+                'bar' => { type: 'string' }
+              }
+            }
+          }
         )
-        operation = definitions.add_operation
-        assert_equal('foo_bar', operation.name)
-        assert_equal('/foo_bar', operation.path)
+        assert_equal(%w[foo], definitions.path_parameters('/foo').keys)
+        assert_equal(%w[bar foo], definitions.path_parameters('/foo/bar').keys.sort)
+        assert_equal({}, definitions.path_parameters('/bar'))
+        assert_equal({}, definitions.path_parameters(nil))
+      end
+
+      def test_path_parameters_on_inheritance
+        definitions = Definitions.new(
+          parent: Definitions.new(
+            paths: {
+              '/foo' => {
+                parameters: {
+                  'foo' => { type: 'string' }
+                }
+              }
+            }
+          ),
+          paths: {
+            '/foo' => {
+              parameters: {
+                'bar' => { type: 'string' }
+              }
+            }
+          }
+        )
+        assert_equal(%w[bar foo], definitions.path_parameters('/foo').keys.sort)
+      end
+
+      def test_memoizes_path_parameters
+        definitions = Definitions.new(
+          paths: {
+            pathname = Pathname.from('foo') => {
+              parameters: {
+                'foo' => { type: 'string' }
+              }
+            }
+          }
+        )
+        # Make memoized path parameters accessible
+        definitions.define_singleton_method(:memoized_path_parameters) do
+          @path_parameters
+        end
+
+        assert(
+          definitions.memoized_path_parameters.blank?,
+          'Expected no parameters to be memoized initially'
+        )
+
+        # Query parameters
+        definitions.path_parameters('foo')
+        assert_equal(
+          %w[foo],
+          definitions.memoized_path_parameters[pathname].keys,
+          "Expected parameters for #{pathname} to be memoized"
+        )
+
+        # Add another parameter
+        definitions.path('foo').add_parameter('bar')
+        assert(
+          definitions.memoized_path_parameters[pathname].blank?,
+          "Expected memoized parameters for #{pathname} to be invalidated " \
+          'after another parameter has been added'
+        )
+
+        # Query parameters again
+        definitions.path_parameters('foo')
+        assert_equal(
+          %w[bar foo],
+          definitions.memoized_path_parameters[pathname].keys.sort,
+          "Expected parameters for #{pathname} to be memoized"
+        )
+
+        # Include another instance
+        definitions.include(
+          Definitions.new(
+            paths: {
+              pathname => {
+                parameters: {
+                  'baz' => { type: 'string' }
+                }
+              }
+            }
+          )
+        )
+        assert(
+          definitions.memoized_path_parameters.blank?,
+          'Expected all memoized parameters to be invalidated after ' \
+          'another Definitions instance has been included'
+        )
+
+        # Query parameters again
+        definitions.path_parameters('foo')
+        assert_equal(
+          %w[bar baz foo],
+          definitions.memoized_path_parameters[pathname].keys.sort,
+          "Expected parameters for #{pathname} to be memoized"
+        )
       end
 
       # Components
 
       %i[parameter request_body response schema].each do |name|
+        plural_name = name.to_s.pluralize.to_sym
+
         define_method("test_add_and_find_#{name}") do
           definitions = Definitions.new
           schema = definitions.send("add_#{name}", 'foo')
@@ -145,6 +287,69 @@ module Jsapi
 
           definitions = Definitions.new(include: [included_definitions])
           assert_equal(schema, definitions.send("find_#{name}", 'foo'))
+        end
+
+        define_method("test_memoizes_#{name}_objects") do
+          definitions = Definitions.new(
+            plural_name => {
+              'foo' => {}
+            }
+          )
+          # Make memoized objects accessible
+          definitions.define_singleton_method(:memoized_objects) do
+            @objects
+          end
+
+          assert(
+            definitions.memoized_objects.blank?,
+            'Expected no objects to be memoized initially'
+          )
+
+          # Query object
+          definitions.send(:"find_#{name}", 'foo')
+          assert_equal(
+            %w[foo],
+            definitions.memoized_objects[plural_name].keys,
+            "Expected reusable #{name} objects to be memoized"
+          )
+
+          # Add another schema
+          definitions.send(:"add_#{name}", 'bar')
+          assert(
+            definitions.memoized_objects.blank?,
+            'Expected memoized objects to be invalidated after another ' \
+            'object has been added'
+          )
+
+          # Query schema again
+          definitions.send(:"find_#{name}", 'foo')
+          assert_equal(
+            %w[bar foo],
+            definitions.memoized_objects[plural_name].keys.sort,
+            "Expected reusable #{name} objects to be memoized"
+          )
+
+          # Include another instance
+          definitions.include(
+            Definitions.new(
+              plural_name => {
+                'baz' => {}
+              }
+            )
+          )
+          assert(
+            definitions.memoized_objects.blank?,
+            'Expected memoized objects to be invalidated after another ' \
+            'Definitions instance has been included'
+          )
+
+          # Query schema again
+          definitions.send(:"find_#{name}", 'foo')
+          assert_equal(
+            %w[bar baz foo],
+            definitions.memoized_objects[plural_name].keys.sort,
+            "Expected reusable #{name} objects to be memoized"
+          )
         end
       end
 
@@ -335,6 +540,19 @@ module Jsapi
             'foo' => { operation_id: 'foo' }
           },
           openapi_extensions: { 'foo' => 'bar' },
+          paths: {
+            '/bar' => {
+              servers: [
+                { url: 'http:s//foo.baz' }
+              ],
+              parameters: {
+                'common_parameter' => {
+                  type: :string,
+                  existence: true
+                }
+              }
+            }
+          },
           operations: {
             'operation' => {
               path: '/bar',
@@ -405,9 +623,7 @@ module Jsapi
                       consumes: %w[application/json],
                       produces: %w[application/json application/problem+json],
                       parameters: [
-                        {
-                          '$ref': '#/parameters/parameter'
-                        },
+                        { '$ref': '#/parameters/parameter' },
                         {
                           name: 'body',
                           in: 'body',
@@ -423,7 +639,15 @@ module Jsapi
                           '$ref': '#/responses/error_response'
                         }
                       }
-                    }
+                    },
+                    parameters: [
+                      {
+                        name: 'common_parameter',
+                        in: 'query',
+                        type: 'string',
+                        required: true
+                      }
+                    ]
                   }
                 },
                 definitions: {
@@ -459,9 +683,7 @@ module Jsapi
                   }
                 },
                 security: [
-                  {
-                    'http_basic' => []
-                  }
+                  { 'http_basic' => [] }
                 ],
                 tags: [
                   { name: 'Foo' }
@@ -479,18 +701,14 @@ module Jsapi
                   version: '1'
                 },
                 servers: [
-                  {
-                    url: 'https://foo.bar/foo'
-                  }
+                  { url: 'https://foo.bar/foo' }
                 ],
                 paths: {
                   '/bar' => {
                     'post' => {
                       operationId: 'operation',
                       parameters: [
-                        {
-                          '$ref': '#/components/parameters/parameter'
-                        }
+                        { '$ref': '#/components/parameters/parameter' }
                       ],
                       request_body: {
                         '$ref': '#/components/requestBodies/request_body'
@@ -503,7 +721,20 @@ module Jsapi
                           '$ref': '#/components/responses/error_response'
                         }
                       }
-                    }
+                    },
+                    servers: [
+                      { url: 'http:s//foo.baz' }
+                    ],
+                    parameters: [
+                      {
+                        name: 'common_parameter',
+                        in: 'query',
+                        schema: {
+                          type: 'string'
+                        },
+                        required: true
+                      }
+                    ]
                   }
                 },
                 components: {
@@ -596,9 +827,7 @@ module Jsapi
                   }
                 },
                 security: [
-                  {
-                    'http_basic' => []
-                  }
+                  { 'http_basic' => [] }
                 ],
                 tags: [
                   { name: 'Foo' }
@@ -616,9 +845,7 @@ module Jsapi
                   version: '1'
                 },
                 servers: [
-                  {
-                    url: 'https://foo.bar/foo'
-                  }
+                  { url: 'https://foo.bar/foo' }
                 ],
                 paths: {
                   '/bar' => {
@@ -640,7 +867,20 @@ module Jsapi
                           '$ref': '#/components/responses/error_response'
                         }
                       }
-                    }
+                    },
+                    servers: [
+                      { url: 'http:s//foo.baz' }
+                    ],
+                    parameters: [
+                      {
+                        name: 'common_parameter',
+                        in: 'query',
+                        schema: {
+                          type: 'string'
+                        },
+                        required: true
+                      }
+                    ]
                   }
                 },
                 components: {
@@ -727,9 +967,7 @@ module Jsapi
                   }
                 },
                 security: [
-                  {
-                    'http_basic' => []
-                  }
+                  { 'http_basic' => [] }
                 ],
                 tags: [
                   { name: 'Foo' }
@@ -747,18 +985,14 @@ module Jsapi
                   version: '1'
                 },
                 servers: [
-                  {
-                    url: 'https://foo.bar/foo'
-                  }
+                  { url: 'https://foo.bar/foo' }
                 ],
                 paths: {
                   '/bar' => {
                     'post' => {
                       operationId: 'operation',
                       parameters: [
-                        {
-                          '$ref': '#/components/parameters/parameter'
-                        }
+                        { '$ref': '#/components/parameters/parameter' }
                       ],
                       request_body: {
                         '$ref': '#/components/requestBodies/request_body'
@@ -778,7 +1012,20 @@ module Jsapi
                         parameters: [],
                         responses: {}
                       }
-                    }
+                    },
+                    servers: [
+                      { url: 'http:s//foo.baz' }
+                    ],
+                    parameters: [
+                      {
+                        name: 'common_parameter',
+                        in: 'query',
+                        schema: {
+                          type: 'string'
+                        },
+                        required: true
+                      }
+                    ]
                   }
                 },
                 components: {
@@ -865,9 +1112,7 @@ module Jsapi
                   }
                 },
                 security: [
-                  {
-                    'http_basic' => []
-                  }
+                  { 'http_basic' => [] }
                 ],
                 tags: [
                   { name: 'Foo' }

@@ -9,6 +9,7 @@ require_relative 'dsl/request_body'
 require_relative 'dsl/response'
 require_relative 'dsl/callback'
 require_relative 'dsl/operation'
+require_relative 'dsl/path'
 require_relative 'dsl/definitions'
 require_relative 'dsl/class_methods'
 

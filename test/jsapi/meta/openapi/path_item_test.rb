@@ -8,11 +8,32 @@ module Jsapi
       class PathItemTest < Minitest::Test
         include OpenAPITestHelper
 
+        def test_empty_openapi_path_item_object
+          openapi_path_item = PathItem.new(nil)
+
+          each_openapi_version do |version|
+            assert_openapi_equal({}, openapi_path_item, version, nil)
+          end
+        end
+
         def test_openapi_path_item_object
           openapi_path_item = PathItem.new(
             %w[GET TRACE QUERY CUSTOM].map do |method|
               Operation.new("#{method.downcase}_operation", method: method)
-            end
+            end,
+            summary: 'Summary of foo',
+            description: 'Lorem ipsum',
+            servers: [
+              Server.new(url: 'https://foo.bar/foo')
+            ],
+            parameters: {
+              'parameter' => Parameter.new(
+                'parameter',
+                type: 'string',
+                in: 'path',
+                existence: true
+              )
+            }
           )
           each_openapi_version do |version|
             assert_openapi_equal(
@@ -23,10 +44,20 @@ module Jsapi
                     operationId: 'get_operation',
                     parameters: [],
                     responses: {}
-                  }
+                  },
+                  parameters: [
+                    {
+                      name: 'parameter',
+                      in: 'path',
+                      type: 'string',
+                      required: true
+                    }
+                  ]
                 }
               when OpenAPI::V3_0, OpenAPI::V3_1
                 {
+                  summary: 'Summary of foo',
+                  description: 'Lorem ipsum',
                   'get' => {
                     operationId: 'get_operation',
                     parameters: [],
@@ -36,10 +67,25 @@ module Jsapi
                     operationId: 'trace_operation',
                     parameters: [],
                     responses: {}
-                  }
+                  },
+                  servers: [
+                    { url: 'https://foo.bar/foo' }
+                  ],
+                  parameters: [
+                    {
+                      name: 'parameter',
+                      in: 'path',
+                      schema: {
+                        type: 'string'
+                      },
+                      required: true
+                    }
+                  ]
                 }
               else
                 {
+                  summary: 'Summary of foo',
+                  description: 'Lorem ipsum',
                   'get' => {
                     operationId: 'get_operation',
                     parameters: [],
@@ -61,7 +107,20 @@ module Jsapi
                       parameters: [],
                       responses: {}
                     }
-                  }
+                  },
+                  servers: [
+                    { url: 'https://foo.bar/foo' }
+                  ],
+                  parameters: [
+                    {
+                      name: 'parameter',
+                      in: 'path',
+                      schema: {
+                        type: 'string'
+                      },
+                      required: true
+                    }
+                  ]
                 }
               end,
               openapi_path_item,

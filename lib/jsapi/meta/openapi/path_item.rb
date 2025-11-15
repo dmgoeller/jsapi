@@ -4,15 +4,25 @@ module Jsapi
   module Meta
     module OpenAPI
       class PathItem # :nodoc:
-        def initialize(operations)
+        def initialize(operations, keywords = {})
           @operations = operations
+          @summary = keywords[:summary]
+          @description = keywords[:description]
+          @servers = keywords[:servers]
+          @parameters = keywords[:parameters]
         end
 
         def to_openapi(version, definitions)
           version = OpenAPI::Version.from(version)
 
           {}.tap do |fields|
-            @operations.each do |operation|
+            if version >= OpenAPI::V3_0
+              fields[:summary] = @summary if @summary.present?
+              fields[:description] = @description if @description.present?
+            end
+
+            # Operations
+            @operations&.each do |operation|
               method = operation.method
               standardized_method = method.downcase
 
@@ -21,6 +31,18 @@ module Jsapi
               elsif version >= OpenAPI::V3_2
                 additional_operations = fields[:additionalOperations] ||= {}
                 additional_operations[method] = operation.to_openapi(version, definitions)
+              end
+            end
+
+            # Servers
+            if version >= OpenAPI::V3_0 && @servers.present?
+              fields[:servers] = @servers.map { |server| server.to_openapi(version) }
+            end
+
+            # Parameters
+            if @parameters.present?
+              fields[:parameters] = @parameters.values.map do |parameter|
+                parameter.to_openapi(version, definitions)
               end
             end
           end

@@ -147,6 +147,17 @@ module Jsapi
         api_definitions { parameter(name, **keywords, &block) }
       end
 
+      # Groups operations by path.
+      #
+      #   api_path 'api' do
+      #     operation 'foo'
+      #     operation 'bar'
+      #   end
+      #
+      def api_path(name, &block)
+        api_definitions { path(name, &block) }
+      end
+
       # Defines a reusable request body.
       #
       #   api_request_body 'foo', type: 'string'

@@ -7,6 +7,20 @@ module Jsapi
     class OperationTest < Minitest::Test
       include OpenAPITestHelper
 
+      def test_full_path
+        operation = Operation.new(nil)
+        assert_equal(Pathname.new, operation.full_path)
+
+        operation = Operation.new(nil, 'foo')
+        assert_equal(Pathname.new('foo'), operation.full_path)
+
+        operation = Operation.new(nil, path: 'foo')
+        assert_equal(Pathname.new('foo'), operation.full_path)
+
+        operation = Operation.new(nil, 'foo', path: 'bar')
+        assert_equal(Pathname.new('foo/bar'), operation.full_path)
+      end
+
       def test_parameters
         operation = Operation.new('foo')
         parameter = operation.add_parameter('bar', type: 'string')
@@ -20,6 +34,52 @@ module Jsapi
 
         assert(default_response.equal?(operation.response))
         assert(not_found_response.equal?(operation.response(404)))
+      end
+
+      def test_resolved_parameters
+        parameters = Operation.new(
+          nil,
+          '/foo',
+          parameters: {
+            'bar' => { type: 'string' }
+          }
+        ).resolved_parameters(
+          Definitions.new(
+            paths: {
+              '/foo' => {
+                parameters: {
+                  'foo' => { type: 'string' }
+                }
+              }
+            }
+          )
+        )
+        assert_equal(%w[bar foo], parameters.keys.sort)
+      end
+
+      def test_resolved_parameters_on_references
+        parameters = Operation.new(
+          nil,
+          '/foo',
+          parameters: {
+            'bar' => { ref: 'bar' }
+          }
+        ).resolved_parameters(
+          Definitions.new(
+            parameters: {
+              'foo' => { type: 'string' },
+              'bar' => { type: 'string' }
+            },
+            paths: {
+              '/foo' => {
+                parameters: {
+                  'foo' => { ref: 'foo' }
+                }
+              }
+            }
+          )
+        )
+        assert_equal(%w[bar foo], parameters.keys.sort)
       end
 
       # OpenAPI objects

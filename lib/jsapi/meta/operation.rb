@@ -47,9 +47,14 @@ module Jsapi
       attribute :parameters, { String => Parameter }, accessors: %i[reader writer]
 
       ##
+      # :attr_reader: parent_path
+      # The parent path as a Pathname.
+      attribute :parent_path, Pathname, accessors: %i[reader]
+
+      ##
       # :attr: path
-      # The relative path of the operation.
-      attribute :path, String
+      # The relative path of the operation as a Pathname.
+      attribute :path, Pathname
 
       ##
       # :attr: request_body
@@ -95,13 +100,21 @@ module Jsapi
       # The tags used to group operations in an \OpenAPI document.
       attribute :tags, [String]
 
-      def initialize(name = nil, keywords = {})
+      def initialize(name, parent_path = nil, keywords = {})
+        parent_path, keywords = nil, parent_path if parent_path.is_a?(Hash)
+
         @name = name&.to_s
+        @parent_path = Pathname.from(parent_path)
         super(keywords)
       end
 
       def add_parameter(name, keywords = {}) # :nodoc:
         (@parameters ||= {})[name.to_s] = Parameter.new(name, keywords)
+      end
+
+      # Returns the full path of the operation as a Pathname.
+      def full_path
+        parent_path + path
       end
 
       # Returns the MIME type consumed by the operation.
@@ -114,6 +127,13 @@ module Jsapi
         responses.values.filter_map do |response|
           response.resolve(definitions).content_type
         end.uniq.sort
+      end
+
+      # Merges the parameters of this operation and the common parameters of all
+      # parent pathes and resolves them.
+      def resolved_parameters(definitions)
+        (definitions.path_parameters(full_path).presence&.merge(parameters) || parameters)
+          .transform_values { |parameter| parameter.resolve(definitions) }
       end
 
       # Returns a hash representing the \OpenAPI operation object.

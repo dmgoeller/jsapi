@@ -12,7 +12,7 @@ module Jsapi
           api_base_path '/foo'
         end.base_path
 
-        assert_equal('/foo', base_path)
+        assert_equal('/foo', base_path.to_s)
       end
 
       # #api_callback
@@ -84,7 +84,7 @@ module Jsapi
           api_definitions base_path: '/foo'
         end.api_definitions
 
-        assert_equal('/foo', definitions.base_path)
+        assert_equal('/foo', definitions.base_path.to_s)
       end
 
       def test_api_definitions_with_block
@@ -95,7 +95,7 @@ module Jsapi
           end
         end.api_definitions
 
-        assert_equal('/foo', definitions.base_path)
+        assert_equal('/foo', definitions.base_path.to_s)
       end
 
       def test_api_definitions_loads_api_defs_from_file
@@ -116,7 +116,7 @@ module Jsapi
             end
           end.api_definitions
 
-          assert_equal('/foo', definitions.base_path)
+          assert_equal('/foo', definitions.base_path.to_s)
         end
       end
 
@@ -211,7 +211,7 @@ module Jsapi
             api_import 'foo'
           end
         end
-        assert_equal('/foo', definitions.base_path)
+        assert_equal('/foo', definitions.base_path.to_s)
       end
 
       # #api_include
@@ -334,6 +334,19 @@ module Jsapi
 
         assert_predicate(parameter, :present?)
         assert_equal('Lorem ipsum', parameter.description)
+      end
+
+      # #api_path
+
+      def test_api_path
+        operation = api_definitions do
+          api_path 'foo' do
+            operation path: 'bar'
+          end
+        end.find_operation
+
+        assert_predicate(operation, :present?)
+        assert_equal('/foo/bar', operation.full_path.to_s)
       end
 
       # #api_request_body

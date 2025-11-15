@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require 'cgi'
-
 module Jsapi
   module Controller
     # Used to wrap request parameters.
@@ -24,9 +22,7 @@ module Jsapi
         @raw_attributes = {}
 
         # Parameters
-        operation.parameters.each do |name, parameter_model|
-          parameter_model = parameter_model.resolve(definitions)
-
+        operation.resolved_parameters(definitions).each do |name, parameter_model|
           @raw_attributes[name] = JSON.wrap(
             case parameter_model.in
             when 'header'

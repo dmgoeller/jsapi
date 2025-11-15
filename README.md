@@ -308,6 +308,33 @@ api_operation do
 end
 ```
 
+#### Grouping operations by path
+
+The `api_path` directive can be used to group operations by path, for example:
+
+```ruby
+api_path 'foos' do
+  operation 'foos'
+  operation 'create_foo', method: 'post'
+
+  path '{id}' do
+    parameter 'id', type: 'integer'
+    operation 'read_foo'
+    operation 'update_foo', method: 'patch'
+    operation 'delete_foo', method: 'delete'
+  end
+end
+```
+
+The one and only positional argument specifies the relative path. The `api_path` directive
+takes the following keywords:
+
+- `:description` - The description that applies to all operations in this path.
+- `:servers` - See [Specifying API locations].
+- `:summary` - The summary that applies to all operations in this path.
+
+These keywords are only used to describe the path in an OpenAPI document.
+
 ### Specifying parameters
 
 [Specifying parameters]: #specifying-parameters

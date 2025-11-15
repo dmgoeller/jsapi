@@ -16,7 +16,7 @@ module Jsapi
 
           operation = callback.add_operation(expression, path: '/bar')
           assert(operation.equal?(callback.operation(expression)))
-          assert_equal('/bar', operation.path)
+          assert_equal('/bar', operation.path.to_s)
 
           assert_nil(callback.operation(nil))
 

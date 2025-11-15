@@ -191,41 +191,41 @@ module Jsapi
 
       # #operation
 
-      def test_operation
-        # Named operation
+      def test_named_operation
         operation = definitions do
           operation 'foo', description: 'Lorem ipsum'
-        end.operation('foo')
-
-        assert_predicate(operation, :present?)
-        assert_equal('Lorem ipsum', operation.description)
-
-        # Nameless operation
-        operation = definitions do
-          operation description: 'Lorem ipsum'
-        end.operation
+        end.find_operation('foo')
 
         assert_predicate(operation, :present?)
         assert_equal('Lorem ipsum', operation.description)
       end
 
-      def test_operation_with_block
-        # Named operation
+      def test_named_operation_with_block
         operation = definitions do
           operation 'foo' do
             description 'Lorem ipsum'
           end
-        end.operation('foo')
+        end.find_operation('foo')
 
         assert_predicate(operation, :present?)
         assert_equal('Lorem ipsum', operation.description)
+      end
 
-        # Nameless operation
+      def test_nameless_operation
+        operation = definitions do
+          operation description: 'Lorem ipsum'
+        end.find_operation
+
+        assert_predicate(operation, :present?)
+        assert_equal('Lorem ipsum', operation.description)
+      end
+
+      def test_nameless_operation_with_block
         operation = definitions do
           operation do
             description 'Lorem ipsum'
           end
-        end.operation
+        end.find_operation
 
         assert_predicate(operation, :present?)
         assert_equal('Lorem ipsum', operation.description)
@@ -278,6 +278,24 @@ module Jsapi
           end
         end
         assert_equal('unsupported keyword: bar (at parameter "foo")', error.message)
+      end
+
+      # #path
+
+      def test_path
+        paths = definitions do
+          path 'foo'
+        end.paths
+
+        assert_equal(%w[/foo], paths.keys.map(&:to_s))
+      end
+
+      def test_root_path
+        paths = definitions do
+          path
+        end.paths
+
+        assert_equal(%w[/], paths.keys.map(&:to_s))
       end
 
       # #request_body

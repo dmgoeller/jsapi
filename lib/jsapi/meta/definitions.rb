@@ -8,7 +8,7 @@ module Jsapi
       ##
       # :attr: base_path
       # The base path of the API. Applies to \OpenAPI 2.0.
-      attribute :base_path, String
+      attribute :base_path, Pathname
 
       ##
       # :attr: callbacks
@@ -64,6 +64,11 @@ module Jsapi
       # :attr: parameters
       # The reusable Parameter objects.
       attribute :parameters, { String => Parameter }, accessors: %i[reader writer]
+
+      ##
+      # :attr: paths
+      # The Path objects.
+      attribute :paths, { Pathname => Path }, accessors: %i[reader writer]
 
       ##
       # :attr: rescue_handlers
@@ -138,15 +143,27 @@ module Jsapi
         @parent&.inherited(self)
       end
 
-      def add_operation(name = nil, keywords = {}) # :nodoc:
+      def add_operation(name, parent_path = nil, keywords = {}) # :nodoc:
+        parent_path, keywords = nil, parent_path if parent_path.is_a?(Hash)
+
         name = name.nil? ? default_operation_name : name.to_s
-        keywords = keywords.reverse_merge(path: default_operation_path)
-        (@operations ||= {})[name] = Operation.new(name, keywords)
+        parent_path ||= default_operation_name unless keywords[:path].present?
+
+        (@operations ||= {})[name] = Operation.new(name, parent_path, keywords)
       end
 
       def add_parameter(name, keywords = {}) # :nodoc:
         name = name.to_s
-        (@parameters ||= {})[name] = Parameter.new(name, keywords)
+
+        Parameter.new(name, keywords).tap do |parameter|
+          (@parameters ||= {})[name] = parameter
+          attribute_changed(:parameters)
+        end
+      end
+
+      def add_path(name, keywords = {}) # :nodoc:
+        pathname = Pathname.from(name)
+        (@paths ||= {})[pathname] ||= Path.new(pathname, self, keywords)
       end
 
       # Returns an array containing itself and all of the +Definitions+ instances
@@ -207,6 +224,14 @@ module Jsapi
         self
       end
 
+      # Resets the memoized parameters for the given path.
+      def invalidate_path_parameters(pathname)
+        pathname = Pathname.from(pathname)
+
+        @path_parameters&.delete(pathname)
+        each_descendant { |descendant| descendant.invalidate_path_parameters(pathname) }
+      end
+
       # Returns a hash representing the \JSON \Schema document for +name+.
       def json_schema_document(name)
         find_schema(name)&.to_json_schema&.tap do |json_schema_document|
@@ -228,11 +253,18 @@ module Jsapi
         version = OpenAPI::Version.from(version)
         operations = objects[:operations].values
 
-        openapi_paths =
-          operations.group_by { |operation| operation.path || default_operation_path }
-                    .transform_values do |operations_by_path|
-            OpenAPI::PathItem.new(operations_by_path).to_openapi(version, self)
-          end.presence
+        openapi_paths = operations.group_by(&:full_path).to_h do |key, value|
+          [
+            key.to_s,
+            OpenAPI::PathItem.new(
+              value,
+              description: path_description(key),
+              parameters: path_parameters(key),
+              summary: path_summary(key),
+              servers: path_servers(key)
+            ).to_openapi(version, self)
+          ]
+        end.presence
 
         openapi_objects =
           if version.major == 2
@@ -252,7 +284,7 @@ module Jsapi
               swagger: '2.0',
               info: openapi_objects[:info],
               host: openapi_objects[:host] || uri&.hostname,
-              basePath: openapi_objects[:base_path] || uri&.path,
+              basePath: openapi_objects[:base_path]&.to_s || uri&.path,
               schemes: openapi_objects[:schemes] || Array(uri&.scheme).presence,
               consumes: operations.filter_map do |operation|
                 operation.consumes(self)
@@ -300,6 +332,44 @@ module Jsapi
         )
       end
 
+      ##
+      # :method: path_description
+      # :args: pathname
+      # Returns the most accurate description for the given path.
+
+      ##
+      # :method: path_servers
+      # :args: pathname
+      # Returns the most accurate Server objects for the given path.
+
+      ##
+      # :method: path_summary
+      # :args: pathname
+      # Returns the most accurate summary for the given path.
+
+      %i[description servers summary].each do |name|
+        define_method(:"path_#{name}") do |arg|
+          Pathname.from(arg).ancestors.each do |pathname|
+            ancestors.each do |ancestor|
+              value = ancestor.path(pathname)&.public_send(name)
+              return value if value.present?
+            end
+          end
+          nil
+        end
+      end
+
+      # Returns a hash containing the Parameter objects that are applicable to all
+      # operations in the given path.
+      # :args: pathname
+      def path_parameters(arg)
+        arg = Pathname.from(arg || '')
+
+        (@path_parameters ||= {})[arg] ||= arg.ancestors.flat_map do |pathname|
+          ancestors.filter_map { |ancestor| ancestor.path(pathname)&.parameters }
+        end.reduce(&:reverse_merge) || {}
+      end
+
       # Returns the first RescueHandler to handle +exception+, or nil if no one could be found.
       def rescue_handler_for(exception)
         objects[:rescue_handlers].find { |r| r.match?(exception) }
@@ -338,15 +408,14 @@ module Jsapi
       def invalidate_ancestors
         @ancestors = nil
         @objects = nil
-        @children&.each(&:invalidate_ancestors)
-        @dependent_definitions&.each(&:invalidate_ancestors)
+        @path_parameters = nil
+        each_descendant(&:invalidate_ancestors)
       end
 
       # Invalidates cached objects.
       def invalidate_objects
         @objects = nil
-        @children&.each(&:invalidate_objects)
-        @dependent_definitions&.each(&:invalidate_objects)
+        each_descendant(&:invalidate_objects)
       end
 
       private
@@ -365,10 +434,6 @@ module Jsapi
           end
       end
 
-      def default_operation_path
-        @default_operation_path ||= "/#{default_operation_name}"
-      end
-
       def default_server
         @default_server ||=
           if (name = @owner.try(:name))
@@ -378,6 +443,11 @@ module Jsapi
                        .join('/').prepend('/')
             )
           end
+      end
+
+      def each_descendant(&block)
+        [*@children, *dependent_definitions].each(&block)
+        nil
       end
 
       def objects

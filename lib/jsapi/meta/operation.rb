@@ -117,12 +117,12 @@ module Jsapi
         parent_path + path
       end
 
-      # Returns the MIME type consumed by the operation.
+      # Returns the media type consumed by the operation.
       def consumes(definitions)
         request_body&.resolve(definitions)&.content_type
       end
 
-      # Returns an array containing the MIME types produced by the operation.
+      # Returns an array containing the media types produced by the operation.
       def produces(definitions)
         responses.values.filter_map do |response|
           response.resolve(definitions).content_type

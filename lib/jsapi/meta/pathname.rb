@@ -5,7 +5,7 @@ module Jsapi
     # Represents a relative path name.
     class Pathname
       class << self
-        # Creates a Pathname from +name+.
+        # Transforms +name+ to an instance of this class.
         def from(name)
           return name if name.is_a?(Pathname)
 
@@ -30,8 +30,8 @@ module Jsapi
 
       alias eql? ==
 
-      # Creates a new Pathname by appending +other+ to +self+.
-      # Returns +self+ if +other+ is nil.
+      # Creates a new Pathname by appending +other+ to itself.
+      # Returns itself if +other+ is nil.
       def +(other)
         return self if other.nil?
 

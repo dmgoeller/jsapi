@@ -30,7 +30,9 @@ module Jsapi
       # or must be +false+.
       PRESENT = new(4)
 
-      # Creates a new instance from +value+.
+      # Transforms +value+ to an instance of this class.
+      #
+      # Raises an +ArgumentError+ if +value+ could not be transformed.
       def self.from(value)
         return value if value.is_a?(Existence)
 

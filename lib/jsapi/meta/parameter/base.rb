@@ -11,7 +11,7 @@ module Jsapi
 
         ##
         # :attr: content_type
-        # The content type used to describe complex parameters in \OpenAPI 3.0 and higher.
+        # The media type used to describe complex parameters in \OpenAPI 3.0 and higher.
         attribute :content_type, String
 
         ##

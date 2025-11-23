@@ -4,6 +4,7 @@ module Jsapi
   module Meta
     module Schema
       class Boundary
+        # Transforms +value+ to an instance of this class.
         def self.from(value)
           case value
           when Boundary

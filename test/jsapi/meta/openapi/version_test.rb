@@ -6,6 +6,8 @@ module Jsapi
   module Meta
     module OpenAPI
       class VersionTest < Minitest::Test
+        include OpenAPITestHelper
+
         def test_from
           version = Version.from('2.0')
           assert_equal([2, 0], [version.major, version.minor])
@@ -41,7 +43,15 @@ module Jsapi
         end
 
         def test_to_s
-          assert_equal('2.0', Version.new(2, 0).to_s)
+          each_openapi_version do |version|
+            assert(
+              version.to_s.match?(/\A[2-3]\.[0-9](\.[0-9])?\Z/),
+              <<~MESSAGE
+                Expected string represention of #{version.inspect}
+                to match {major}.{minor}(.{micro}).
+              MESSAGE
+            )
+          end
         end
       end
     end

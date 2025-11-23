@@ -266,17 +266,18 @@ module Jsapi
           ]
         end.presence
 
-        openapi_objects =
-          if version.major == 2
-            %i[base_path external_docs info host parameters responses parameters schemas
-               schemes security_requirements security_schemes tags]
+        openapi_objects = (
+          %i[external_docs info parameters responses schemas
+             security_requirements security_schemes tags] +
+          if version == OpenAPI::V2_0
+            %i[base_path host schemes]
           else
-            %i[callbacks examples external_docs headers info links parameters request_bodies
-               responses schemas security_requirements security_schemes servers tags]
-          end.to_h { |key| [key, object_to_openapi(objects[key], version).presence] }
+            %i[callbacks examples headers links request_bodies servers]
+          end
+        ).index_with { |key| object_to_openapi(objects[key], version).presence }
 
         with_openapi_extensions(
-          if version.major == 2
+          if version == OpenAPI::V2_0
             openapi_server = objects[:servers].first || default_server
             uri = URI(openapi_server.url) if openapi_server
             {
@@ -301,12 +302,7 @@ module Jsapi
           else
             {
               # Order according to the OpenAPI specification 3.x
-              openapi:
-                case version.minor
-                when 0 then '3.0.3'
-                when 1 then '3.1.1'
-                when 2 then '3.2.0'
-                end,
+              openapi: version.to_s,
               info: openapi_objects[:info],
               servers:
                 openapi_objects[:servers] ||

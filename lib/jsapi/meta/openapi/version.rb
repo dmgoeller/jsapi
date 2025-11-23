@@ -6,9 +6,9 @@ module Jsapi
       class Version
         include Comparable
 
-        # Creates an \OpenAPI version from +version+.
+        # Transforms +version+ to an instance of this class.
         #
-        # Raises an +ArgumentError+ if +version+ isn`t supported.
+        # Raises an +ArgumentError+ if +version+ could not be transformed.
         def self.from(version)
           return version if version.is_a?(Version)
 
@@ -48,13 +48,25 @@ module Jsapi
           minor <=> other.minor
         end
 
-        def inspect
+        def inspect # :nodoc:
           "<#{self.class.name} #{self}>"
         end
 
         def to_s # :nodoc:
-          "#{major}.#{minor}"
+          @to_s ||=
+            case [major, minor]
+            when [3, 0]
+              '3.0.3'
+            when [3, 1]
+              '3.1.1'
+            when [3, 2]
+              '3.2.0'
+            else
+              "#{major}.#{minor}"
+            end
         end
+
+        alias as_json to_s
       end
     end
   end

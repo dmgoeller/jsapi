@@ -1,11 +1,17 @@
 # Change log
 
+## 1.4.1 (2025-11-23)
+
+### Changes
+
+- The micro version of OpenAPI 3.1 is updated from 3.1.0 to 3.1.1.
+
 ## 1.4 (2025-11-15)
 
 ### New Features
 
-  - Operations can now be grouped by path. Therefore, it is possible to specify
-    a path name only once, even if there are multiple operations for it.
+- Operations can now be grouped by path. Therefore, it is possible to specify
+  a path name only once, even if there are multiple operations for it.
 
 ## 1.3 (2025-11-02)
 

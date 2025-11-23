@@ -5,6 +5,6 @@ module Jsapi
     # NOTE: See https://bundler.io/guides/creating_gem.html
 
     # The current GEM version.
-    VERSION = '1.4'
+    VERSION = '1.4.1'
   end
 end

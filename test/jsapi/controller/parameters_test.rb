@@ -10,15 +10,15 @@ module Jsapi
       def test_initialize_on_header_parameter
         operation.add_parameter('x-foo', type: 'string', in: 'header')
 
-        params = parameters(headers: { 'x-foo' => 'bar' })
-        assert_equal('bar', params['x-foo'])
+        params = parameters(headers: { 'x-foo' => 'Value of x-foo header' })
+        assert_equal('Value of x-foo header', params['x-foo'])
       end
 
       def test_initialize_on_query_parameter
         operation.add_parameter('foo', type: 'string')
 
-        params = parameters(foo: 'foo')
-        assert_equal('foo', params['foo'])
+        params = parameters(foo: 'Value of foo')
+        assert_equal('Value of foo', params['foo'])
       end
 
       def test_initialize_on_query_parameter_as_object
@@ -28,15 +28,15 @@ module Jsapi
             'bar' => { type: 'string' }
           }
         )
-        params = parameters(foo: { 'bar' => 'Foo' })
-        assert_equal('Foo', params['foo'].bar)
+        params = parameters(foo: { 'bar' => 'Value of foo.bar' })
+        assert_equal('Value of foo.bar', params['foo'].bar)
       end
 
       def test_initialize_on_querystring_parameter
         operation.add_parameter('query', in: 'querystring', type: 'string')
 
-        params = parameters(query_parameters: { foo: 'bar' })
-        assert_equal('foo=bar', params['query'])
+        params = parameters(query_parameters: { foo: 'Value of foo' })
+        assert_equal('foo=Value+of+foo', params['query'])
       end
 
       def test_initialize_on_querystring_parameter_as_object
@@ -51,8 +51,8 @@ module Jsapi
             }
           }
         )
-        params = parameters(query_parameters: { foo: { bar: 'Foo' } })
-        assert_equal('Foo', params['query'].foo.bar)
+        params = parameters(query_parameters: { foo: { bar: 'Value of foo.bar' } })
+        assert_equal('Value of foo.bar', params['query'].foo.bar)
       end
 
       def test_initialize_on_request_body
@@ -71,9 +71,9 @@ module Jsapi
         operation.request_body = {
           additional_properties: { type: 'string' }
         }
-        params = parameters(foo: 'Foo', bar: 'Bar')
-        assert_equal('Foo', params['foo'])
-        assert_equal({ 'bar' => 'Bar' }, params.additional_attributes)
+        params = parameters(foo: 'Value of foo', bar: 'Value of bar')
+        assert_equal('Value of foo', params['foo'])
+        assert_equal({ 'bar' => 'Value of bar' }, params.additional_attributes)
       end
 
       def test_initialize_on_querystring_parameter_and_request_body
@@ -85,16 +85,16 @@ module Jsapi
         operation.request_body = {
           additional_properties: { type: 'string' }
         }
-        params = parameters(query_parameters: { foo: 'Foo' }, bar: 'Bar')
-        assert_equal({ 'foo' => 'Foo' }, params['query'].additional_attributes)
-        assert_equal({ 'bar' => 'Bar' }, params.additional_attributes)
+        params = parameters(query_parameters: { foo: 'Value of foo' }, bar: 'Value of bar')
+        assert_equal({ 'foo' => 'Value of foo' }, params['query'].additional_attributes)
+        assert_equal({ 'bar' => 'Value of bar' }, params.additional_attributes)
       end
 
       # Attributes
 
       def test_bracket_operator
         operation.add_parameter('foo', type: 'string')
-        assert_equal('bar', parameters(foo: 'bar')['foo'])
+        assert_equal('Value of foo', parameters(foo: 'Value of foo')['foo'])
         assert_nil(parameters[nil])
       end
 
@@ -109,19 +109,19 @@ module Jsapi
 
       def test_attributes
         operation.add_parameter('foo', type: 'string')
-        params = parameters(foo: 'bar')
-        assert_equal({ 'foo' => 'bar' }, params.attributes)
+        params = parameters(foo: 'Value of foo')
+        assert_equal({ 'foo' => 'Value of foo' }, params.attributes)
       end
 
       def test_additional_attributes
         operation.add_parameter('foo', type: 'string')
         operation.request_body = { additional_properties: { type: 'string' } }
 
-        params = parameters(foo: 'bar')
+        params = parameters(foo: 'Value of foo')
         assert_equal({}, params.additional_attributes)
 
-        params = parameters(foo: 'bar', bar: 'foo')
-        assert_equal({ 'bar' => 'foo' }, params.additional_attributes)
+        params = parameters(foo: 'Value of foo', bar: 'Value of bar')
+        assert_equal({ 'bar' => 'Value of bar' }, params.additional_attributes)
       end
 
       # Validation
@@ -130,7 +130,7 @@ module Jsapi
         operation.add_parameter('foo', type: 'string', existence: true)
         errors = Model::Errors.new
 
-        assert(parameters(foo: 'bar').validate(errors))
+        assert(parameters(foo: 'Value of foo').validate(errors))
         assert_predicate(errors, :empty?)
 
         assert(!parameters(foo: '').validate(errors))
@@ -142,7 +142,7 @@ module Jsapi
         parameter.schema.add_property('bar', type: 'string', existence: true)
         errors = Model::Errors.new
 
-        assert(parameters(foo: { 'bar' => 'Bar' }).validate(errors))
+        assert(parameters(foo: { 'bar' => 'Value of foo.bar' }).validate(errors))
         assert_predicate(errors, :empty?)
 
         assert(!parameters(foo: {}).validate(errors))
@@ -161,13 +161,13 @@ module Jsapi
           assert_predicate(errors, :empty?)
         end
 
-        assert(!parameters(bar: 'foo', strong: true).validate(errors))
+        assert(!parameters(bar: 'Value of bar', strong: true).validate(errors))
         assert(errors.added?(:base, "'bar' isn't allowed"))
 
-        assert(!parameters(bar: 'foo', strong: true).validate(errors))
+        assert(!parameters(bar: 'Value of bar', strong: true).validate(errors))
         assert(errors.added?(:base, "'bar' isn't allowed"))
 
-        assert(!parameters(foo: { bar: 'bar' }, strong: true).validate(errors))
+        assert(!parameters(foo: { bar: 'Value of foo.bar' }, strong: true).validate(errors))
         assert(errors.added?(:base, "'foo.bar' isn't allowed"))
       end
 

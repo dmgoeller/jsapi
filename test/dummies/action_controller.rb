@@ -33,6 +33,9 @@ module ActionController
     def render(**options)
       response.status = options[:status]
       response.body = options[:json]&.to_json
+
+      content_type = options[:content_type]
+      response.content_type = content_type if content_type
     end
 
     def response

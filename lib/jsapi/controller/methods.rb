@@ -12,12 +12,16 @@ module Jsapi
         self.class.api_definitions
       end
 
+      ##
+      # :method: api_operation
+      # :args: operation_name = nil, omit: nil, status: nil, strong: false, &block
+      #
       # Performs an API operation by calling the given block. The request parameters are
       # passed as an instance of the operation's model class to the block. The object
       # returned by the block is implicitly rendered according to the appropriate +response+
-      # specification when the content type is a JSON MIME type. When content type is
+      # specification when the content type is a \JSON MIME type. When content type is
       # <code>application/json-seq</code>, the object returned by the block is streamed in
-      # JSON sequence text format.
+      # \JSON sequence text format.
       #
       #   api_operation('foo') do |api_params|
       #     # ...
@@ -36,41 +40,70 @@ module Jsapi
       # - +:nil+ - All of the properties whose value is +nil+ are omitted.
       #
       # Raises an +ArgumentError+ when +:omit+ is other than +:empty+, +:nil+ or +nil+.
-      def api_operation(operation_name = nil,
-                        omit: nil,
-                        status: nil,
-                        strong: false,
-                        &block)
-        _api_operation(
-          operation_name,
-          bang: false,
-          omit: omit,
-          status: status,
-          strong: strong,
-          &block
-        )
-      end
 
-      # Like +api_operation+, except that a ParametersInvalid exception is raised on
-      # invalid request parameters.
+      ##
+      # :method: api_operation!
+      # :args: operation_name = nil, omit: nil, status: nil, strong: false, &block
+      #
+      # Like +api_operation+, except that a ParametersInvalid exception is raised
+      # when request parameters are invalid.
       #
       #   api_operation!('foo') do |api_params|
       #     # ...
       #   end
-      #
-      def api_operation!(operation_name = nil,
-                         omit: nil,
-                         status: nil,
-                         strong: false,
-                         &block)
-        _api_operation(
-          operation_name,
-          bang: true,
-          omit: omit,
-          status: status,
-          strong: strong,
-          &block
-        )
+
+      [true, false].each do |bang|
+        define_method(bang ? :api_operation! : :api_operation) \
+        do |operation_name = nil, omit: nil, status: nil, strong: false, &block|
+          definitions = api_definitions
+          operation_model = _find_api_operation_model(operation_name, definitions)
+          response_model = _find_api_response_model(operation_model, status, definitions)
+          head(status) && return unless block
+
+          # Perform operation
+          api_params = _api_params(operation_model, definitions, strong: strong)
+          api_response = Response.new(
+            begin
+              raise ParametersInvalid.new(api_params) if bang && api_params.invalid?
+
+              block.call(api_params)
+            rescue StandardError => e
+              # Lookup a rescue handler
+              rescue_handler = definitions.rescue_handler_for(e)
+              raise e if rescue_handler.nil?
+
+              # Change the HTTP status code and response model
+              status = rescue_handler.status
+              response_model = operation_model.response(status)&.resolve(definitions)
+              raise e if response_model.nil?
+
+              # Call on_rescue callbacks
+              definitions.on_rescue_callbacks.each do |callback|
+                callback.respond_to?(:call) ? callback.call(e) : send(callback, e)
+              end
+
+              Error.new(e, status: status)
+            end,
+            response_model, definitions, omit: omit
+          )
+          # Write response
+          if response_model.json_seq_type?
+            self.content_type = response_model.content_type
+            response.status = status
+
+            response.stream.tap do |stream|
+              api_response.write_json_seq_to(stream)
+            ensure
+              stream.close
+            end
+          elsif response_model.json_type?
+            render(
+              content_type: response_model.content_type,
+              json: api_response,
+              status: status
+            )
+          end
+        end
       end
 
       # Returns the request parameters as an instance of the operation's model class.
@@ -88,7 +121,7 @@ module Jsapi
       def api_params(operation_name = nil, strong: false)
         definitions = api_definitions
         _api_params(
-          _find_api_operation(operation_name, definitions),
+          _find_api_operation_model(operation_name, definitions),
           definitions,
           strong: strong
         )
@@ -110,89 +143,34 @@ module Jsapi
       # Raises an +ArgumentError+ when +:omit+ is other than +:empty+, +:nil+ or +nil+.
       def api_response(result, operation_name = nil, omit: nil, status: nil)
         definitions = api_definitions
-        operation = _find_api_operation(operation_name, definitions)
-        response_model = _api_response(operation, status, definitions)
+        operation_model = _find_api_operation_model(operation_name, definitions)
+        response_model = _find_api_response_model(operation_model, status, definitions)
 
-        Response.new(result, response_model, api_definitions, omit: omit)
+        Response.new(result, response_model, definitions, omit: omit)
       end
 
       private
 
-      def _api_operation(operation_name, bang:, omit:, status:, strong:, &block)
-        definitions = api_definitions
-        operation = _find_api_operation(operation_name, definitions)
-
-        # Perform operation
-        response_model = _api_response(operation, status, definitions)
-        head(status) && return unless block
-
-        params = _api_params(operation, definitions, strong: strong)
-
-        result = begin
-          raise ParametersInvalid.new(params) if bang && params.invalid?
-
-          block.call(params)
-        rescue StandardError => e
-          # Lookup a rescue handler
-          rescue_handler = definitions.rescue_handler_for(e)
-          raise e if rescue_handler.nil?
-
-          # Change the HTTP status code and response model
-          status = rescue_handler.status
-          response_model = operation.response(status)&.resolve(definitions)
-          raise e if response_model.nil?
-
-          # Call on_rescue callbacks
-          definitions.on_rescue_callbacks.each do |callback|
-            if callback.respond_to?(:call)
-              callback.call(e)
-            else
-              send(callback, e)
-            end
-          end
-
-          Error.new(e, status: status)
-        end
-
-        # Write response
-        return unless response_model.json_type? || response_model.json_seq_type?
-
-        response = Response.new(result, response_model, definitions, omit: omit)
-        self.content_type = response_model.content_type
-
-        if response_model.json_seq_type?
-          self.response.status = status
-
-          self.response.stream.tap do |stream|
-            response.write_json_seq_to(stream)
-          ensure
-            stream.close
-          end
-        else
-          render(json: response, status: status)
-        end
-      end
-
-      def _api_params(operation, definitions, strong:)
-        (operation.model || Model::Base).new(
+      def _api_params(operation_model, definitions, strong:)
+        (operation_model.model || Model::Base).new(
           Parameters.new(
             params.except(:action, :controller, :format).permit!,
             request,
-            operation,
+            operation_model,
             definitions,
             strong: strong
           )
         )
       end
 
-      def _api_response(operation, status, definitions)
+      def _find_api_response_model(operation, status, definitions)
         response = operation.response(status)
         return response.resolve(definitions) if response
 
         raise "status code not defined: #{status}"
       end
 
-      def _find_api_operation(operation_name, definitions)
+      def _find_api_operation_model(operation_name, definitions)
         operation = definitions.find_operation(operation_name)
         return operation if operation
 

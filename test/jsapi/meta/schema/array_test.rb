@@ -6,6 +6,7 @@ module Jsapi
   module Meta
     module Schema
       class ArrayTest < Minitest::Test
+        include JSONTestHelper
         include OpenAPITestHelper
 
         def test_items
@@ -36,7 +37,7 @@ module Jsapi
 
         def test_minimal_json_schema_object
           schema = Array.new(existence: true)
-          assert_equal(
+          assert_json_equal(
             {
               type: 'array',
               items: {}
@@ -47,7 +48,7 @@ module Jsapi
 
         def test_json_schema_object
           schema = Array.new(items: { type: 'string' }, existence: false)
-          assert_equal(
+          assert_json_equal(
             {
               type: %w[array null],
               items: {

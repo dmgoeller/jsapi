@@ -7,6 +7,7 @@ module Jsapi
     module Schema
       module Validation
         class MaximumTest < Minitest::Test
+          include JSONTestHelper
           include OpenAPITestHelper
 
           def test_raises_exception_on_invalid_maximum
@@ -46,14 +47,14 @@ module Jsapi
           # JSON Schema objects
 
           def test_to_json_schema_on_maximum
-            assert_equal(
+            assert_json_equal(
               { maximum: 0 },
               Maximum.new(0).to_json_schema_validation
             )
           end
 
           def test_to_json_schema_on_exclusive_maximum
-            assert_equal(
+            assert_json_equal(
               { exclusiveMaximum: 0 },
               Maximum.new(0, exclusive: true).to_json_schema_validation
             )
@@ -65,7 +66,7 @@ module Jsapi
             maximum = Maximum.new(0)
 
             each_openapi_version(from: OpenAPI::V3_0) do |version|
-              assert_equal(
+              assert_json_equal(
                 { maximum: 0 },
                 maximum.to_openapi_validation(version)
               )
@@ -76,7 +77,7 @@ module Jsapi
             maximum = Maximum.new(0, exclusive: true)
 
             each_openapi_version(from: OpenAPI::V3_0) do |version|
-              assert_equal(
+              assert_json_equal(
                 if version == OpenAPI::V3_0
                   {
                     maximum: 0,

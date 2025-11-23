@@ -6,6 +6,7 @@ module Jsapi
   module Meta
     module RequestBody
       class BaseTest < Minitest::Test
+        include JSONTestHelper
         include OpenAPITestHelper
 
         def test_type
@@ -38,7 +39,7 @@ module Jsapi
         def test_minimal_openapi_parameter_object
           request_body = Base.new(type: 'string', existence: true)
 
-          assert_equal(
+          assert_json_equal(
             {
               name: 'body',
               in: 'body',
@@ -55,7 +56,7 @@ module Jsapi
             description: 'Foo',
             openapi_extensions: { 'foo' => 'bar' }
           )
-          assert_equal(
+          assert_json_equal(
             {
               name: 'body',
               in: 'body',

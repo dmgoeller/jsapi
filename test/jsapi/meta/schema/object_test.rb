@@ -6,6 +6,7 @@ module Jsapi
   module Meta
     module Schema
       class ObjectTest < Minitest::Test
+        include JSONTestHelper
         include OpenAPITestHelper
 
         def test_add_property
@@ -170,7 +171,7 @@ module Jsapi
 
         def test_minimal_json_schema_object
           schema = Object.new(existence: true)
-          assert_equal(
+          assert_json_equal(
             {
               type: 'object',
               properties: {},
@@ -195,7 +196,7 @@ module Jsapi
             },
             additional_properties: { type: 'string' }
           )
-          assert_equal(
+          assert_json_equal(
             {
               type: %w[object null],
               allOf: [

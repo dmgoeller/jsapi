@@ -2,10 +2,11 @@
 
 module ActionDispatch
   class Request
-    attr_reader :headers, :query_parameters
+    attr_reader :headers, :media_type, :query_parameters
 
     def initialize(headers: {}, query_parameters: {})
       @headers = headers
+      @media_type = headers['Content-Type']
       @query_parameters = query_parameters
     end
   end

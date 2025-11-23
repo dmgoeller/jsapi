@@ -6,6 +6,7 @@ module Jsapi
   module Meta
     module Schema
       class ReferenceTest < Minitest::Test
+        include JSONTestHelper
         include OpenAPITestHelper
 
         # #resolve
@@ -51,7 +52,7 @@ module Jsapi
         # JSON Schema objects
 
         def test_json_schema_reference_object
-          assert_equal(
+          assert_json_equal(
             { '$ref': '#/definitions/foo' },
             Reference.new(ref: 'foo').to_json_schema
           )

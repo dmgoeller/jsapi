@@ -6,6 +6,7 @@ module Jsapi
   module Meta
     module Schema
       class BaseTest < Minitest::Test
+        include JSONTestHelper
         include OpenAPITestHelper
 
         def test_examples
@@ -50,7 +51,7 @@ module Jsapi
             type: 'string',
             existence: true
           )
-          assert_equal(
+          assert_json_equal(
             { type: 'string' },
             schema.to_json_schema
           )
@@ -81,7 +82,7 @@ module Jsapi
 
         def test_json_schema_object_on_nullable
           schema = Schema.new(type: 'string', existence: :allow_null)
-          assert_equal(
+          assert_json_equal(
             {
               type: %w[string null]
             },
@@ -91,7 +92,7 @@ module Jsapi
 
         def test_json_schema_object_on_enum
           schema = Schema.new(type: 'string', enum: %w[foo bar])
-          assert_equal(
+          assert_json_equal(
             {
               type: %w[string null],
               enum: %w[foo bar]
@@ -106,9 +107,10 @@ module Jsapi
           schema = Schema.new(type: 'string', existence: true)
 
           each_openapi_version do |version|
-            assert_equal(
+            assert_openapi_equal(
               { type: 'string' },
-              schema.to_openapi(version)
+              schema,
+              version
             )
           end
         end
@@ -117,7 +119,7 @@ module Jsapi
           schema = Schema.new(type: 'string', existence: :allow_null)
 
           each_openapi_version do |version|
-            assert_equal(
+            assert_openapi_equal(
               case version
               when OpenAPI::V2_0
                 { type: 'string' }
@@ -131,7 +133,8 @@ module Jsapi
                   type: %w[string null]
                 }
               end,
-              schema.to_openapi(version)
+              schema,
+              version
             )
           end
         end

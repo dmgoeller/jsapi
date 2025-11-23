@@ -7,6 +7,8 @@ module Jsapi
     module Schema
       module Validation
         class MaxItemsTest < Minitest::Test
+          include JSONTestHelper
+
           def test_raises_exception_on_invalid_max_length
             error = assert_raises(ArgumentError) { MaxItems.new(nil) }
             assert_equal('invalid max items: nil', error.message)
@@ -25,14 +27,14 @@ module Jsapi
           end
 
           def test_to_json_schema_validation
-            assert_equal(
+            assert_json_equal(
               { maxItems: 2 },
               MaxItems.new(2).to_json_schema_validation
             )
           end
 
           def test_to_openapi_validation
-            assert_equal(
+            assert_json_equal(
               { maxItems: 2 },
               MaxItems.new(2).to_openapi_validation
             )

@@ -6,6 +6,7 @@ module Jsapi
   module Meta
     module Schema
       class NumericTest < Minitest::Test
+        include JSONTestHelper
         include OpenAPITestHelper
 
         def test_maximum
@@ -56,7 +57,7 @@ module Jsapi
 
         def test_json_schema_object
           schema = Numeric.new(type: 'integer')
-          assert_equal(
+          assert_json_equal(
             { type: %w[integer null] },
             schema.to_json_schema
           )

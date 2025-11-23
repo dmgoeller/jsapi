@@ -42,6 +42,7 @@ require 'dummies/rails'
 require 'jsapi'
 
 # Test helpers
+require_relative 'helpers/json_test_helper'
 require_relative 'helpers/openapi_test_helper'
 
 # Pry

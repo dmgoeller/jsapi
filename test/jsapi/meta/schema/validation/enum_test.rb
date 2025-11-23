@@ -7,6 +7,8 @@ module Jsapi
     module Schema
       module Validation
         class EnumTest < Minitest::Test
+          include JSONTestHelper
+
           def test_raises_exception_on_invalid_enum
             error = assert_raises(ArgumentError) { Enum.new(nil) }
             assert_equal('invalid enum: nil', error.message)
@@ -25,14 +27,14 @@ module Jsapi
           end
 
           def test_to_json_schema_validation
-            assert_equal(
+            assert_json_equal(
               { enum: %w[foo bar] },
               Enum.new(%w[foo bar]).to_json_schema_validation
             )
           end
 
           def test_to_openapi_validation
-            assert_equal(
+            assert_json_equal(
               { enum: %w[foo bar] },
               Enum.new(%w[foo bar]).to_openapi_validation
             )

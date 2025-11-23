@@ -6,6 +6,7 @@ module Jsapi
   module Meta
     module Schema
       class StringTest < Minitest::Test
+        include JSONTestHelper
         include OpenAPITestHelper
 
         def test_max_length
@@ -39,7 +40,7 @@ module Jsapi
 
         def test_minimal_json_schema_object
           schema = String.new
-          assert_equal(
+          assert_json_equal(
             {
               type: %w[string null]
             },
@@ -49,7 +50,7 @@ module Jsapi
 
         def test_json_schema_object
           schema = String.new(format: 'date')
-          assert_equal(
+          assert_json_equal(
             {
               type: %w[string null],
               format: 'date'

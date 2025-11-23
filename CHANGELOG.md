@@ -2,6 +2,8 @@
 
 ## 1.4 (2025-11-15)
 
+### New Features
+
   - Operations can now be grouped by path. Therefore, it is possible to specify
     a path name only once, even if there are multiple operations for it.
 

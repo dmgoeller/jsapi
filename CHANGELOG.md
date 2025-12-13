@@ -1,6 +1,6 @@
 # Change log
 
-## 2.0
+## 2.0 (2025-12-14)
 
 ### New features
 

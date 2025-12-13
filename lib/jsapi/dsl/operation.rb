@@ -26,8 +26,9 @@ module Jsapi
           name = keywords[:ref] if name.nil?
           keywords = { ref: name } unless keywords.any? || block
 
-          callback_model = @meta_model.add_callback(name, keywords)
-          Callback.new(callback_model, &block) if block
+          @meta_model.add_callback(name, keywords).tap do |callback_model|
+            Base.new(callback_model, &block) if block
+          end
         end
       end
 
@@ -102,8 +103,9 @@ module Jsapi
           name = keywords[:ref] if name.nil?
           keywords = { ref: name } unless keywords.any? || block
 
-          parameter_model = @meta_model.add_parameter(name, keywords)
-          Parameter.new(parameter_model, &block) if block
+          @meta_model.add_parameter(name, keywords).tap do |parameter_model|
+            Parameter.new(parameter_model, &block) if block
+          end
         end
       end
 
@@ -131,7 +133,10 @@ module Jsapi
       def request_body(**keywords, &block)
         define('request body') do
           @meta_model.request_body = keywords
-          RequestBody.new(@meta_model.request_body, &block) if block
+
+          @meta_model.request_body.tap do |request_body|
+            RequestBody.new(request_body, &block) if block
+          end
         end
       end
 
@@ -166,8 +171,9 @@ module Jsapi
             status = status_or_name if name
             keywords = { ref: name || status_or_name }
           end
-          response_model = @meta_model.add_response(status, keywords)
-          Response.new(response_model, &block) if block
+          @meta_model.add_response(status, keywords).tap do |response_model|
+            Response.new(response_model, &block) if block
+          end
         end
       end
 

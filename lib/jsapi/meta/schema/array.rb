@@ -20,21 +20,27 @@ module Jsapi
         attribute :min_items, accessors: %i[reader]
 
         def items=(keywords = {}) # :nodoc:
-          if keywords.key?(:schema)
-            keywords = keywords.dup
-            keywords[:ref] = keywords.delete(:schema)
+          try_modify_attribute!(:items) do
+            if keywords.key?(:schema)
+              keywords = keywords.dup
+              keywords[:ref] = keywords.delete(:schema)
+            end
+            @items = Schema.new(keywords)
           end
-          @items = Schema.new(keywords)
         end
 
         def max_items=(value) # :nodoc:
-          add_validation('max_items', Validation::MaxItems.new(value))
-          @max_items = value
+          try_modify_attribute!(:max_items) do
+            add_validation('max_items', Validation::MaxItems.new(value))
+            @max_items = value
+          end
         end
 
         def min_items=(value) # :nodoc:
-          add_validation('min_items', Validation::MinItems.new(value))
-          @min_items = value
+          try_modify_attribute!(:min_items) do
+            add_validation('min_items', Validation::MinItems.new(value))
+            @min_items = value
+          end
         end
 
         def to_json_schema # :nodoc:

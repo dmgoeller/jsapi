@@ -37,8 +37,9 @@ module Jsapi
           name = keywords[:ref] if name.nil?
           keywords = { ref: name } unless keywords.any? || block
 
-          header_model = @meta_model.add_header(name, keywords)
-          Base.new(header_model, &block) if block
+          @meta_model.add_header(name, keywords).tap do |header_model|
+            Base.new(header_model, &block) if block
+          end
         end
       end
 
@@ -60,8 +61,9 @@ module Jsapi
           name = keywords[:ref] if name.nil?
           keywords = { ref: name } unless keywords.any? || block
 
-          link_model = @meta_model.add_link(name, keywords)
-          Base.new(link_model, &block) if block
+          @meta_model.add_link(name, keywords).tap do |link_model|
+            Base.new(link_model, &block) if block
+          end
         end
       end
 

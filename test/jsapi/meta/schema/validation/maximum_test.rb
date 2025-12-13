@@ -2,13 +2,14 @@
 
 require 'test_helper'
 
+require_relative '../../test_helper'
+
 module Jsapi
   module Meta
     module Schema
       module Validation
         class MaximumTest < Minitest::Test
-          include JSONTestHelper
-          include OpenAPITestHelper
+          include TestHelper
 
           def test_raises_exception_on_invalid_maximum
             error = assert_raises(ArgumentError) { Maximum.new(nil) }

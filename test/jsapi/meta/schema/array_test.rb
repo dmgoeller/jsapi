@@ -2,17 +2,27 @@
 
 require 'test_helper'
 
+require_relative '../test_helper'
+
 module Jsapi
   module Meta
     module Schema
       class ArrayTest < Minitest::Test
-        include JSONTestHelper
-        include OpenAPITestHelper
+        include TestHelper
 
         def test_items
           assert_equal('string', Array.new(items: { type: 'string' }).items.type)
           assert_equal('foo', Array.new(items: { ref: 'foo' }).items.ref)
           assert_equal('foo', Array.new(items: { schema: 'foo' }).items.ref)
+        end
+
+        def test_items_raises_an_error_when_attributes_are_frozen
+          schema = Schema::Array.new
+          schema.freeze_attributes
+
+          assert_raises(Model::Attributes::FrozenError) do
+            schema.items = { type: 'string' }
+          end
         end
 
         def test_max_items
@@ -24,6 +34,15 @@ module Jsapi
           assert_equal(3, validation.value)
         end
 
+        def test_max_items_raises_an_error_when_attributes_are_frozen
+          schema = Schema::Array.new
+          schema.freeze_attributes
+
+          assert_raises(Model::Attributes::FrozenError) do
+            schema.max_items = 3
+          end
+        end
+
         def test_min_items
           schema = Array.new(items: { type: 'string' }, min_items: 3)
           assert_equal(3, schema.min_items)
@@ -31,6 +50,15 @@ module Jsapi
           validation = schema.validations['min_items']
           assert_predicate(validation, :present?)
           assert_equal(3, validation.value)
+        end
+
+        def test_min_items_raises_an_error_when_attributes_are_frozen
+          schema = Schema::Array.new
+          schema.freeze_attributes
+
+          assert_raises(Model::Attributes::FrozenError) do
+            schema.min_items = 1
+          end
         end
 
         # JSON Schema objects

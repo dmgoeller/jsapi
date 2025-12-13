@@ -2,11 +2,13 @@
 
 require 'test_helper'
 
+require_relative '../test_helper'
+
 module Jsapi
   module Meta
     module Link
       class BaseTest < Minitest::Test
-        include OpenAPITestHelper
+        include TestHelper
 
         def test_empty_openapi_link_object
           each_openapi_version(from: OpenAPI::V3_0) do |version|

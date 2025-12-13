@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative 'abstract_controller'
+
 module ActionController
   module Live; end
 
@@ -14,11 +16,12 @@ module ActionController
   end
 
   class API
-    attr_reader :params, :request
+    attr_reader :params, :request, :response
 
     def initialize(params: {}, request_headers: {})
       @params = ActionController::Parameters.new(params)
       @request = ActionDispatch::Request.new(headers: request_headers)
+      @response = ActionDispatch::Response.new
     end
 
     def content_type=(content_type)
@@ -31,15 +34,23 @@ module ActionController
     end
 
     def render(**options)
-      response.status = options[:status]
-      response.body = options[:json]&.to_json
+      raise AbstractController::DoubleRenderError if response_body
 
-      content_type = options[:content_type]
-      response.content_type = content_type if content_type
+      response_body, content_type =
+        if options.key?(:json)
+          [options[:json]&.to_json, 'application/json']
+        elsif options.key?(:plain)
+          [options[:plain].to_s, 'text/plain']
+        else
+          ['', 'text/plain']
+        end
+      response.status = options[:status]
+      response.content_type = options[:content_type] || content_type
+      response.body = response_body
     end
 
-    def response
-      @response ||= ActionDispatch::Response.new
+    def response_body
+      response.body
     end
   end
 end

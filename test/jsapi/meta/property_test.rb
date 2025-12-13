@@ -2,10 +2,12 @@
 
 require 'test_helper'
 
+require_relative 'test_helper'
+
 module Jsapi
   module Meta
     class PropertyTest < Minitest::Test
-      include OpenAPITestHelper
+      include TestHelper
 
       def test_initialize
         property = Property.new('foo', type: 'string')

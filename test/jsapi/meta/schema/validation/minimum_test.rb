@@ -2,13 +2,14 @@
 
 require 'test_helper'
 
+require_relative '../../test_helper'
+
 module Jsapi
   module Meta
     module Schema
       module Validation
         class MinimumTest < Minitest::Test
-          include JSONTestHelper
-          include OpenAPITestHelper
+          include TestHelper
 
           def test_raises_exception_on_invalid_minimum
             error = assert_raises(ArgumentError) { Minimum.new(nil) }

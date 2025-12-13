@@ -7,24 +7,36 @@ module Jsapi
 
       def test_callback
         callback = operation do
-          callback 'foo', operations: {
-            'bar' => { description: 'Lorem ipsum' }
+          callback 'foo', expressions: {
+            '{$url}' => {
+              operations: {
+                'get' => { description: 'Lorem ipsum' }
+              }
+            }
           }
         end.callback('foo')
 
         assert_predicate(callback, :present?)
-        assert_equal('Lorem ipsum', callback.operation('bar')&.description)
+        assert_equal(
+          'Lorem ipsum',
+          callback.expression('{$url}')&.operation('get')&.description
+        )
       end
 
       def test_callback_with_block
         callback = operation do
           callback 'foo' do
-            operation 'bar', description: 'Lorem ipsum'
+            expression '{$url}' do
+              operation 'get', description: 'Lorem ipsum'
+            end
           end
         end.callback('foo')
 
         assert_predicate(callback, :present?)
-        assert_equal('Lorem ipsum', callback.operation('bar')&.description)
+        assert_equal(
+          'Lorem ipsum',
+          callback.expression('{$url}')&.operation('get')&.description
+        )
       end
 
       def test_callback_reference

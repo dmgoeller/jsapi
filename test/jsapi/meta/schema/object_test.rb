@@ -2,17 +2,27 @@
 
 require 'test_helper'
 
+require_relative '../test_helper'
+
 module Jsapi
   module Meta
     module Schema
       class ObjectTest < Minitest::Test
-        include JSONTestHelper
-        include OpenAPITestHelper
+        include TestHelper
 
         def test_add_property
           schema = Object.new
           property = schema.add_property('foo', type: 'string')
           assert(property.equal?(schema.property('foo')))
+        end
+
+        def test_add_property_raises_an_error_when_frozen
+          schema = Object.new
+          schema.freeze_attributes
+
+          assert_raises(Model::Attributes::FrozenError) do
+            schema.add_property('foo')
+          end
         end
 
         # #resolve_properties

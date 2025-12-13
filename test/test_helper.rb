@@ -25,6 +25,7 @@ require 'active_support/core_ext/array'
 require 'active_support/core_ext/hash'
 require 'active_support/core_ext/string'
 require 'active_support/hash_with_indifferent_access'
+require 'active_support/testing/assertions'
 
 # Locales
 ActiveSupport.on_load(:i18n) do
@@ -41,12 +42,15 @@ require 'dummies/rails'
 # This gem
 require 'jsapi'
 
-# Test helpers
-require_relative 'helpers/json_test_helper'
-require_relative 'helpers/openapi_test_helper'
-
 # Pry
 require 'pry'
+
+# Extend Minitest
+module Minitest
+  class Test
+    include ActiveSupport::Testing::Assertions
+  end
+end
 
 # Start Minitest
 require 'minitest/stub_any_instance'

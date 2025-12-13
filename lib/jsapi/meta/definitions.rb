@@ -144,26 +144,30 @@ module Jsapi
       end
 
       def add_operation(name, parent_path = nil, keywords = {}) # :nodoc:
-        parent_path, keywords = nil, parent_path if parent_path.is_a?(Hash)
+        try_modify_attribute!(:operations) do
+          parent_path, keywords = nil, parent_path if parent_path.is_a?(Hash)
 
-        name = name.nil? ? default_operation_name : name.to_s
-        parent_path ||= default_operation_name unless keywords[:path].present?
+          name = name.nil? ? default_operation_name : name.to_s
+          parent_path ||= default_operation_name unless keywords[:path].present?
 
-        (@operations ||= {})[name] = Operation.new(name, parent_path, keywords)
+          (@operations ||= {})[name] = Operation.new(name, parent_path, keywords)
+        end
       end
 
       def add_parameter(name, keywords = {}) # :nodoc:
-        name = name.to_s
+        try_modify_attribute!(:parameters) do
+          name = name.to_s
 
-        Parameter.new(name, keywords).tap do |parameter|
-          (@parameters ||= {})[name] = parameter
-          attribute_changed(:parameters)
+          (@parameters ||= {})[name] = Parameter.new(name, keywords)
         end
       end
 
       def add_path(name, keywords = {}) # :nodoc:
-        pathname = Pathname.from(name)
-        (@paths ||= {})[pathname] ||= Path.new(pathname, self, keywords)
+        try_modify_attribute!(:paths) do
+          pathname = Pathname.from(name)
+
+          (@paths ||= {})[pathname] = Path.new(pathname, self, keywords)
+        end
       end
 
       # Returns an array containing itself and all of the +Definitions+ instances
@@ -238,7 +242,7 @@ module Jsapi
           if (schemas = objects[:schemas].except(name.to_s)).any?
             json_schema_document[:definitions] = schemas.transform_values(&:to_json_schema)
           end
-        end
+        end&.as_json
       end
 
       # Returns the methods or procs to be called when rescuing an exception.
@@ -255,7 +259,7 @@ module Jsapi
 
         openapi_paths = operations.group_by(&:full_path).to_h do |key, value|
           [
-            key.to_s,
+            key,
             OpenAPI::PathItem.new(
               value,
               description: path_description(key),
@@ -285,13 +289,17 @@ module Jsapi
               swagger: '2.0',
               info: openapi_objects[:info],
               host: openapi_objects[:host] || uri&.hostname,
-              basePath: openapi_objects[:base_path]&.to_s || uri&.path,
+              basePath: openapi_objects[:base_path] || uri&.path,
               schemes: openapi_objects[:schemes] || Array(uri&.scheme).presence,
-              consumes: operations.filter_map do |operation|
-                operation.consumes(self)
-              end.uniq.sort.presence,
+              consumes: Media::Range.reduce(
+                operations.filter_map do |operation|
+                  operation.request_body&.resolve(self)&.default_media_range
+                end
+              ).presence,
               produces: operations.flat_map do |operation|
-                operation.produces(self)
+                operation.responses.values.filter_map do |response|
+                  response.resolve(self).default_media_type
+                end
               end.uniq.sort.presence,
               paths: openapi_paths,
               definitions: openapi_objects[:schemas],
@@ -302,7 +310,7 @@ module Jsapi
           else
             {
               # Order according to the OpenAPI specification 3.x
-              openapi: version.to_s,
+              openapi: version,
               info: openapi_objects[:info],
               servers:
                 openapi_objects[:servers] ||
@@ -325,7 +333,7 @@ module Jsapi
             tags: openapi_objects[:tags],
             externalDocs: openapi_objects[:external_docs]
           ).compact
-        )
+        ).as_json
       end
 
       ##
@@ -384,6 +392,7 @@ module Jsapi
 
       def attribute_changed(*) # :nodoc:
         invalidate_objects
+        super
       end
 
       # Invoked whenever it is included in another +Definitions+ instance.

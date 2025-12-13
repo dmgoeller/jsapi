@@ -44,11 +44,13 @@ module Jsapi
       end
 
       def add_parameter(name, keywords = {}) # :nodoc:
-        name = name.to_s
+        try_modify_attribute!(:parameters) do
+          name = name.to_s
 
-        Parameter.new(name, keywords).tap do |parameter|
-          (@parameters ||= {})[name] = parameter
-          @owner.try(:invalidate_path_parameters, self.name)
+          Parameter.new(name, keywords).tap do |parameter|
+            (@parameters ||= {})[name] = parameter
+            @owner.try(:invalidate_path_parameters, self.name)
+          end
         end
       end
     end

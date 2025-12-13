@@ -33,7 +33,9 @@ module Jsapi
         attribute :properties, { String => Property }, accessors: %i[reader writer]
 
         def add_property(name, keywords = {}) # :nodoc:
-          (@properties ||= {})[name.to_s] = Property.new(name, **keywords)
+          try_modify_attribute!(:properties) do
+            (@properties ||= {})[name.to_s] = Property.new(name, keywords)
+          end
         end
 
         def resolve_properties(definitions, context: nil)

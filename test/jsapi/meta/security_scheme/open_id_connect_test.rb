@@ -2,11 +2,13 @@
 
 require 'test_helper'
 
+require_relative '../test_helper'
+
 module Jsapi
   module Meta
     module SecurityScheme
       class OpenIDConnectTest < Minitest::Test
-        include OpenAPITestHelper
+        include TestHelper
 
         def test_minimal_openapi_security_scheme_object
           security_scheme = OpenIDConnect.new

@@ -2,10 +2,27 @@
 
 require 'test_helper'
 
+require_relative 'test_helper'
+
 module Jsapi
   module Meta
     class OperationTest < Minitest::Test
-      include OpenAPITestHelper
+      include TestHelper
+
+      def test_add_parameter
+        operation = Operation.new('foo')
+        parameter = operation.add_parameter('bar', type: 'string')
+        assert(parameter.equal?(operation.parameter('bar')))
+      end
+
+      def test_add_parameter_raises_an_error_when_frozen
+        operation = Operation.new('foo')
+        operation.freeze_attributes
+
+        assert_raises(Model::Attributes::FrozenError) do
+          operation.add_parameter('bar')
+        end
+      end
 
       def test_full_path
         operation = Operation.new(nil)
@@ -19,21 +36,6 @@ module Jsapi
 
         operation = Operation.new(nil, 'foo', path: 'bar')
         assert_equal(Pathname.new('foo/bar'), operation.full_path)
-      end
-
-      def test_parameters
-        operation = Operation.new('foo')
-        parameter = operation.add_parameter('bar', type: 'string')
-        assert(parameter.equal?(operation.parameter('bar')))
-      end
-
-      def test_responses
-        operation = Operation.new('foo')
-        default_response = operation.add_response(type: 'string')
-        not_found_response = operation.add_response(404, type: 'string')
-
-        assert(default_response.equal?(operation.response))
-        assert(not_found_response.equal?(operation.response(404)))
       end
 
       def test_resolved_parameters
@@ -122,13 +124,31 @@ module Jsapi
           },
           responses: {
             nil => {
-              type: 'string'
+              contents: {
+                'application/json' => {
+                  type: 'string'
+                },
+                'text/plain' => {
+                  type: 'string'
+                }
+              }
+            },
+            400 => {
+              contents: {
+                'application/problem+json' => {
+                  type: 'string'
+                }
+              }
             }
           },
           callbacks: {
             'onBar' => {
-              operations: {
-                '{$request.query.bar}' => {}
+              expressions: {
+                '{$request.query.bar}' => {
+                  operations: {
+                    'get' => {}
+                  }
+                }
               }
             }
           },
@@ -159,8 +179,9 @@ module Jsapi
                 consumes: [
                   'application/json'
                 ],
-                produces: [
-                  'application/json'
+                produces: %w[
+                  application/json
+                  application/problem+json
                 ],
                 parameters: [
                   {
@@ -178,6 +199,11 @@ module Jsapi
                 ],
                 responses: {
                   'default' => {
+                    schema: {
+                      type: 'string'
+                    }
+                  },
+                  400 => {
                     schema: {
                       type: 'string'
                     }
@@ -222,8 +248,18 @@ module Jsapi
                 },
                 responses: {
                   'default' => {
+                    content: %w[application/json text/plain].index_with do
+                      {
+                        schema: {
+                          type: 'string',
+                          nullable: true
+                        }
+                      }
+                    end
+                  },
+                  400 => {
                     content: {
-                      'application/json' => {
+                      'application/problem+json' => {
                         schema: {
                           type: 'string',
                           nullable: true
@@ -282,8 +318,17 @@ module Jsapi
                 },
                 responses: {
                   'default' => {
+                    content: %w[application/json text/plain].index_with do
+                      {
+                        schema: {
+                          type: %w[string null]
+                        }
+                      }
+                    end
+                  },
+                  400 => {
                     content: {
-                      'application/json' => {
+                      'application/problem+json' => {
                         schema: {
                           type: %w[string null]
                         }

@@ -55,6 +55,8 @@ module Jsapi
           index.zero? && segment.blank? ? '//' : "/#{segment}"
         end&.join || '/'
       end
+
+      alias as_json to_s
     end
   end
 end

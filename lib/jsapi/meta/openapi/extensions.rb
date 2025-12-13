@@ -11,12 +11,11 @@ module Jsapi
         private
 
         def with_openapi_extensions(keywords = {})
-          keywords.merge!(
-            openapi_extensions.transform_keys do |key|
-              "x-#{key}".to_sym
-            end
-          ) if openapi_extensions.present?
-
+          if openapi_extensions.present?
+            keywords.merge!(
+              openapi_extensions.transform_keys { |key| "x-#{key}" }
+            )
+          end
           keywords.compact!
           keywords
         end

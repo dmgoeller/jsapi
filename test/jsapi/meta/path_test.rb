@@ -2,17 +2,19 @@
 
 require 'test_helper'
 
+require_relative 'test_helper'
+
 module Jsapi
   module Meta
     class PathTest < Minitest::Test
-      include OpenAPITestHelper
+      include TestHelper
 
       def test_name
         path = Path.new('/foo', nil)
         assert_equal(Pathname.new('/foo'), path.name)
       end
 
-      def test_add_parameters
+      def test_add_parameter
         owner = Minitest::Mock.new
         path = Path.new('/foo', owner)
 
@@ -22,6 +24,15 @@ module Jsapi
         assert(parameter.equal?(path.parameter('bar')))
 
         owner.verify
+      end
+
+      def test_add_parameter_raises_an_error_when_frozen
+        path = Path.new('/foo', nil)
+        path.freeze_attributes
+
+        assert_raises(Model::Attributes::FrozenError) do
+          path.add_parameter('bar')
+        end
       end
     end
   end

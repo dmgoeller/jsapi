@@ -3,6 +3,17 @@
 module Jsapi
   module DSL
     class ResponseTest < Minitest::Test
+      # #content
+
+      def test_content
+        content = response content_type: 'foo/bar' do
+          example 'foo bar'
+        end.content('foo/bar')
+
+        assert_predicate(content, :present?)
+        assert_equal('foo bar', content.example('default').value)
+      end
+
       # #example
 
       def test_example

@@ -14,8 +14,10 @@ module Jsapi
       #
       def operation(name = nil, **keywords, &block)
         define('operation', name&.inspect) do
-          operation_model = @meta_model.owner.add_operation(name, @meta_model.name, keywords)
-          Operation.new(operation_model, &block) if block
+          @meta_model.owner.add_operation(name, @meta_model.name, keywords)
+                           .tap do |operation_model|
+            Operation.new(operation_model, &block) if block
+          end
         end
       end
 
@@ -26,16 +28,18 @@ module Jsapi
       # See Meta::Path#parameters for further information.
       def parameter(name, **keywords, &block)
         define('parameter', name.inspect) do
-          parameter_model = @meta_model.add_parameter(name, keywords)
-          Parameter.new(parameter_model, &block) if block
+          @meta_model.add_parameter(name, keywords).tap do |parameter_model|
+            Parameter.new(parameter_model, &block) if block
+          end
         end
       end
 
       # Specifies a nested path.
       def path(name = nil, &block)
         define('path', name&.inspect) do
-          path_model = @meta_model.owner.add_path(@meta_model.name + name.to_s)
-          Path.new(path_model, &block) if block
+          @meta_model.owner.add_path(@meta_model.name + name.to_s).tap do |path_model|
+            Path.new(path_model, &block) if block
+          end
         end
       end
     end

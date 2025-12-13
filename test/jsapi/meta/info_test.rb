@@ -2,10 +2,12 @@
 
 require 'test_helper'
 
+require_relative 'test_helper'
+
 module Jsapi
   module Meta
     class InfoTest < Minitest::Test
-      include OpenAPITestHelper
+      include TestHelper
 
       def test_empty_openapi_info_object
         each_openapi_version do |version|

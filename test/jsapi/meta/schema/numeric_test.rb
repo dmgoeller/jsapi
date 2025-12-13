@@ -2,12 +2,13 @@
 
 require 'test_helper'
 
+require_relative '../test_helper'
+
 module Jsapi
   module Meta
     module Schema
       class NumericTest < Minitest::Test
-        include JSONTestHelper
-        include OpenAPITestHelper
+        include TestHelper
 
         def test_maximum
           schema = Numeric.new(type: 'integer', maximum: 0)
@@ -25,6 +26,15 @@ module Jsapi
           assert_predicate(maximum, :present?)
           assert_equal(0, maximum.value)
           assert(maximum.exclusive)
+        end
+
+        def test_maximum_raises_an_error_when_attributes_are_frozen
+          schema = Numeric.new
+          schema.freeze_attributes
+
+          assert_raises(Model::Attributes::FrozenError) do
+            schema.maximum = 0
+          end
         end
 
         def test_minimum
@@ -45,12 +55,30 @@ module Jsapi
           assert(minimum.exclusive)
         end
 
+        def test_minimum_raises_an_error_when_attributes_are_frozen
+          schema = Numeric.new
+          schema.freeze_attributes
+
+          assert_raises(Model::Attributes::FrozenError) do
+            schema.minimum = 0
+          end
+        end
+
         def test_multiple_of
           schema = Numeric.new(type: 'integer', multiple_of: 2)
           multiple_of = schema.validations['multiple_of']
 
           assert_predicate(multiple_of, :present?)
           assert_equal(2, multiple_of.value)
+        end
+
+        def test_multiple_of_raises_an_error_when_attributes_are_frozen
+          schema = Numeric.new
+          schema.freeze_attributes
+
+          assert_raises(Model::Attributes::FrozenError) do
+            schema.multiple_of = 2
+          end
         end
 
         # JSON Schema objects

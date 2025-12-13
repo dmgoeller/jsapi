@@ -2,10 +2,12 @@
 
 require 'test_helper'
 
+require_relative 'test_helper'
+
 module Jsapi
   module Meta
     class DefinitionsTest < Minitest::Test
-      include OpenAPITestHelper
+      include TestHelper
 
       # Inheritance and inclusion
 
@@ -79,6 +81,15 @@ module Jsapi
         assert_equal(Pathname.new('/bar'), operation.parent_path)
       end
 
+      def test_add_operation_raises_an_error_when_frozen
+        definitions = Definitions.new
+        definitions.freeze_attributes
+
+        assert_raises(Model::Attributes::FrozenError) do
+          definitions.add_operation('foo')
+        end
+      end
+
       def test_default_operation_name
         definitions = Definitions.new(
           owner: Struct.new(:name).new('Foo::Bar::FooBarController')
@@ -115,6 +126,15 @@ module Jsapi
 
         assert(path.equal?(definitions.path('foo')))
         assert_equal(Pathname.new('foo'), path.name)
+      end
+
+      def test_add_path_raises_an_error_when_frozen
+        definitions = Definitions.new
+        definitions.freeze_attributes
+
+        assert_raises(Model::Attributes::FrozenError) do
+          definitions.add_path('foo')
+        end
       end
 
       %i[description summary].each do |name|
@@ -267,15 +287,24 @@ module Jsapi
 
         define_method("test_add_and_find_#{name}") do
           definitions = Definitions.new
-          schema = definitions.send("add_#{name}", 'foo')
+          schema = definitions.send(:"add_#{name}", 'foo')
 
           assert_equal(schema, definitions.send("find_#{name}", 'foo'))
-          assert_nil(definitions.send("find_#{name}", nil))
+          assert_nil(definitions.send(:"find_#{name}", nil))
+        end
+
+        define_method("test_add_#{name}_raises_an_error_when_frozen") do
+          definitions = Definitions.new
+          definitions.freeze_attributes
+
+          assert_raises(Model::Attributes::FrozenError) do
+            definitions.send(:"add_#{name}", 'foo')
+          end
         end
 
         define_method("test_find_#{name}_on_inheritance") do
           base_definitions = Definitions.new
-          schema = base_definitions.send("add_#{name}", 'foo')
+          schema = base_definitions.send(:"add_#{name}", 'foo')
 
           definitions = Definitions.new(parent: base_definitions)
           assert_equal(schema, definitions.send("find_#{name}", 'foo'))
@@ -283,7 +312,7 @@ module Jsapi
 
         define_method("test_find_#{name}_on_inclusion") do
           included_definitions = Definitions.new
-          schema = included_definitions.send("add_#{name}", 'foo')
+          schema = included_definitions.send(:"add_#{name}", 'foo')
 
           definitions = Definitions.new(include: [included_definitions])
           assert_equal(schema, definitions.send("find_#{name}", 'foo'))
@@ -416,7 +445,7 @@ module Jsapi
           }
         )
         # 'Foo'
-        assert_equal(
+        assert_json_equal(
           {
             type: %w[object null],
             properties: {
@@ -441,7 +470,7 @@ module Jsapi
         )
 
         # 'Bar'
-        assert_equal(
+        assert_json_equal(
           {
             type: %w[object null],
             properties: {
@@ -466,7 +495,7 @@ module Jsapi
         )
 
         # Others
-        assert_nil(definitions.json_schema_document('FooBar'))
+        assert_json_equal(nil, definitions.json_schema_document('FooBar'))
       end
 
       def test_json_schema_document_without_definitions
@@ -479,7 +508,7 @@ module Jsapi
             }
           }
         )
-        assert_equal(
+        assert_json_equal(
           {
             type: %w[object null],
             properties: {
@@ -504,9 +533,9 @@ module Jsapi
             when OpenAPI::V2_0
               { swagger: '2.0' }
             when OpenAPI::V3_0
-              { openapi: '3.0.3' }
+              { openapi: '3.0.4' }
             when OpenAPI::V3_1
-              { openapi: '3.1.1' }
+              { openapi: '3.1.2' }
             when OpenAPI::V3_2
               { openapi: '3.2.0' }
             end,
@@ -522,8 +551,12 @@ module Jsapi
           base_path: '/foo',
           callbacks: {
             'onFoo' => {
-              operations: {
-                '{$request.query.foo}' => {}
+              expressions: {
+                '{$request.query.foo}' => {
+                  operations: {
+                    'get' => {}
+                  }
+                }
               }
             }
           },
@@ -695,7 +728,7 @@ module Jsapi
               }
             when OpenAPI::V3_0
               {
-                openapi: '3.0.3',
+                openapi: '3.0.4',
                 info: {
                   title: 'Foo',
                   version: '1'
@@ -839,7 +872,7 @@ module Jsapi
               }
             when OpenAPI::V3_1
               {
-                openapi: '3.1.1',
+                openapi: '3.1.2',
                 info: {
                   title: 'Foo',
                   version: '1'
@@ -1068,7 +1101,7 @@ module Jsapi
                   },
                   examples: {
                     'foo' => {
-                      value: 'bar'
+                      dataValue: 'bar'
                     }
                   },
                   requestBodies: {
@@ -1184,7 +1217,7 @@ module Jsapi
         # OpenAPI 3.0
         assert_openapi_equal(
           {
-            openapi: '3.0.3',
+            openapi: '3.0.4',
             info: {
               title: 'Foo',
               version: '1'
@@ -1222,12 +1255,12 @@ module Jsapi
         # OpenAPI 2.0
         assert_equal(
           '/jsapi/meta',
-          definitions.openapi_document('2.0')[:basePath]
+          definitions.openapi_document('2.0')['basePath']
         )
         # OpenAPI 3.0
         assert_equal(
-          [{ url: '/jsapi/meta' }],
-          definitions.openapi_document('3.0')[:servers]
+          [{ 'url' => '/jsapi/meta' }],
+          definitions.openapi_document('3.0')['servers']
         )
       end
 
@@ -1238,9 +1271,9 @@ module Jsapi
           ]
         ).openapi_document('2.0')
 
-        assert_equal(%w[https], openapi_document[:schemes])
-        assert_equal('foo.bar', openapi_document[:host])
-        assert_equal('/foo', openapi_document[:basePath])
+        assert_equal(%w[https], openapi_document['schemes'])
+        assert_equal('foo.bar', openapi_document['host'])
+        assert_equal('/foo', openapi_document['basePath'])
       end
     end
   end

@@ -13,13 +13,18 @@ module Jsapi
         attribute :description, String
 
         ##
-        # :attr: external
-        # If true, +value+ is interpreted as a URI pointing to an external sample value.
-        attribute :external, values: [true, false]
+        # :attr: external_value
+        # The URI of an external sample value.
+        attribute :external_value, String
+
+        ##
+        # :attr: serialized_value
+        # The serialized form of the sample value.
+        attribute :serialized_value
 
         ##
         # :attr: summary
-        # The summary of the example.
+        # The short summary of the example.
         attribute :summary, String
 
         ##
@@ -28,11 +33,21 @@ module Jsapi
         attribute :value
 
         # Returns a hash representing the \OpenAPI example object.
-        def to_openapi(*)
+        def to_openapi(version, *)
+          version = OpenAPI::Version.from(version)
+
           with_openapi_extensions(
-            { summary: summary, description: description }.tap do |result|
-              result[external? ? :externalValue : :value] = value
-            end
+            summary: summary,
+            description: description,
+            **if version < OpenAPI::V3_2
+                { value: value }
+              else
+                {
+                  dataValue: value,
+                  serializedValue: serialized_value
+                }
+              end,
+            externalValue: external_value
           )
         end
       end

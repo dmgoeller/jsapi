@@ -27,18 +27,24 @@ module Jsapi
         attribute :pattern, accessors: %i[reader]
 
         def max_length=(value) # :nodoc:
-          add_validation('max_length', Validation::MaxLength.new(value))
-          @max_length = value
+          try_modify_attribute!(:max_length) do
+            add_validation('max_length', Validation::MaxLength.new(value))
+            @max_length = value
+          end
         end
 
         def min_length=(value) # :nodoc:
-          add_validation('min_length', Validation::MinLength.new(value))
-          @min_length = value
+          try_modify_attribute!(:min_length) do
+            add_validation('min_length', Validation::MinLength.new(value))
+            @min_length = value
+          end
         end
 
         def pattern=(value) # :nodoc:
-          add_validation('pattern', Validation::Pattern.new(value))
-          @pattern = value
+          try_modify_attribute!(:pattern) do
+            add_validation('pattern', Validation::Pattern.new(value))
+            @pattern = value
+          end
         end
 
         def to_json_schema # :nodoc:

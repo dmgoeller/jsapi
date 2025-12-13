@@ -71,8 +71,10 @@ module Jsapi
         end
 
         def enum=(value) # :nodoc:
-          add_validation('enum', Validation::Enum.new(value))
-          @enum = value
+          try_modify_attribute!(:enum) do
+            add_validation('enum', Validation::Enum.new(value))
+            @enum = value
+          end
         end
 
         # Returns true if and only if values can be +null+ as specified by \JSON \Schema.

@@ -46,6 +46,7 @@ module Jsapi
 
         # Request body
         request_body_schema = operation.request_body&.resolve(definitions)
+                                       &.content_for(request.media_type)
                                        &.schema&.resolve(definitions)
         if request_body_schema&.object?
           request_body = JSON.wrap(

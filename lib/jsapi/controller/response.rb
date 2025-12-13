@@ -15,8 +15,8 @@ module Jsapi
         end
       end
 
-      # Creates a new instance to jsonify +object+ according to +response+. References
-      # are resolved to API components in +definitions+.
+      # Creates a new instance to jsonify +object+ according to +content_model+.
+      # References are resolved to API components in +definitions+.
       #
       # The +:omit+ option specifies on which conditions properties are omitted.
       # Possible values are:
@@ -25,9 +25,9 @@ module Jsapi
       # - +:nil+ - All of the properties whose value is +nil+ are omitted.
       #
       # Raises an +ArgumentError+ when +:omit+ is other than +:empty+, +:nil+ or +nil+.
-      def initialize(object, response, definitions, omit: nil)
+      def initialize(object, content_model, definitions, omit: nil, locale: nil)
         @object = object
-        @response = response
+        @content_model = content_model
         @definitions = definitions
 
         @omittable_check =
@@ -41,6 +41,8 @@ module Jsapi
           else
             raise InvalidArgumentError.new('omit', omit, valid_values: %i[empty nil])
           end
+
+        @locale = locale
       end
 
       def inspect # :nodoc:
@@ -49,13 +51,13 @@ module Jsapi
 
       # Returns the \JSON representation of the response as a string.
       def to_json(*)
-        schema = @response.schema.resolve(@definitions)
+        schema = @content_model.schema.resolve(@definitions)
         with_locale { jsonify(@object, schema) }.to_json
       end
 
       # Writes the response in \JSON sequence text format to +stream+.
       def write_json_seq_to(stream)
-        schema = @response.schema.resolve(@definitions)
+        schema = @content_model.schema.resolve(@definitions)
         with_locale do
           items, item_schema =
             if schema.array? && @object.respond_to?(:each)
@@ -156,8 +158,8 @@ module Jsapi
       end
 
       def with_locale(&block)
-        if @response.locale
-          I18n.with_locale(@response.locale, &block)
+        if @locale
+          I18n.with_locale(@locale, &block)
         else
           yield
         end

@@ -5,6 +5,7 @@ require_relative 'controller/error'
 require_relative 'controller/parameters'
 require_relative 'controller/response'
 require_relative 'controller/methods'
+require_relative 'controller/actions'
 require_relative 'controller/base'
 
 module Jsapi

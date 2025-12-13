@@ -59,7 +59,8 @@ module Jsapi
       private
 
       def define(*args, &block)
-        block.call
+        result = block.call
+        result.freeze_attributes if result.respond_to?(:freeze_attributes)
       rescue Error => e
         raise e.prepend_origin(args.compact.join(' '))
       rescue StandardError => e
@@ -77,8 +78,9 @@ module Jsapi
         raise "unsupported keyword: #{name}" unless method
 
         define(name) do
-          result = @meta_model.public_send(method, *params)
-          Base.new(result, &block) if block
+          @meta_model.public_send(method, *params).tap do |result|
+            Base.new(result, &block) if block
+          end
         end
       end
 

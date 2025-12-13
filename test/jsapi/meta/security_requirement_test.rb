@@ -2,10 +2,12 @@
 
 require 'test_helper'
 
+require_relative 'test_helper'
+
 module Jsapi
   module Meta
     class SecurityRequirementTest < Minitest::Test
-      include OpenAPITestHelper
+      include TestHelper
 
       def test_empty_openapi_security_requirement_object
         assert_equal({}, SecurityRequirement.new.to_openapi)

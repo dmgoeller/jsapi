@@ -2,11 +2,13 @@
 
 require 'test_helper'
 
+require_relative '../test_helper'
+
 module Jsapi
   module Meta
     module SecurityScheme
       class OAuth2Test < Minitest::Test
-        include OpenAPITestHelper
+        include TestHelper
 
         def test_minimal_openapi_security_scheme_object
           security_scheme = OAuth2.new
@@ -86,7 +88,7 @@ module Jsapi
             }
           )
           each_openapi_version do |version|
-            assert_equal(
+            assert_openapi_equal(
               if version < OpenAPI::V3_2
                 { type: 'oauth2' }
               else
@@ -100,7 +102,8 @@ module Jsapi
                   }
                 }
               end,
-              security_scheme.to_openapi(version)
+              security_scheme,
+              version
             )
           end
         end

@@ -2,10 +2,12 @@
 
 require 'test_helper'
 
+require_relative 'test_helper'
+
 module Jsapi
   module Meta
     class OAuthFlowTest < Minitest::Test
-      include OpenAPITestHelper
+      include TestHelper
 
       def test_minimal_openapi_oauth_flow_object
         each_openapi_version do |version|

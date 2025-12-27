@@ -2,11 +2,13 @@
 
 require 'test_helper'
 
+require_relative '../test_helper'
+
 module Jsapi
   module Meta
     module Parameter
       class ReferenceTest < Minitest::Test
-        include OpenAPITestHelper
+        include TestHelper
 
         # #openapi_parameters
 

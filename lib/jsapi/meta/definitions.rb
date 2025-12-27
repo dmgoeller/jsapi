@@ -144,26 +144,30 @@ module Jsapi
       end
 
       def add_operation(name, parent_path = nil, keywords = {}) # :nodoc:
-        parent_path, keywords = nil, parent_path if parent_path.is_a?(Hash)
+        try_modify_attribute!(:operations) do
+          parent_path, keywords = nil, parent_path if parent_path.is_a?(Hash)
 
-        name = name.nil? ? default_operation_name : name.to_s
-        parent_path ||= default_operation_name unless keywords[:path].present?
+          name = name.nil? ? default_operation_name : name.to_s
+          parent_path ||= default_operation_name unless keywords[:path].present?
 
-        (@operations ||= {})[name] = Operation.new(name, parent_path, keywords)
+          (@operations ||= {})[name] = Operation.new(name, parent_path, keywords)
+        end
       end
 
       def add_parameter(name, keywords = {}) # :nodoc:
-        name = name.to_s
+        try_modify_attribute!(:parameters) do
+          name = name.to_s
 
-        Parameter.new(name, keywords).tap do |parameter|
-          (@parameters ||= {})[name] = parameter
-          attribute_changed(:parameters)
+          (@parameters ||= {})[name] = Parameter.new(name, keywords)
         end
       end
 
       def add_path(name, keywords = {}) # :nodoc:
-        pathname = Pathname.from(name)
-        (@paths ||= {})[pathname] ||= Path.new(pathname, self, keywords)
+        try_modify_attribute!(:paths) do
+          pathname = Pathname.from(name)
+
+          (@paths ||= {})[pathname] = Path.new(pathname, self, keywords)
+        end
       end
 
       # Returns an array containing itself and all of the +Definitions+ instances
@@ -176,37 +180,130 @@ module Jsapi
         end.uniq
       end
 
+      ##
+      # :method: common_description
+      # :args: pathname
+      # Returns the most accurate description for +pathname+.
+
+      ##
+      # :method: common_model
+      # :args: pathname
+      # Returns the common model of all operations in +pathname+.
+
+      ##
+      # :method: common_response_body
+      # :args: pathname
+      # Returns the common request body of all operations in +pathname+.
+
+      ##
+      # :method: common_servers
+      # :args: pathname
+      # Returns the most accurate Server objects for +pathname+.
+
+      ##
+      # :method: common_summary
+      # :args: pathname
+      # Returns the most accurate summary for +pathname+.
+
+      %i[description model request_body servers summary].each do |name|
+        define_method(:"common_#{name}") do |arg|
+          arg = Pathname.from(arg || '')
+
+          cache_path_attribute(arg, name) do
+            arg.ancestors.lazy.filter_map do |pathname|
+              ancestors.lazy.filter_map do |definitions|
+                definitions.path(pathname)&.public_send(name).presence
+              end.first
+            end.first
+          end
+        end
+      end
+
+      ##
+      # :method: common_parameters
+      # :args: pathname
+      # Returns the parameters that are consumed by all operations in +pathname+.
+
+      ##
+      # :method: common_responses
+      # :args: pathname
+      # Returns the responses that can be produced by all operations in +pathname+.
+
+      %i[parameters responses].each do |name|
+        define_method(:"common_#{name}") do |arg|
+          arg = Pathname.from(arg || '')
+
+          cache_path_attribute(arg, name) do
+            arg.ancestors.flat_map do |pathname|
+              ancestors.filter_map do |definitions|
+                definitions.path(pathname)&.send(name)
+              end
+            end.reduce({}, &:reverse_merge).presence
+          end
+        end
+      end
+
+      ##
+      # Returns the common response for +status+ in +pathname+.
+      def common_response(pathname, status)
+        common_responses(pathname)&.fetch(status.to_s, nil)
+      end
+
+      ##
+      # :method: common_tags
+      # :args: pathname
+      # Returns the tags that are applicable to all operations in +pathname+.
+
+      def common_tags(arg)
+        arg = Pathname.from(arg || '')
+
+        cache_path_attribute(arg, :tags) do
+          arg.ancestors.filter_map do |pathname|
+            ancestors.filter_map do |definitions|
+              definitions.path(pathname)&.tags
+            end
+          end.flatten.uniq.presence
+        end
+      end
+
       # Returns the default value for +type+ within +context+.
       def default_value(type, context: nil)
-        objects.dig(:defaults, type.to_s)&.value(context: context)
+        cached_attributes.dig(:defaults, type.to_s)&.value(context: context)
       end
 
       # Returns the operation with the specified name.
       def find_operation(name = nil)
-        return objects.dig(:operations, name.to_s) if name.present?
+        name = name&.to_s
 
-        # Return the one and only operation
-        operations.values.first if operations.one?
+        cache_operation(name) do
+          if name.present?
+            # Select the operation with the given name
+            cached_attributes.dig(:operations, name)
+          elsif operations.one?
+            # Select the one and only operation
+            operations.values.first
+          end
+        end
       end
 
       # Returns the reusable parameter with the specified name.
       def find_parameter(name)
-        objects.dig(:parameters, name&.to_s)
+        cached_attributes.dig(:parameters, name&.to_s)
       end
 
       # Returns the reusable request body with the specified name.
       def find_request_body(name)
-        objects.dig(:request_bodies, name&.to_s)
+        cached_attributes.dig(:request_bodies, name&.to_s)
       end
 
       # Returns the reusable response with the specified name.
       def find_response(name)
-        objects.dig(:responses, name&.to_s)
+        cached_attributes.dig(:responses, name&.to_s)
       end
 
       # Returns the reusable schema with the specified name.
       def find_schema(name)
-        objects.dig(:schemas, name&.to_s)
+        cached_attributes.dig(:schemas, name&.to_s)
       end
 
       # Includes +definitions+.
@@ -224,26 +321,44 @@ module Jsapi
         self
       end
 
-      # Resets the memoized parameters for the given path.
-      def invalidate_path_parameters(pathname)
-        pathname = Pathname.from(pathname)
+      # Invalidates cached ancestors.
+      def invalidate_ancestors
+        @ancestors = nil
+        @cache = nil
+        each_descendant(&:invalidate_ancestors)
+      end
 
-        @path_parameters&.delete(pathname)
-        each_descendant { |descendant| descendant.invalidate_path_parameters(pathname) }
+      # Invalidates cached attributes.
+      def invalidate_attributes
+        @cache = nil
+        each_descendant(&:invalidate_attributes)
+      end
+
+      # Invalidates the given path attribute.
+      def invalidate_path_attribute(pathname, name)
+        pathname = Pathname.from(pathname)
+        name = name.to_sym
+
+        cached_path_attributes.fetch(pathname, nil)&.delete(name)
+        @cache[:operations] = nil
+
+        each_descendant do |descendant|
+          descendant.invalidate_path_attribute(pathname, name)
+        end
       end
 
       # Returns a hash representing the \JSON \Schema document for +name+.
       def json_schema_document(name)
         find_schema(name)&.to_json_schema&.tap do |json_schema_document|
-          if (schemas = objects[:schemas].except(name.to_s)).any?
+          if (schemas = cached_attributes[:schemas].except(name.to_s)).any?
             json_schema_document[:definitions] = schemas.transform_values(&:to_json_schema)
           end
-        end
+        end&.as_json
       end
 
       # Returns the methods or procs to be called when rescuing an exception.
       def on_rescue_callbacks
-        objects[:on_rescues]
+        cached_attributes[:on_rescues]
       end
 
       # Returns a hash representing the \OpenAPI document for +version+.
@@ -251,17 +366,17 @@ module Jsapi
       # Raises an +ArgumentError+ if +version+ is not supported.
       def openapi_document(version = nil)
         version = OpenAPI::Version.from(version)
-        operations = objects[:operations].values
+        operations = cached_attributes[:operations].values
 
         openapi_paths = operations.group_by(&:full_path).to_h do |key, value|
           [
-            key.to_s,
+            key,
             OpenAPI::PathItem.new(
               value,
-              description: path_description(key),
-              parameters: path_parameters(key),
-              summary: path_summary(key),
-              servers: path_servers(key)
+              description: common_description(key),
+              parameters: common_parameters(key),
+              summary: common_summary(key),
+              servers: common_servers(key)
             ).to_openapi(version, self)
           ]
         end.presence
@@ -274,25 +389,40 @@ module Jsapi
           else
             %i[callbacks examples headers links request_bodies servers]
           end
-        ).index_with { |key| object_to_openapi(objects[key], version).presence }
+        ).index_with do |key|
+          value = cached_attributes[key]
+          if key == :responses
+            value = value.reject do |_status, response|
+              response.resolve(self).nodoc?
+            end
+          end
+          object_to_openapi(value, version).presence
+        end
 
         with_openapi_extensions(
           if version == OpenAPI::V2_0
-            openapi_server = objects[:servers].first || default_server
+            openapi_server = cached_attributes[:servers].first || default_server
             uri = URI(openapi_server.url) if openapi_server
             {
               # Order according to the OpenAPI specification 2.x
               swagger: '2.0',
               info: openapi_objects[:info],
               host: openapi_objects[:host] || uri&.hostname,
-              basePath: openapi_objects[:base_path]&.to_s || uri&.path,
+              basePath: openapi_objects[:base_path] || uri&.path,
               schemes: openapi_objects[:schemes] || Array(uri&.scheme).presence,
-              consumes: operations.filter_map do |operation|
-                operation.consumes(self)
-              end.uniq.sort.presence,
-              produces: operations.flat_map do |operation|
-                operation.produces(self)
-              end.uniq.sort.presence,
+              consumes:
+                Media::Range.reduce(
+                  operations.filter_map do |operation|
+                    operation.request_body&.resolve(self)&.default_media_range
+                  end
+                ).presence,
+              produces:
+                operations.flat_map do |operation|
+                  operation.responses.values.filter_map do |response|
+                    response = response.resolve(self)
+                    response.default_media_type unless response.nodoc?
+                  end
+                end.uniq.sort.presence,
               paths: openapi_paths,
               definitions: openapi_objects[:schemas],
               parameters: openapi_objects[:parameters],
@@ -302,7 +432,7 @@ module Jsapi
           else
             {
               # Order according to the OpenAPI specification 3.x
-              openapi: version.to_s,
+              openapi: version,
               info: openapi_objects[:info],
               servers:
                 openapi_objects[:servers] ||
@@ -325,50 +455,12 @@ module Jsapi
             tags: openapi_objects[:tags],
             externalDocs: openapi_objects[:external_docs]
           ).compact
-        )
-      end
-
-      ##
-      # :method: path_description
-      # :args: pathname
-      # Returns the most accurate description for the given path.
-
-      ##
-      # :method: path_servers
-      # :args: pathname
-      # Returns the most accurate Server objects for the given path.
-
-      ##
-      # :method: path_summary
-      # :args: pathname
-      # Returns the most accurate summary for the given path.
-
-      %i[description servers summary].each do |name|
-        define_method(:"path_#{name}") do |arg|
-          Pathname.from(arg).ancestors.each do |pathname|
-            ancestors.each do |ancestor|
-              value = ancestor.path(pathname)&.public_send(name)
-              return value if value.present?
-            end
-          end
-          nil
-        end
-      end
-
-      # Returns a hash containing the Parameter objects that are applicable to all
-      # operations in the given path.
-      # :args: pathname
-      def path_parameters(arg)
-        arg = Pathname.from(arg || '')
-
-        (@path_parameters ||= {})[arg] ||= arg.ancestors.flat_map do |pathname|
-          ancestors.filter_map { |ancestor| ancestor.path(pathname)&.parameters }
-        end.reduce(&:reverse_merge) || {}
+        ).as_json
       end
 
       # Returns the first RescueHandler to handle +exception+, or nil if no one could be found.
       def rescue_handler_for(exception)
-        objects[:rescue_handlers].find { |r| r.match?(exception) }
+        cached_attributes[:rescue_handlers].find { |r| r.match?(exception) }
       end
 
       protected
@@ -383,7 +475,8 @@ module Jsapi
       attr_reader :included_definitions
 
       def attribute_changed(*) # :nodoc:
-        invalidate_objects
+        invalidate_attributes
+        super
       end
 
       # Invoked whenever it is included in another +Definitions+ instance.
@@ -400,21 +493,63 @@ module Jsapi
 
       # rubocop:enable Lint/MissingSuper
 
-      # Invalidates cached ancestors.
-      def invalidate_ancestors
-        @ancestors = nil
-        @objects = nil
-        @path_parameters = nil
-        each_descendant(&:invalidate_ancestors)
-      end
-
-      # Invalidates cached objects.
-      def invalidate_objects
-        @objects = nil
-        each_descendant(&:invalidate_objects)
-      end
-
       private
+
+      def cache
+        @cache ||= {}
+      end
+
+      def cached_attributes
+        cache[:attributes] ||= ancestors.each_with_object({}) do |ancestor, attr|
+          self.class.attribute_names.each do |key|
+            case value = ancestor.send(key)
+            when Array
+              (attr[key] ||= []).push(*value)
+            when Hash
+              if (hash = attr[key])
+                value.each { |k, v| hash[k] = v unless hash.key?(k) }
+              else
+                attr[key] = value.dup
+              end
+            else
+              attr[key] ||= value
+            end
+          end
+        end
+      end
+
+      def cached_operations
+        cache[:operations] ||= {}
+      end
+
+      def cached_path_attributes
+        cache[:path_attributes] ||=
+          cached_attributes[:operations]
+          .values
+          .map(&:full_path)
+          .flat_map(&:ancestors)
+          .uniq
+          .to_h { |pathname| [pathname, {}] }
+      end
+
+      def cache_operation(name)
+        operation = cached_operations[name]
+        return operation if operation
+
+        operation = yield
+        cached_operations[name] = Operation.wrap(operation, self) if operation
+      end
+
+      def cache_path_attribute(pathname, name)
+        path_attributes = cached_path_attributes[pathname]
+        return path_attributes[name] if path_attributes&.key?(name)
+
+        value = yield
+        return unless value || path_attributes
+
+        path_attributes ||= cached_path_attributes[pathname] = {}
+        path_attributes[name] = value
+      end
 
       def circular_dependency?(other)
         return true if other == self
@@ -444,25 +579,6 @@ module Jsapi
       def each_descendant(&block)
         [*@children, *dependent_definitions].each(&block)
         nil
-      end
-
-      def objects
-        @objects ||= ancestors.each_with_object({}) do |ancestor, objects|
-          self.class.attribute_names.each do |key|
-            case value = ancestor.send(key)
-            when Array
-              (objects[key] ||= []).push(*value)
-            when Hash
-              if (hash = objects[key])
-                value.each { |k, v| hash[k] = v unless hash.key?(k) }
-              else
-                objects[key] = value.dup
-              end
-            else
-              objects[key] ||= value
-            end
-          end
-        end
       end
 
       def object_to_openapi(object, version)

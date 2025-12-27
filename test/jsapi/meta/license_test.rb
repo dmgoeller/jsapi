@@ -2,21 +2,31 @@
 
 require 'test_helper'
 
+require_relative 'test_helper'
+
 module Jsapi
   module Meta
     class LicenseTest < Minitest::Test
-      include OpenAPITestHelper
+      include TestHelper
 
-      # Identifier and URL
-
-      def test_initialize_raises_an_error_when_identifier_and_url_are_specified_together
+      def test_identifier_and_url_are_mutually_exclusive
         error = assert_raises(RuntimeError) do
           License.new(identifier: 'MIT', url: 'https://spdx.org/licenses/MIT.html')
         end
         assert_equal('identifier and url are mutually exclusive', error.message)
       end
 
-      def test_identifier_cannot_be_set_when_url_is_present
+      # identifier
+
+      def test_identifier
+        license = License.new
+
+        result = license.send(:identifier=, 'MIT')
+        assert_equal('MIT', result)
+        assert_equal(result, license.identifier)
+      end
+
+      def test_setting_identifier_raises_an_error_when_url_is_present
         license = License.new(url: 'https://spdx.org/licenses/MIT.html')
 
         error = assert_raises(RuntimeError) do
@@ -25,7 +35,17 @@ module Jsapi
         assert_equal('identifier and url are mutually exclusive', error.message)
       end
 
-      def test_url_cannot_be_set_when_identifier_is_present
+      # url
+
+      def test_url
+        license = License.new
+
+        result = license.send(:url=, 'https://spdx.org/licenses/MIT.html')
+        assert_equal('https://spdx.org/licenses/MIT.html', result)
+        assert_equal(result, license.url)
+      end
+
+      def test_setting_url_raises_an_error_when_identifier_is_present
         license = License.new(identifier: 'MIT')
 
         error = assert_raises(RuntimeError) do

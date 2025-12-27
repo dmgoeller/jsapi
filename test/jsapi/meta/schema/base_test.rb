@@ -2,32 +2,18 @@
 
 require 'test_helper'
 
+require_relative '../test_helper'
+
 module Jsapi
   module Meta
     module Schema
       class BaseTest < Minitest::Test
-        include JSONTestHelper
-        include OpenAPITestHelper
+        include TestHelper
 
         def test_examples
           schema = Schema.new(type: 'string', example: 'foo')
           schema.add_example('bar')
           assert_equal(%w[foo bar], schema.examples)
-        end
-
-        def test_default_value
-          schema = Schema.new(type: 'string', default: 'foo')
-          assert_equal('foo', schema.default_value)
-        end
-
-        def test_default_value_on_general_default
-          definitions = Definitions.new(
-            defaults: {
-              'string' => { within_requests: 'foo' }
-            }
-          )
-          schema = Schema.new(type: 'string')
-          assert_equal('foo', schema.default_value(definitions, context: :request))
         end
 
         def test_enum
@@ -37,6 +23,15 @@ module Jsapi
           validation = schema.validations['enum']
           assert_predicate(validation, :present?)
           assert_equal(%w[foo bar], validation.value)
+        end
+
+        def test_enum_raises_an_error_when_attributes_are_frozen
+          schema = Base.new
+          schema.freeze_attributes
+
+          assert_raises(Model::Attributes::FrozenError) do
+            schema.enum = %w[foo bar]
+          end
         end
 
         def test_nullable_predicate

@@ -2,52 +2,98 @@
 
 require 'test_helper'
 
+require_relative '../test_helper'
+
 module Jsapi
   module Meta
     module Response
       class BaseTest < Minitest::Test
-        include OpenAPITestHelper
+        include TestHelper
 
-        def test_type
-          response = Base.new(type: 'string')
-          assert_equal('string', response.type)
+        def test_initial_contents
+          contents = Base.new(
+            content_type: 'text/plain',
+            type: 'string',
+            contents: {
+              'application/json' => {},
+              'application/vnd.foo+json' => {}
+            }
+          ).contents
+
+          assert_equal(
+            expected = [
+              Media::Type.new('text', 'plain'),
+              Media::Type.new('application', 'json'),
+              Media::Type.new('application', 'vnd.foo+json')
+            ],
+            contents.keys,
+            "Expected media types to be #{expected.inspect}."
+          )
+          assert_equal(
+            expected = %w[string object object],
+            contents.values.map(&:type),
+            "Expected schema types to be #{expected.inspect}."
+          )
         end
 
-        def test_example
-          response = Base.new(type: 'string', example: 'foo')
-          assert_equal('foo', response.example.value)
+        def test_add_content
+          response = Base.new
+
+          content = assert_difference('response.contents.count', 1) do
+            response.add_content(type: 'object')
+          end
+          assert(content.equal?(response.content('application/json')))
+
+          content = assert_difference('response.contents.count', 1) do
+            response.add_content('text/plain', type: 'string')
+          end
+          assert(content.equal?(response.content('text/plain')))
         end
 
-        def test_schema
-          response = Base.new(schema: 'bar')
-          assert_equal('bar', response.schema.ref)
+        def test_add_content_raises_an_error_when_attributes_are_frozen
+          response = Base.new
+          response.freeze_attributes
+
+          assert_raises(Model::Attributes::FrozenError) do
+            response.add_content
+          end
         end
 
-        def test_json_type_predicate
-          %w[application/json application/vnd.foo+json text/json].each do |content_type|
+        def test_media_type_and_content_for
+          response = Base.new(
+            contents: {
+              'application/json' => {},
+              'text/plain' => {}
+            }
+          )
+          application_json, text_plain = response.contents.to_a
+          {
+            %w[application/json text/*] => application_json,
+            %w[*/* application/*] => application_json,
+            %w[foo/bar] => application_json,
+            %w[*/* text/*] => text_plain,
+            %w[*/* text/plain] => text_plain
+          }.each do |media_ranges, expected|
             assert(
-              Base.new(content_type: content_type).json_type?,
-              "Expected #{content_type.inspect} to be a JSON type"
+              response.media_type_and_content_for(*media_ranges) == expected,
+              "Expected #{expected.inspect} to be most appropriate " \
+              "for #{media_ranges.inspect}."
             )
           end
+        end
 
-          %w[application/json-seq text/plain].each do |content_type|
-            assert(
-              !Base.new(content_type: content_type).json_type?,
-              "Expected #{content_type.inspect} not to be a JSON type"
-            )
+        def test_freeze_attributes_adds_a_content_when_none_is_present
+          response = Base.new
+          assert_changes('response.contents.count', from: 0, to: 1) do
+            response.freeze_attributes
           end
         end
 
-        def test_json_seq_type_predicate
-          assert(
-            Base.new(content_type: 'application/json-seq').json_seq_type?,
-            'Expected "application/json-seq" to be a JSON sequence text format type'
-          )
-          assert(
-            !Base.new(content_type: 'application/json').json_seq_type?,
-            'Expected "application/json" not to be a JSON sequence text format type'
-          )
+        def test_freeze_attributes_adds_no_content_when_at_least_one_is_present
+          response = Base.new(content_type: 'application/json')
+          assert_no_changes('response.contents') do
+            response.freeze_attributes
+          end
         end
 
         # OpenAPI objects
@@ -84,13 +130,15 @@ module Jsapi
         def test_full_openapi_response_object
           response = Base.new(
             summary: 'Summary of foo',
-            content_type: 'application/foo',
-            type: 'string',
-            existence: false,
-            example: 'foo',
             headers: {
               'X-Foo' => { type: 'string' },
               'X-Bar' => { ref: 'X-Bar' }
+            },
+            contents: {
+              'application/vnd.foo+json' => {
+                type: 'string',
+                example: 'foo'
+              }
             },
             links: {
               'foo' => { operation_id: 'foo' }
@@ -110,7 +158,7 @@ module Jsapi
                     }
                   },
                   examples: {
-                    'application/foo' => 'foo'
+                    'application/vnd.foo+json' => 'foo'
                   },
                   'x-foo': 'bar'
                 }
@@ -138,7 +186,7 @@ module Jsapi
                     }
                   },
                   content: {
-                    'application/foo' => {
+                    'application/vnd.foo+json' => {
                       schema:
                         if version < OpenAPI::V3_1
                           {
@@ -149,9 +197,12 @@ module Jsapi
                           { type: %w[string null] }
                         end,
                       examples: {
-                        'default' => {
-                          value: 'foo'
-                        }
+                        'default' =>
+                          if version < OpenAPI::V3_2
+                            { value: 'foo' }
+                          else
+                            { dataValue: 'foo' }
+                          end
                       }
                     }
                   },
@@ -170,15 +221,54 @@ module Jsapi
           end
         end
 
+        def test_openapi_response_object_with_multiple_contents
+          response = Base.new(
+            contents: {
+              'application/json' => {
+                type: 'string',
+                existence: true
+              },
+              'application/vnd.foo+json' => {
+                type: 'integer',
+                existence: true
+              }
+            }
+          )
+          each_openapi_version(from: OpenAPI::V3_0) do |version|
+            assert_openapi_equal(
+              {
+                content: {
+                  'application/json' => {
+                    schema: {
+                      type: 'string'
+                    }
+                  },
+                  'application/vnd.foo+json' => {
+                    schema: {
+                      type: 'integer'
+                    }
+                  }
+                }
+              },
+              response,
+              version,
+              nil
+            )
+          end
+        end
+
         def test_openapi_response_object_on_json_seq
           response = Base.new(
-            type: 'array',
-            items: {
-              type: 'string',
-              existence: true
-            },
-            content_type: 'application/json-seq',
-            existence: true
+            contents: {
+              'application/json-seq' => {
+                type: 'array',
+                items: {
+                  type: 'string',
+                  existence: true
+                },
+                existence: true
+              }
+            }
           )
           each_openapi_version do |version|
             assert_openapi_equal(

@@ -102,8 +102,13 @@ module Jsapi
           raise Error, "items isn't supported for '#{@meta_model.type}'"
         end
 
-        @meta_model.items = keywords
-        Schema.new(@meta_model.items, &block) if block
+        define do
+          @meta_model.items = keywords
+
+          @meta_model.items.tap do |items|
+            Schema.new(items, &block) if block
+          end
+        end
       end
 
       ##
@@ -209,8 +214,9 @@ module Jsapi
             raise Error, "property isn't supported for '#{@meta_model.type}'"
           end
 
-          property_model = @meta_model.add_property(name, keywords)
-          Schema.new(property_model, &block) if block
+          @meta_model.add_property(name, keywords).tap do |property_model|
+            Schema.new(property_model, &block) if block
+          end
         end
       end
 

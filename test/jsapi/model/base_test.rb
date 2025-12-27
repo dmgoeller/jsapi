@@ -22,7 +22,7 @@ module Jsapi
       # Equality operator
 
       def test_equality_operator
-        schema = Meta::Schema.new(type: 'object')
+        schema = schema(type: 'object')
         schema.add_property('foo', type: 'string')
 
         model = Base.new(JSON.wrap({ 'foo' => 'bar' }, schema))
@@ -34,7 +34,7 @@ module Jsapi
       # Attributes
 
       def test_bracket_operator
-        schema = Meta::Schema.new(type: 'object')
+        schema = schema(type: 'object')
         schema.add_property('foo', type: 'string')
 
         model = Base.new(JSON.wrap({ 'foo' => 'bar' }, schema))
@@ -43,7 +43,7 @@ module Jsapi
       end
 
       def test_attribute_predicate
-        schema = Meta::Schema.new(type: 'object')
+        schema = schema(type: 'object')
         schema.add_property('foo', type: 'string')
 
         model = Base.new(JSON.wrap({}, schema))
@@ -56,7 +56,7 @@ module Jsapi
       end
 
       def test_attributes
-        schema = Meta::Schema.new(type: 'object')
+        schema = schema(type: 'object')
         schema.add_property('foo', type: 'string')
 
         model = Base.new(JSON.wrap({}, schema))
@@ -69,7 +69,7 @@ module Jsapi
       end
 
       def test_additional_attributes
-        schema = Meta::Schema.new(
+        schema = schema(
           type: 'object',
           additional_properties: { type: 'string' }
         )
@@ -81,7 +81,7 @@ module Jsapi
       end
 
       def test_attribute_reader
-        schema = Meta::Schema.new(type: 'object')
+        schema = schema(type: 'object')
         schema.add_property('foo', type: 'string')
 
         model = Base.new(JSON.wrap({ 'foo' => 'bar' }, schema))
@@ -89,7 +89,7 @@ module Jsapi
       end
 
       def test_attribute_reader_on_camel_case
-        schema = Meta::Schema.new(type: 'object')
+        schema = schema(type: 'object')
         schema.add_property('fooBar', type: 'string')
 
         model = Base.new(JSON.wrap({ 'fooBar' => 'bar' }, schema))
@@ -97,7 +97,7 @@ module Jsapi
       end
 
       def test_respond_to
-        schema = Meta::Schema.new(type: 'object')
+        schema = schema(type: 'object')
         schema.add_property('foo', type: 'string')
 
         model = Base.new(JSON.wrap({}, schema))
@@ -107,7 +107,7 @@ module Jsapi
       end
 
       def test_raises_an_error_on_missing_attribute
-        schema = Meta::Schema.new(type: 'object')
+        schema = schema(type: 'object')
         schema.add_property('foo', type: 'string')
 
         model = Base.new(JSON.wrap({}, schema))
@@ -117,7 +117,7 @@ module Jsapi
       # Validation
 
       def test_validates_self_against_schema
-        schema = Meta::Schema.new(type: 'object', existence: true)
+        schema = schema(type: 'object', existence: true)
         schema.add_property('foo', type: 'string')
 
         model = Base.new(JSON.wrap({ 'foo' => 'bar' }, schema))
@@ -129,7 +129,7 @@ module Jsapi
       end
 
       def test_validates_attributes_against_property_schemas
-        schema = Meta::Schema.new(type: 'object')
+        schema = schema(type: 'object')
         schema.add_property('foo', type: 'string', existence: true)
 
         model = Base.new(JSON.wrap({ 'foo' => 'bar' }, schema))
@@ -141,7 +141,7 @@ module Jsapi
       end
 
       def test_validates_nested_attributes_against_nested_property_schemas
-        schema = Meta::Schema.new(type: 'object')
+        schema = schema(type: 'object')
         property = schema.add_property('foo', type: 'object')
         property.schema.add_property('bar', type: 'string', existence: true)
 
@@ -156,11 +156,11 @@ module Jsapi
       # Inspection
 
       def test_inspect
-        model = Base.new(JSON.wrap({}, Meta::Schema.new(type: 'object')))
+        model = Base.new(JSON.wrap({}, schema(type: 'object')))
         assert_equal('#<Jsapi::Model::Base>', model.inspect)
 
         # nil and integer
-        schema = Meta::Schema.new(type: 'object')
+        schema = schema(type: 'object')
         schema.add_property('foo', type: 'integer')
 
         model = Base.new(JSON.wrap({ 'foo' => 0 }, schema))
@@ -170,14 +170,14 @@ module Jsapi
         assert_equal('#<Jsapi::Model::Base foo: nil>', model.inspect)
 
         # string
-        schema = Meta::Schema.new(type: 'object')
+        schema = schema(type: 'object')
         schema.add_property('foo', type: 'string')
 
         model = Base.new(JSON.wrap({ 'foo' => 'bar' }, schema))
         assert_equal('#<Jsapi::Model::Base foo: "bar">', model.inspect)
 
         # nested object
-        schema = Meta::Schema.new(type: 'object')
+        schema = schema(type: 'object')
         property = schema.add_property('foo', type: 'object')
         property.schema.add_property('bar', type: 'string')
 
@@ -186,6 +186,12 @@ module Jsapi
           '#<Jsapi::Model::Base foo: #<Jsapi::Model::Base bar: "Foo Bar">>',
           model.inspect
         )
+      end
+
+      private
+
+      def schema(**keywords)
+        Meta::Schema.wrap(Meta::Schema.new(**keywords), Meta::Definitions.new)
       end
     end
   end

@@ -7,24 +7,36 @@ module Jsapi
 
       def test_callback
         callback = operation do
-          callback 'foo', operations: {
-            'bar' => { description: 'Lorem ipsum' }
+          callback 'foo', expressions: {
+            '{$url}' => {
+              operations: {
+                'get' => { description: 'Lorem ipsum' }
+              }
+            }
           }
         end.callback('foo')
 
         assert_predicate(callback, :present?)
-        assert_equal('Lorem ipsum', callback.operation('bar')&.description)
+        assert_equal(
+          'Lorem ipsum',
+          callback.expression('{$url}')&.operation('get')&.description
+        )
       end
 
       def test_callback_with_block
         callback = operation do
           callback 'foo' do
-            operation 'bar', description: 'Lorem ipsum'
+            expression '{$url}' do
+              operation 'get', description: 'Lorem ipsum'
+            end
           end
         end.callback('foo')
 
         assert_predicate(callback, :present?)
-        assert_equal('Lorem ipsum', callback.operation('bar')&.description)
+        assert_equal(
+          'Lorem ipsum',
+          callback.expression('{$url}')&.operation('get')&.description
+        )
       end
 
       def test_callback_reference
@@ -167,15 +179,6 @@ module Jsapi
       # #response
 
       def test_response
-        # Default response
-        response = operation do
-          response description: 'Lorem ipsum'
-        end.response('default')
-
-        assert_predicate(response, :present?)
-        assert_equal('Lorem ipsum', response.description)
-
-        # With status
         response = operation do
           response 200, description: 'Lorem ipsum'
         end.response(200)
@@ -185,17 +188,6 @@ module Jsapi
       end
 
       def test_response_with_block
-        # Default response
-        response = operation do
-          response 200 do
-            description 'Lorem ipsum'
-          end
-        end.response(200)
-
-        assert_predicate(response, :present?)
-        assert_equal('Lorem ipsum', response.description)
-
-        # With status
         response = operation do
           response do
             description 'Lorem ipsum'
@@ -207,15 +199,6 @@ module Jsapi
       end
 
       def test_response_reference
-        # Default response
-        response = operation do
-          response ref: 'foo'
-        end.response('default')
-
-        assert_predicate(response, :present?)
-        assert_equal('foo', response.ref)
-
-        # With status
         response = operation do
           response 200, ref: 'foo'
         end.response(200)
@@ -225,18 +208,47 @@ module Jsapi
       end
 
       def test_response_reference_by_name
-        # Default response
         response = operation do
-          response 'foo'
+          response 200, 'foo'
+        end.response(200)
+
+        assert_predicate(response, :present?)
+        assert_equal('foo', response.ref)
+      end
+
+      def test_default_response
+        response = operation do
+          response description: 'Lorem ipsum'
+        end.response('default')
+
+        assert_predicate(response, :present?)
+        assert_equal('Lorem ipsum', response.description)
+      end
+
+      def test_default_response_with_block
+        response = operation do
+          response 200 do
+            description 'Lorem ipsum'
+          end
+        end.response(200)
+
+        assert_predicate(response, :present?)
+        assert_equal('Lorem ipsum', response.description)
+      end
+
+      def test_default_response_as_reference
+        response = operation do
+          response ref: 'foo'
         end.response('default')
 
         assert_predicate(response, :present?)
         assert_equal('foo', response.ref)
+      end
 
-        # With status
+      def test_default_response_as_reference_by_name
         response = operation do
-          response 200, 'foo'
-        end.response(200)
+          response 'foo'
+        end.response('default')
 
         assert_predicate(response, :present?)
         assert_equal('foo', response.ref)

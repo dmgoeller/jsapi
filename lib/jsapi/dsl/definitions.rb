@@ -22,8 +22,9 @@ module Jsapi
       # See Meta::Definitions#callbacks for further information.
       def callback(name, **keywords, &block)
         define('callback', name.inspect) do
-          callback = @meta_model.add_callback(name, keywords)
-          Callback.new(callback, &block) if block
+          @meta_model.add_callback(name, keywords).tap do |callback|
+            Base.new(callback, &block) if block
+          end
         end
       end
 
@@ -34,8 +35,9 @@ module Jsapi
       # See Meta::Definitions#defaults for further information.
       def default(type, **keywords, &block)
         define('default', type.inspect) do
-          default = @meta_model.add_default(type, keywords)
-          Base.new(default, &block) if block
+          @meta_model.add_default(type, keywords).tap do |default|
+            Base.new(default, &block) if block
+          end
         end
       end
 
@@ -46,8 +48,9 @@ module Jsapi
       # See Meta::Definitions#examples for further information.
       def example(name, **keywords, &block)
         define('example', name.inspect) do
-          example = @meta_model.add_example(name, keywords)
-          Base.new(example, &block) if block
+          @meta_model.add_example(name, keywords).tap do |example|
+            Base.new(example, &block) if block
+          end
         end
       end
 
@@ -74,8 +77,9 @@ module Jsapi
       # See Meta::Definitions#headers for further information.
       def header(name, **keywords, &block)
         define('header', name.inspect) do
-          header = @meta_model.add_header(name, keywords)
-          Base.new(header, &block) if block
+          @meta_model.add_header(name, keywords).tap do |header|
+            Base.new(header, &block) if block
+          end
         end
       end
 
@@ -106,8 +110,9 @@ module Jsapi
       # See Meta::Definitions#links for further information.
       def link(name, **keywords, &block)
         define('link', name.inspect) do
-          link = @meta_model.add_link(name, keywords)
-          Base.new(link, &block) if block
+          @meta_model.add_link(name, keywords).tap do |link|
+            Base.new(link, &block) if block
+          end
         end
       end
 
@@ -138,8 +143,9 @@ module Jsapi
       # See Meta::Definitions#operations for further information.
       def operation(name = nil, **keywords, &block)
         define('operation', name&.inspect) do
-          operation_model = @meta_model.add_operation(name, keywords)
-          Operation.new(operation_model, &block) if block
+          @meta_model.add_operation(name, keywords).tap do |operation_model|
+            Operation.new(operation_model, &block) if block
+          end
         end
       end
 
@@ -150,8 +156,9 @@ module Jsapi
       # See Meta::Definitions#parameters for further information.
       def parameter(name, **keywords, &block)
         define('parameter', name.inspect) do
-          parameter_model = @meta_model.add_parameter(name, keywords)
-          Parameter.new(parameter_model, &block) if block
+          @meta_model.add_parameter(name, keywords).tap do |parameter_model|
+            Parameter.new(parameter_model, &block) if block
+          end
         end
       end
 
@@ -162,10 +169,11 @@ module Jsapi
       #     operation 'bar'
       #   end
       #
-      def path(name = nil, &block)
+      def path(name = nil, **keywords, &block)
         define('path', name&.inspect) do
-          path_model = @meta_model.add_path(name)
-          Path.new(path_model, &block) if block
+          @meta_model.add_path(name, keywords).tap do |path_model|
+            Path.new(path_model, &block) if block
+          end
         end
       end
 
@@ -176,8 +184,9 @@ module Jsapi
       # See Meta::Definitions#request_bodies for further information.
       def request_body(name, **keywords, &block)
         define('request_body', name.inspect) do
-          request_body_model = @meta_model.add_request_body(name, keywords)
-          RequestBody.new(request_body_model, &block) if block
+          @meta_model.add_request_body(name, keywords).tap do |request_body_model|
+            RequestBody.new(request_body_model, &block) if block
+          end
         end
       end
 
@@ -201,8 +210,9 @@ module Jsapi
       # See Meta::Definitions#responses for further information.
       def response(name, **keywords, &block)
         define('response', name.inspect) do
-          response_model = @meta_model.add_response(name, keywords)
-          Response.new(response_model, &block) if block
+          @meta_model.add_response(name, keywords).tap do |response_model|
+            Response.new(response_model, &block) if block
+          end
         end
       end
 
@@ -215,8 +225,9 @@ module Jsapi
       # See Meta::Definitions#schemas for further information.
       def schema(name, **keywords, &block)
         define('schema', name.inspect) do
-          schema_model = @meta_model.add_schema(name, keywords)
-          Schema.new(schema_model, &block) if block
+          @meta_model.add_schema(name, keywords).tap do |schema_model|
+            Schema.new(schema_model, &block) if block
+          end
         end
       end
 
@@ -247,8 +258,9 @@ module Jsapi
       # See Meta::Definitions#security_schemes for further information.
       def security_scheme(name, **keywords, &block)
         define('security_scheme', name.inspect) do
-          security_scheme = @meta_model.add_security_scheme(name, keywords)
-          Base.new(security_scheme, &block) if block
+          @meta_model.add_security_scheme(name, keywords).tap do |security_scheme|
+            Base.new(security_scheme, &block) if block
+          end
         end
       end
 

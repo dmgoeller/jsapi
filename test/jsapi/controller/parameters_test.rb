@@ -193,8 +193,7 @@ module Jsapi
             headers: headers,
             query_parameters: query_parameters
           ),
-          operation,
-          definitions,
+          definitions.find_operation,
           strong: strong
         )
       end

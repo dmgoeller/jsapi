@@ -2,12 +2,13 @@
 
 require 'test_helper'
 
+require_relative '../test_helper'
+
 module Jsapi
   module Meta
     module Schema
       class ReferenceTest < Minitest::Test
-        include JSONTestHelper
-        include OpenAPITestHelper
+        include TestHelper
 
         # #resolve
 

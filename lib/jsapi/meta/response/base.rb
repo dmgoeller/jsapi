@@ -7,25 +7,18 @@ module Jsapi
       class Base < Model::Base
         include OpenAPI::Extensions
 
-        JSON_TYPE = %r{(^application/|^text/|\+)json$}.freeze # :nodoc:
-        JSON_SEQ_TYPE = 'application/json-seq' # :nodoc:
-
-        delegate_missing_to :schema
+        # To still allow to specify content-related directives within blocks
+        delegate_missing_to :last_content
 
         ##
-        # :attr: content_type
-        # The content type, <code>"application/json"</code> by default.
-        attribute :content_type, String, default: 'application/json'
+        # :attr_reader: contents
+        # The Media::Type and Content objects.
+        attribute :contents, { Media::Type => Content }, accessors: %i[reader writer]
 
         ##
         # :attr: description
         # The description of the response.
         attribute :description, String
-
-        ##
-        # :attr: examples
-        # The Example objects.
-        attribute :examples, { String => Example }, default_key: 'default'
 
         ##
         # :attr: headers
@@ -39,13 +32,13 @@ module Jsapi
 
         ##
         # :attr: locale
-        # The locale used when rendering a response.
+        # The locale to be used when rendering a response.
         attribute :locale, Symbol
 
         ##
-        # :attr_reader: schema
-        # The Schema of the response.
-        attribute :schema, accessors: %i[reader]
+        # :attr: nodoc
+        # Prevents response to be described in generated \OpenAPI documents.
+        attribute :nodoc, values: [true, false], default: false
 
         ##
         # :attr: summary
@@ -54,27 +47,54 @@ module Jsapi
 
         def initialize(keywords = {})
           keywords = keywords.dup
-          super(
-            keywords.extract!(
-              :content_type, :description, :examples, :headers,
-              :links, :locale, :openapi_extensions, :summary
+          content_keywords = keywords.slice!(*self.class.attribute_names)
+
+          # Move content-related keywords to :contents so that the first
+          # key-value pair in @contents is created from them.
+          if content_keywords.present?
+            content_type = content_keywords.delete(:content_type)
+
+            (keywords[:contents] ||= {}).reverse_merge!(
+              { content_type => content_keywords }
             )
-          )
-          add_example(value: keywords.delete(:example)) if keywords.key?(:example)
-          keywords[:ref] = keywords.delete(:schema) if keywords.key?(:schema)
-
-          @schema = Schema.new(keywords)
+          end
+          super(keywords)
         end
 
-        # Returns true if content type is a JSON MIME type as specified by
-        # https://mimesniff.spec.whatwg.org/#json-mime-type.
-        def json_type?
-          content_type.match?(JSON_TYPE)
+        def attribute_changed(name) # :nodoc:
+          @default_media_type = nil if name == :contents
+          super
         end
 
-        # Returns true if content type is <code>"application/json-seq"</code>.
-        def json_seq_type?
-          content_type == JSON_SEQ_TYPE
+        def add_content(media_type = nil, keywords = {}) # :nodoc:
+          try_modify_attribute!(:contents) do
+            media_type, keywords = nil, media_type if media_type.is_a?(Hash)
+            media_type = Media::Type.from(media_type || Media::Type::APPLICATION_JSON)
+
+            (@contents ||= {})[media_type] = Content.new(keywords)
+          end
+        end
+
+        def default_media_type
+          @default_media_type ||= contents.keys.first
+        end
+
+        def freeze_attributes # :nodoc:
+          add_content if contents.blank?
+          super
+        end
+
+        # Returns the most appropriate media type and content for the given
+        # media ranges.
+        def media_type_and_content_for(*media_ranges)
+          media_ranges
+            .filter_map { |media_range| Media::Range.try_from(media_range) }
+            .sort # e.g. "text/plain" before "text/*" before "*/*"
+            .lazy.map do |media_range|
+              contents.find do |media_type_and_content|
+                media_range =~ media_type_and_content.first
+              end
+            end.first || contents.first
         end
 
         # Returns a hash representing the \OpenAPI response object.
@@ -83,18 +103,20 @@ module Jsapi
 
           with_openapi_extensions(
             if version == OpenAPI::V2_0
-              {
-                description: description,
-                schema: schema.to_openapi(version),
-                headers: headers.transform_values do |header|
-                  header.to_openapi(version) unless header.reference?
-                end.compact.presence,
-                examples: (
-                  if (example = examples.values.first).present?
-                    { content_type => example.resolve(definitions).value }
-                  end
-                )
-              }
+              contents.first.then do |media_type, content|
+                {
+                  description: description,
+                  schema: content.schema.to_openapi(version),
+                  headers: headers.transform_values do |header|
+                    header.to_openapi(version) unless header.reference?
+                  end.compact.presence,
+                  examples: (
+                    if (example = content.examples.values.first).present?
+                      { media_type => example.resolve(definitions).value }
+                    end
+                  )
+                }
+              end
             else
               {
                 summary: (summary if version >= OpenAPI::V3_2),
@@ -102,22 +124,21 @@ module Jsapi
                 headers: headers.transform_values do |header|
                   header.to_openapi(version)
                 end.presence,
-                content: {
-                  content_type => {
-                    **if json_seq_type? && schema.array? && version >= OpenAPI::V3_2
-                        { itemSchema: schema.items.to_openapi(version) }
-                      else
-                        { schema: schema.to_openapi(version) }
-                      end,
-                    examples: examples.transform_values(&:to_openapi).presence
-                  }.compact
-                },
+                content: contents.to_h do |media_type, content|
+                  [media_type, content.to_openapi(version, media_type)]
+                end,
                 links: links.transform_values do |link|
                   link.to_openapi(version)
                 end.presence
               }
             end
           )
+        end
+
+        private
+
+        def last_content
+          contents.values.last || add_content
         end
       end
     end

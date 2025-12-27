@@ -2,22 +2,25 @@
 
 require 'test_helper'
 
+require_relative 'test_helper'
+
 module Jsapi
   module JSON
     class StringTest < Minitest::Test
+      include TestHelper
+
       def test_value_on_default_format
-        schema = Meta::Schema.new(type: 'string')
-        string = String.new('foo', schema)
+        string = String.new('foo', schema(type: 'string'))
         assert_equal('foo', string.value)
       end
 
       def test_value_on_conversion
-        schema = Meta::Schema.new(type: 'string', conversion: :upcase)
+        schema = schema(type: 'string', conversion: :upcase)
         assert_equal('FOO', String.new('foo', schema).value)
       end
 
       def test_value_and_validity_on_date_format
-        schema = Meta::Schema.new(type: 'string', format: 'date')
+        schema = schema(type: 'string', format: 'date')
         errors = Model::Errors.new
 
         # valid value
@@ -34,7 +37,7 @@ module Jsapi
       end
 
       def test_value_and_validity_on_date_time_format
-        schema = Meta::Schema.new(type: 'string', format: 'date-time')
+        schema = schema(type: 'string', format: 'date-time')
         errors = Model::Errors.new
 
         # valid value
@@ -51,7 +54,7 @@ module Jsapi
       end
 
       def test_value_and_validity_on_duration_format
-        schema = Meta::Schema.new(type: 'string', format: 'duration')
+        schema = schema(type: 'string', format: 'duration')
         errors = Model::Errors.new
 
         # valid value
@@ -68,7 +71,7 @@ module Jsapi
       end
 
       def test_empty_predicate
-        schema = Meta::Schema.new(type: 'string')
+        schema = schema(type: 'string')
         assert_predicate(String.new('', schema), :empty?)
         assert(!String.new('foo', schema).empty?)
       end

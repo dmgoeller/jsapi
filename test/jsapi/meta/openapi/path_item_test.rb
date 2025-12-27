@@ -2,11 +2,13 @@
 
 require 'test_helper'
 
+require_relative '../test_helper'
+
 module Jsapi
   module Meta
     module OpenAPI
       class PathItemTest < Minitest::Test
-        include OpenAPITestHelper
+        include TestHelper
 
         def test_empty_openapi_path_item_object
           openapi_path_item = PathItem.new(nil)
@@ -125,7 +127,7 @@ module Jsapi
               end,
               openapi_path_item,
               version,
-              nil
+              Definitions.new
             )
           end
         end

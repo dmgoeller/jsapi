@@ -2,11 +2,15 @@
 
 require 'test_helper'
 
+require_relative 'test_helper'
+
 module Jsapi
   module JSON
     class ArrayTest < Minitest::Test
+      include TestHelper
+
       def test_initialize
-        schema = Meta::Schema.new(
+        schema = schema(
           type: 'array',
           items: {
             type: 'object',
@@ -16,86 +20,75 @@ module Jsapi
             }
           }
         )
-        array = Array.new([{}], schema, definitions, context: :request)
-        assert_equal(%w[foo], array.value.first.attributes.keys)
-
-        array = Array.new([{}], schema, definitions, context: :response)
-        assert_equal(%w[bar], array.value.first.attributes.keys)
+        { request: %w[foo], response: %w[bar] }.each do |context, attribute_names|
+          assert_equal(
+            attribute_names,
+            Array.new([{}], schema, context: context).value.first.attributes.keys
+          )
+        end
       end
 
       def test_value
-        schema = Meta::Schema.new(type: 'array', items: { type: 'string' })
-        array = Array.new(%w[foo bar], schema, definitions)
-        assert_equal(%w[foo bar], array.value)
+        schema = schema(type: 'array', items: { type: 'string' })
+        assert_equal(%w[foo bar], Array.new(%w[foo bar], schema).value)
       end
 
       def test_empty_predicate
-        schema = Meta::Schema.new(type: 'array', items: { type: 'string' })
+        schema = schema(type: 'array', items: { type: 'string' })
 
-        array = Array.new([], schema, definitions)
-        assert_predicate(array, :empty?)
-
-        array = Array.new(%w[foo bar], schema, definitions)
-        assert(!array.empty?)
+        assert_predicate(Array.new([], schema), :empty?)
+        assert_not(Array.new(%w[foo bar], schema).empty?)
       end
 
       # Serialization
 
       def test_serializable_value
-        schema = Meta::Schema.new(type: 'array', items: { type: 'string' })
-        array = Array.new(%w[foo bar], schema, definitions)
-        assert_equal(%w[foo bar], array.serializable_value)
+        schema = schema(type: 'array', items: { type: 'string' })
+        assert_equal(%w[foo bar], Array.new(%w[foo bar], schema).serializable_value)
       end
 
       # Validation
 
       def test_validates_self_against_schema
-        schema = Meta::Schema.new(
+        schema = schema(
           type: 'array',
           items: { type: 'string' },
           max_items: 2
         )
         errors = Model::Errors.new
-        assert(Array.new(%w[foo bar], schema, definitions).validate(errors))
+        assert(Array.new(%w[foo bar], schema).validate(errors))
         assert_predicate(errors, :empty?)
 
         errors = Model::Errors.new
-        assert(!Array.new(%w[foo bar foo], schema, definitions).validate(errors))
+        assert(!Array.new(%w[foo bar foo], schema).validate(errors))
         assert(errors.added?(:base, 'is invalid'))
       end
 
       def test_validates_items_against_items_schema
-        schema = Meta::Schema.new(
+        schema = schema(
           type: 'array',
           items: { type: 'string', existence: true }
         )
         errors = Model::Errors.new
-        assert(Array.new([], schema, definitions).validate(errors))
+        assert(Array.new([], schema).validate(errors))
         assert_predicate(errors, :empty?)
 
         errors = Model::Errors.new
-        assert(Array.new(%w[foo bar], schema, definitions).validate(errors))
+        assert(Array.new(%w[foo bar], schema).validate(errors))
         assert_predicate(errors, :empty?)
 
         errors = Model::Errors.new
-        assert(!Array.new(['foo', nil], schema, definitions).validate(errors))
+        assert(!Array.new(['foo', nil], schema).validate(errors))
         assert(errors.added?(:base, "can't be blank"))
       end
 
       # Inspection
 
       def test_inspect
-        schema = Meta::Schema.new(type: 'array', items: { type: 'string' })
         assert_equal(
           '#<Jsapi::JSON::Array [#<Jsapi::JSON::String "foo">]>',
-          Array.new(%w[foo], schema, definitions).inspect
+          Array.new(%w[foo], schema(type: 'array', items: { type: 'string' })).inspect
         )
-      end
-
-      private
-
-      def definitions
-        @definitions ||= Meta::Definitions.new
       end
     end
   end

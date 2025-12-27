@@ -2,12 +2,14 @@
 
 require 'test_helper'
 
+require_relative '../../test_helper'
+
 module Jsapi
   module Meta
     module Schema
       module Validation
         class EnumTest < Minitest::Test
-          include JSONTestHelper
+          include TestHelper
 
           def test_raises_exception_on_invalid_enum
             error = assert_raises(ArgumentError) { Enum.new(nil) }

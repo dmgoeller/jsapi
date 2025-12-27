@@ -2,9 +2,13 @@
 
 require 'test_helper'
 
+require_relative 'test_helper'
+
 module Jsapi
   module JSON
     class ValueTest < Minitest::Test
+      include TestHelper
+
       def test_empty_predicate
         assert(!Value.new(nil).empty?)
       end
@@ -16,8 +20,7 @@ module Jsapi
       # Serialization
 
       def test_serializable_value
-        schema = Meta::Schema.new(type: 'string', format: 'date')
-        json = JSON.wrap('2099-12-31', schema)
+        json = JSON.wrap('2099-12-31', schema(type: 'string', format: 'date'))
 
         assert_equal(Date.new(2099, 12, 31), json.serializable_value)
         assert_equal('2099-12-31', json.serializable_value(jsonify_values: true))
@@ -26,7 +29,7 @@ module Jsapi
       # Validation
 
       def test_validates_presence
-        schema = Meta::Schema.new(type: 'string', existence: true)
+        schema = schema(type: 'string', existence: true)
 
         errors = Model::Errors.new
         assert(JSON.wrap('foo', schema).validate(errors))
@@ -38,7 +41,7 @@ module Jsapi
       end
 
       def test_validates_allow_empty
-        schema = Meta::Schema.new(type: 'string', existence: :allow_empty)
+        schema = schema(type: 'string', existence: :allow_empty)
 
         errors = Model::Errors.new
         assert(JSON.wrap('', schema).validate(errors))
@@ -50,7 +53,7 @@ module Jsapi
       end
 
       def test_validates_self_against_schema
-        schema = Meta::Schema.new(type: 'string', pattern: /fo/)
+        schema = schema(type: 'string', pattern: /fo/)
 
         errors = Model::Errors.new
         assert(JSON.wrap(nil, schema).validate(errors))
@@ -70,7 +73,7 @@ module Jsapi
       def test_inspect
         assert_equal(
           '#<Jsapi::JSON::String "foo">',
-          JSON.wrap('foo', Meta::Schema.new(type: 'string')).inspect
+          JSON.wrap('foo', schema(type: 'string')).inspect
         )
       end
     end

@@ -56,9 +56,9 @@ module Jsapi
           @to_s ||=
             case [major, minor]
             when [3, 0]
-              '3.0.3'
+              '3.0.4'
             when [3, 1]
-              '3.1.1'
+              '3.1.2'
             when [3, 2]
               '3.2.0'
             else

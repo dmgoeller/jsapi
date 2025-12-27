@@ -4,6 +4,8 @@ module Jsapi
   module Meta
     module Schema
       class AdditionalProperties < Model::Base
+        include Model::Wrappable
+
         delegate_missing_to :schema
 
         ##
@@ -23,6 +25,12 @@ module Jsapi
           super(keywords.extract!(:source))
 
           @schema = Schema.new(keywords)
+        end
+
+        class Wrapper < Model::Wrapper
+          def schema
+            @schema ||= Schema.wrap(super, definitions)
+          end
         end
       end
     end

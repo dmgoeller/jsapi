@@ -15,8 +15,7 @@ module Jsapi
         end
       end
 
-      # Creates a new instance to jsonify +object+ according to +response+. References
-      # are resolved to API components in +definitions+.
+      # Creates a new instance to jsonify +object+ according to +content_model+.
       #
       # The +:omit+ option specifies on which conditions properties are omitted.
       # Possible values are:
@@ -25,10 +24,9 @@ module Jsapi
       # - +:nil+ - All of the properties whose value is +nil+ are omitted.
       #
       # Raises an +ArgumentError+ when +:omit+ is other than +:empty+, +:nil+ or +nil+.
-      def initialize(object, response, definitions, omit: nil)
+      def initialize(object, content_model, omit: nil, locale: nil)
         @object = object
-        @response = response
-        @definitions = definitions
+        @content_model = content_model
 
         @omittable_check =
           case omit
@@ -41,6 +39,8 @@ module Jsapi
           else
             raise InvalidArgumentError.new('omit', omit, valid_values: %i[empty nil])
           end
+
+        @locale = locale
       end
 
       def inspect # :nodoc:
@@ -49,17 +49,16 @@ module Jsapi
 
       # Returns the \JSON representation of the response as a string.
       def to_json(*)
-        schema = @response.schema.resolve(@definitions)
-        with_locale { jsonify(@object, schema) }.to_json
+        with_locale { jsonify(@object, @content_model.schema) }.to_json
       end
 
       # Writes the response in \JSON sequence text format to +stream+.
       def write_json_seq_to(stream)
-        schema = @response.schema.resolve(@definitions)
+        schema = @content_model.schema
         with_locale do
           items, item_schema =
             if schema.array? && @object.respond_to?(:each)
-              [@object, schema.items.resolve(@definitions)]
+              [@object, schema.items]
             else
               [[@object], schema]
             end
@@ -76,7 +75,7 @@ module Jsapi
       private
 
       def jsonify(object, schema)
-        object = schema.default_value(@definitions, context: :response) if object.nil?
+        object = schema.default_value(context: :response) if object.nil?
 
         if object.nil?
           raise JsonifyError, "can't be nil" unless schema.nullable?
@@ -112,7 +111,7 @@ module Jsapi
       end
 
       def jsonify_array(array, schema)
-        item_schema = schema.items.resolve(@definitions)
+        item_schema = schema.items
         index = 0
 
         Array(array).map do |item|
@@ -125,12 +124,12 @@ module Jsapi
       end
 
       def jsonify_object(object, schema)
-        schema = schema.resolve_schema(object, @definitions, context: :response)
+        schema = schema.resolve_schema(object, context: :response)
         properties = {}
 
         # Add properties
-        schema.resolve_properties(@definitions, context: :response).each_value do |property|
-          property_schema = property.schema.resolve(@definitions)
+        schema.resolve_properties(context: :response).each_value do |property|
+          property_schema = property.schema
           property_value = property.reader.call(object)
           property_value = property_schema.default if property_value.nil?
           next if @omittable_check&.call(property_value, property_schema)
@@ -141,7 +140,7 @@ module Jsapi
         end
         # Add additional properties
         if (additional_properties = schema.additional_properties)
-          additional_properties_schema = additional_properties.schema.resolve(@definitions)
+          additional_properties_schema = additional_properties.schema
 
           additional_properties.source.call(object)&.each do |key, value|
             next if properties.key?(key = key.to_s)
@@ -156,8 +155,8 @@ module Jsapi
       end
 
       def with_locale(&block)
-        if @response.locale
-          I18n.with_locale(@response.locale, &block)
+        if @locale
+          I18n.with_locale(@locale, &block)
         else
           yield
         end

@@ -3,6 +3,8 @@
 module Jsapi
   module DSL
     class Path < Base
+      include CommonMethods
+
       # Specifies an operation within the current path.
       #
       #   operation 'foo' do
@@ -14,28 +16,21 @@ module Jsapi
       #
       def operation(name = nil, **keywords, &block)
         define('operation', name&.inspect) do
-          operation_model = @meta_model.owner.add_operation(name, @meta_model.name, keywords)
-          Operation.new(operation_model, &block) if block
-        end
-      end
-
-      # Specifies a parameter applicable for all operations in this path.
-      #
-      #   parameter 'foo', type: 'string'
-      #
-      # See Meta::Path#parameters for further information.
-      def parameter(name, **keywords, &block)
-        define('parameter', name.inspect) do
-          parameter_model = @meta_model.add_parameter(name, keywords)
-          Parameter.new(parameter_model, &block) if block
+          @meta_model.owner.add_operation(name, @meta_model.name, keywords)
+                           .tap do |operation_model|
+            Operation.new(operation_model, &block) if block
+          end
         end
       end
 
       # Specifies a nested path.
-      def path(name = nil, &block)
+      def path(name = nil, **keywords, &block)
         define('path', name&.inspect) do
-          path_model = @meta_model.owner.add_path(@meta_model.name + name.to_s)
-          Path.new(path_model, &block) if block
+          name = @meta_model.name + name.to_s
+
+          @meta_model.owner.add_path(name, keywords).tap do |path_model|
+            Path.new(path_model, &block) if block
+          end
         end
       end
     end

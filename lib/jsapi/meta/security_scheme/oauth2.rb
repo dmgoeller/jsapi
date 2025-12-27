@@ -42,13 +42,13 @@ module Jsapi
 
               if version >= OpenAPI::V3_0
                 fields[:flows] = flows.to_h do |key, value|
-                  [key.to_s.camelize(:lower).to_sym, value.to_openapi(version)]
+                  [key.to_s.camelize(:lower), value.to_openapi(version)]
                 end if flows.any?
 
                 fields[:oauth2MetadataUrl] = oauth2_metadata_url if version >= OpenAPI::V3_2
               elsif flows.one?
                 key, flow = flows.first
-                fields[:flow] = key.to_s
+                fields[:flow] = key
                 fields.merge!(flow.to_openapi(version))
               end
             end

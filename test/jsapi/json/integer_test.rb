@@ -2,22 +2,23 @@
 
 require 'test_helper'
 
+require_relative 'test_helper'
+
 module Jsapi
   module JSON
     class IntegerTest < Minitest::Test
+      include TestHelper
+
       def test_value
-        schema = Meta::Schema.new(type: 'integer')
-        assert_equal(0, Integer.new('0', schema).value)
+        assert_equal(0, Integer.new('0', schema(type: 'integer')).value)
       end
 
       def test_value_on_conversion
-        schema = Meta::Schema.new(type: 'integer', conversion: :abs)
-        assert_equal(1, Integer.new('-1', schema).value)
+        assert_equal(1, Integer.new('-1', schema(type: 'integer', conversion: :abs)).value)
       end
 
       def test_empty_predicate
-        schema = Meta::Schema.new(type: 'integer')
-        assert(!Integer.new('0', schema).empty?)
+        assert(!Integer.new('0', schema(type: 'integer')).empty?)
       end
     end
   end

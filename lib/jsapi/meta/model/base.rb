@@ -5,7 +5,7 @@ module Jsapi
     module Model
       # The base meta model class.
       class Base
-        extend Attributes
+        include Attributes
 
         # Creates a new meta model.
         #
@@ -47,11 +47,6 @@ module Jsapi
         def resolve(*)
           self
         end
-
-        protected
-
-        # Invoked whenever an attribute has been changed.
-        def attribute_changed(name); end
       end
     end
   end

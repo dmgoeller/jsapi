@@ -3,6 +3,8 @@
 module Jsapi
   module Meta
     module Schema
+      TYPES = %w[array boolean integer number object string].freeze # :nodoc:
+
       class Base < Model::Base
         include OpenAPI::Extensions
 
@@ -63,16 +65,15 @@ module Jsapi
           super(keywords)
         end
 
-        # Returns the default value within +context+.
-        def default_value(definitions = nil, context: nil)
-          return default unless default.nil?
-
-          definitions&.default_value(type, context: context)
+        TYPES.each do |type|
+          define_method(:"#{type}?") { self.type == type }
         end
 
         def enum=(value) # :nodoc:
-          add_validation('enum', Validation::Enum.new(value))
-          @enum = value
+          try_modify_attribute!(:enum) do
+            add_validation('enum', Validation::Enum.new(value))
+            @enum = value
+          end
         end
 
         # Returns true if and only if values can be +null+ as specified by \JSON \Schema.

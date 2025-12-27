@@ -2,11 +2,13 @@
 
 require 'test_helper'
 
+require_relative '../test_helper'
+
 module Jsapi
   module Meta
     module OpenAPI
       class VersionTest < Minitest::Test
-        include OpenAPITestHelper
+        include TestHelper
 
         def test_from
           version = Version.from('2.0')

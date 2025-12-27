@@ -2,10 +2,27 @@
 
 require 'test_helper'
 
+require_relative 'test_helper'
+
 module Jsapi
   module Meta
     class OperationTest < Minitest::Test
-      include OpenAPITestHelper
+      include TestHelper
+
+      def test_add_parameter
+        operation = Operation.new('foo')
+        parameter = operation.add_parameter('bar', type: 'string')
+        assert(parameter.equal?(operation.parameter('bar')))
+      end
+
+      def test_add_parameter_raises_an_error_when_frozen
+        operation = Operation.new('foo')
+        operation.freeze_attributes
+
+        assert_raises(Model::Attributes::FrozenError) do
+          operation.add_parameter('bar')
+        end
+      end
 
       def test_full_path
         operation = Operation.new(nil)
@@ -19,67 +36,6 @@ module Jsapi
 
         operation = Operation.new(nil, 'foo', path: 'bar')
         assert_equal(Pathname.new('foo/bar'), operation.full_path)
-      end
-
-      def test_parameters
-        operation = Operation.new('foo')
-        parameter = operation.add_parameter('bar', type: 'string')
-        assert(parameter.equal?(operation.parameter('bar')))
-      end
-
-      def test_responses
-        operation = Operation.new('foo')
-        default_response = operation.add_response(type: 'string')
-        not_found_response = operation.add_response(404, type: 'string')
-
-        assert(default_response.equal?(operation.response))
-        assert(not_found_response.equal?(operation.response(404)))
-      end
-
-      def test_resolved_parameters
-        parameters = Operation.new(
-          nil,
-          '/foo',
-          parameters: {
-            'bar' => { type: 'string' }
-          }
-        ).resolved_parameters(
-          Definitions.new(
-            paths: {
-              '/foo' => {
-                parameters: {
-                  'foo' => { type: 'string' }
-                }
-              }
-            }
-          )
-        )
-        assert_equal(%w[bar foo], parameters.keys.sort)
-      end
-
-      def test_resolved_parameters_on_references
-        parameters = Operation.new(
-          nil,
-          '/foo',
-          parameters: {
-            'bar' => { ref: 'bar' }
-          }
-        ).resolved_parameters(
-          Definitions.new(
-            parameters: {
-              'foo' => { type: 'string' },
-              'bar' => { type: 'string' }
-            },
-            paths: {
-              '/foo' => {
-                parameters: {
-                  'foo' => { ref: 'foo' }
-                }
-              }
-            }
-          )
-        )
-        assert_equal(%w[bar foo], parameters.keys.sort)
       end
 
       # OpenAPI objects
@@ -122,13 +78,31 @@ module Jsapi
           },
           responses: {
             nil => {
-              type: 'string'
+              contents: {
+                'application/json' => {
+                  type: 'string'
+                },
+                'text/plain' => {
+                  type: 'string'
+                }
+              }
+            },
+            400 => {
+              contents: {
+                'application/problem+json' => {
+                  type: 'string'
+                }
+              }
             }
           },
           callbacks: {
             'onBar' => {
-              operations: {
-                '{$request.query.bar}' => {}
+              expressions: {
+                '{$request.query.bar}' => {
+                  operations: {
+                    'get' => {}
+                  }
+                }
               }
             }
           },
@@ -159,8 +133,9 @@ module Jsapi
                 consumes: [
                   'application/json'
                 ],
-                produces: [
-                  'application/json'
+                produces: %w[
+                  application/json
+                  application/problem+json
                 ],
                 parameters: [
                   {
@@ -178,6 +153,11 @@ module Jsapi
                 ],
                 responses: {
                   'default' => {
+                    schema: {
+                      type: 'string'
+                    }
+                  },
+                  400 => {
                     schema: {
                       type: 'string'
                     }
@@ -222,8 +202,18 @@ module Jsapi
                 },
                 responses: {
                   'default' => {
+                    content: %w[application/json text/plain].index_with do
+                      {
+                        schema: {
+                          type: 'string',
+                          nullable: true
+                        }
+                      }
+                    end
+                  },
+                  400 => {
                     content: {
-                      'application/json' => {
+                      'application/problem+json' => {
                         schema: {
                           type: 'string',
                           nullable: true
@@ -282,8 +272,17 @@ module Jsapi
                 },
                 responses: {
                   'default' => {
+                    content: %w[application/json text/plain].index_with do
+                      {
+                        schema: {
+                          type: %w[string null]
+                        }
+                      }
+                    end
+                  },
+                  400 => {
                     content: {
-                      'application/json' => {
+                      'application/problem+json' => {
                         schema: {
                           type: %w[string null]
                         }
@@ -315,6 +314,93 @@ module Jsapi
             version,
             Definitions.new
           )
+        end
+      end
+
+      def test_openapi_operation_object_with_path_defaults
+        operation = Operation.new(
+          'foo',
+          path: '/bar',
+          tags: %w[Foo]
+        )
+        definitions = Definitions.new(
+          paths: {
+            '/bar' => {
+              responses: {
+                200 => {
+                  type: 'string',
+                  existence: true
+                }
+              },
+              tags: %w[Bar]
+            }
+          }
+        )
+        each_openapi_version do |version|
+          assert_openapi_equal(
+            if version == OpenAPI::V2_0
+              {
+                operationId: 'foo',
+                produces: %w[application/json],
+                parameters: [],
+                responses: {
+                  '200' => {
+                    schema: {
+                      type: 'string'
+                    }
+                  }
+                },
+                tags: %w[Foo Bar]
+              }
+            else
+              {
+                operationId: 'foo',
+                parameters: [],
+                responses: {
+                  '200' => {
+                    content: {
+                      'application/json' => {
+                        schema: {
+                          type: 'string'
+                        }
+                      }
+                    }
+                  }
+                },
+                tags: %w[Foo Bar]
+              }
+            end,
+            operation,
+            version,
+            definitions
+          )
+        end
+      end
+
+      def test_to_openapi_skips_responses_not_to_be_documented
+        operation = Operation.new(
+          nil,
+          responses: {
+            '200' => {
+              content_type: 'application/json'
+            },
+            '5XX' => {
+              content_type: 'application/problem+json',
+              nodoc: true
+            }
+          }
+        )
+        definitions = Definitions.new
+
+        each_openapi_version do |version|
+          openapi_operation_object = operation.to_openapi(version, definitions).as_json
+
+          assert_equal(
+            %w[application/json],
+            openapi_operation_object['produces']
+          ) if version == OpenAPI::V2_0
+
+          assert_equal(%w[200], openapi_operation_object['responses'].keys)
         end
       end
     end

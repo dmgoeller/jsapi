@@ -2,11 +2,13 @@
 
 require 'test_helper'
 
+require_relative '../test_helper'
+
 module Jsapi
   module Meta
     module Header
       class BaseTest < Minitest::Test
-        include OpenAPITestHelper
+        include TestHelper
 
         def test_raises_an_error_when_type_is_object
           error = assert_raises(ArgumentError) do
@@ -53,7 +55,7 @@ module Jsapi
             openapi_extensions: { 'foo' => 'bar' }
           )
           each_openapi_version do |version|
-            assert_equal(
+            assert_openapi_equal(
               if version < OpenAPI::V3_0
                 {
                   type: 'array',
@@ -87,14 +89,18 @@ module Jsapi
                   description: 'foo',
                   deprecated: true,
                   examples: {
-                    'default' => {
-                      value: 'bar'
-                    }
+                    'default' =>
+                      if version < OpenAPI::V3_2
+                        { value: 'bar' }
+                      else
+                        { dataValue: 'bar' }
+                      end
                   },
                   'x-foo': 'bar'
                 }
               end,
-              header.to_openapi(version)
+              header,
+              version
             )
           end
         end

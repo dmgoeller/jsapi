@@ -1,23 +1,128 @@
 # Change log
 
-## 1.4.1 (2025-11-23)
+## 2.0 (2025-12-27)
+
+### New features
+
+#### API Actions
+
+API actions can now be implemented by `api_action` or `api_action!`.
+
+```ruby
+api_operation 'foo' do
+  # Define API operation here
+end
+
+api_action :foo, action: :index
+
+def foo(api_params)
+  # Implement API operation here
+end
+```
+
+#### API Callbacks
+
+The `api_operation` and `api_operation!` methods now trigger `api_before_processing` and
+`api_before_rendering` callbacks.
+
+```ruby
+api_before_processing :foo
+
+def foo(api_params)
+  # Implement callback here
+end
+```
+
+#### Support of "text/plain" media type
+
+The `api_operation` and `api_operation!` methods now render the textual representation of
+the object returned by the block when the media type of the response is `text/plain`.
+
+#### Content Negotiation
+
+Request body and responses can now have different types of content.
+
+When producing a response the most appropriate content is selected.
+
+#### OpenAPI
+
+The data form and serialized form of an example can now be specified together.
+
+Callbacks now allow multiple operations per expression.
 
 ### Changes
 
-- The micro version of OpenAPI 3.1 is updated from 3.1.0 to 3.1.1.
+The micro versions of OpenAPI 3.0 and 3.1 are updated to 3.0.4 and 3.1.2.
+
+### Breaking changes
+
+#### OpenAPI and JSON Schema documents
+
+All keys in generated OpenAPI and JSON Schema documents are now strings.
+
+#### Request bodies and responses
+
+The content type of request bodies and responses can only be defined as a keyword argument.
+
+```ruby
+# Ok:
+response content_type: 'application/json'
+```
+
+```ruby
+# Raises an error:
+response do
+  content_type 'application/json'
+end
+```
+
+#### Examples
+
+External examples are now specified by the `external_value` keyword.
+
+```ruby
+# Jsapi 1.x:
+example value: 'https:://foo.bar/example' external: true
+```
+
+```ruby
+# Jsapi 2.0:
+example external_value: 'https:://foo.bar/example'
+```
+
+#### Callbacks
+
+To allow multiple operations to be specified per expression, the definition of a callback
+has been changed as below.
+
+```ruby
+# Jsapi 1.x:
+callback 'foo' do
+  operation '{$request.query.bar}', method: 'get'
+end
+```
+
+```ruby
+# Jsapi 2.0:
+callback 'foo' do
+  expression '{$request.query.bar}' do
+    operation 'get'
+  end
+end
+```
 
 ## 1.4 (2025-11-15)
 
 ### New Features
 
-- Operations can now be grouped by path. Therefore, it is possible to specify
-  a path name only once, even if there are multiple operations for it.
+Operations can now be grouped by path. Therefore, it is possible to specify
+a path name only once, even if there are multiple operations for it.
 
 ## 1.3 (2025-11-02)
 
 ### New Features
 
-- The new OpenAPI version 3.2 is supported, in particalur:
+The new OpenAPI version 3.2 is supported, in particalur:
 
   - Streaming of responses in JSON sequence text format as specified by RFC 7464
   - Defining of parameters representing the entire query string
@@ -33,27 +138,27 @@
 
 ### New features
 
-- Instances of `Jsapi::Model::Base` can be converted to serializable hashes.
+Instances of `Jsapi::Model::Base` can be converted to serializable hashes.
 
 ## 1.1.1 (2025-06-19)
 
 ### Changes
 
-- `Jsapi::Meta::Parameter::Base#explode_parameter` no longer fails when a property refers
-  a schema.
+`Jsapi::Meta::Parameter::Base#explode_parameter` no longer fails when a property refers
+a schema.
 
 ##  1.1 (2025-04-06)
 
 ### Changes
 
-- The `api_operation` and `api_operation!` controller methods renders a response only if
-  the content type is a JSON MIME type.
+The `api_operation` and `api_operation!` controller methods renders a response only if
+the content type is a JSON MIME type.
 
 ## 1.0 (2024-11-01)
 
 ### Changes
 
-- Updated OpenAPI 3.1.0 to 3.1.1.
+- The micro version of OpenAPI 3.1 is updated from 3.1.0 to 3.1.1.
 
 - `openapi_document` raises an exception when trying to produce an OpenAPI 2.0 document
   containing a reusable object parameter.

@@ -2,10 +2,12 @@
 
 require 'test_helper'
 
+require_relative 'test_helper'
+
 module Jsapi
   module Meta
     class ContactTest < Minitest::Test
-      include OpenAPITestHelper
+      include TestHelper
 
       def test_empty_openapi_contact_object
         assert_openapi_equal({}, Contact.new, nil)

@@ -2,11 +2,13 @@
 
 require 'test_helper'
 
+require_relative '../test_helper'
+
 module Jsapi
   module Meta
     module Schema
       class DiscriminatorTest < Minitest::Test
-        include OpenAPITestHelper
+        include TestHelper
 
         # Mapping
 

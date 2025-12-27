@@ -277,20 +277,24 @@ directives, for example:
 ```ruby
 api_operation do
   callback 'foo' do
-    operation '{$request.query.bar}', path: '/bar'
+    expression '{$request.query.bar}' do
+      operation 'get'
+    end
   end
 end
 ```
 
 The one and only positional argument specifies the mandatory name of the callback. The nested
-`operation` directives maps expressions to operations.
+`expression` directives maps expressions to operations.
 
 If a callback is associated with multiple operations, it can be specified once by an
 `api_callback` directive, for example:
 
 ```ruby
 api_callback 'foo' do
-  operation '{$request.query.bar}', path: '/bar'
+  expression '{$request.query.bar}' do
+    operation 'get'
+  end
 end
 ```
 
@@ -330,8 +334,13 @@ The one and only positional argument specifies the relative path. The `api_path`
 takes the following keywords:
 
 - `:description` - The description that applies to all operations in this path.
+- `:model` - The default model of all operations in this path.
+- `:parameters` - The parameters that are consumed by all operations in this path.
+- `:request_body` - The default request body of all operations in this path.
+- `:responses` - The responses that can be produced by all operations in this path.
 - `:servers` - See [Specifying API locations].
 - `:summary` - The summary that applies to all operations in this path.
+- `:tags` - The tags that apply to all operations in this path.
 
 These keywords are only used to describe the path in an OpenAPI document.
 
@@ -430,6 +439,31 @@ schema of the request body. Additionally, the following keywords may be specifie
 The `:example`, `:examples` and `:openapi_extensions` keywords are only used to describe the
 request body in an OpenAPI document.
 
+#### Different types of content
+
+Different types of content can be specified by nested `content` directives, for example:
+
+```ruby
+api_operation do
+  request_body do
+    content 'application/json', type: 'object' do
+      property 'foo', type: 'string'
+    end
+    content 'text/*', type: 'string'
+  end
+end
+```
+
+The one and only positional argument specifies the media range of the content. The default
+media range is `"application/json"`. The `content` directive takes all keywords described
+in [Specifying schemas] to define the schema of the content. Additionally, the following
+keywords may be specified:
+
+- `:example`, `:examples` - See [Specifying examples].
+- `:openapi_extensions` - See [Specifying OpenAPI extensions].
+
+These keywords are only used to describe a type of content in an OpenAPI document.
+
 #### Reusable request bodies
 
 If multiple operations have the same request body, this request body can be defined once by
@@ -480,6 +514,7 @@ define the schema of the response. Additionally, the following keywords may be s
 - `:example`, `:examples` - See [Specifying examples].
 - `:headers` - See [Headers].
 - `:links` - See [Links].
+- `:nodoc` - Prevents response to be described in generated OpenAPI documents.
 - `:locale` - The locale to be used when rendering a response.
 - `:openapi_extensions` - See [Specifying OpenAPI extensions].
 - `:ref` - Refers a reusable response.
@@ -491,6 +526,35 @@ language of regular responses.
 
 The `:example`, `:examples`, `:headers`, `:links` `:openapi_extensions` and `summary` keywords
 are only used to describe a response in an OpenAPI document.
+
+#### Different types of content
+
+Different types of content can be specified by nested `content` directives, for example:
+
+```ruby
+api_operation do
+  response 200 do
+    content 'application/json', type: 'object' do
+      property 'items', type: 'array' do
+        property 'foo', type: 'string'
+      end
+    end
+    content 'application/json-seq', type: 'array' do
+      property 'foo', type: 'string'
+    end
+  end
+end
+```
+
+The one and only positional argument specifies the media type of the content. The default
+media type is `"application/json"`. The `content` directive takes all keywords described
+in [Specifying schemas] to define the schema of the content. Additionally, the following
+keywords may be specified:
+
+- `:example`, `:examples` - See [Specifying examples].
+- `:openapi_extensions` - See [Specifying OpenAPI extensions].
+
+These keywords are only used to describe a type of content in an OpenAPI document.
 
 #### Reusable responses
 
@@ -1013,7 +1077,8 @@ end
 The `example` directive takes the following keywords:
 
 - `description` - The description of the example.
-- `external` - Specifies whether `value` is the URI of an external example.
+- `external_value` - The URI of an external sample value.
+- `serialized_value` - The serialized form of the sample value.
 - `summary` - The short summary of the example.
 - `value` - The sample value.
 
@@ -1217,8 +1282,7 @@ class FooController < ActionController::API
 end
 ```
 
-Note that `Jsapi::Controller::Base` inherits from `ActionController::API` and includes
-`Jsapi::DSL` as well as `Jsapi::Controller::Methods`.
+### Methods
 
 The `Jsapi::Controller::Methods` module provides the following methods to deal with
 API operations:
@@ -1229,7 +1293,7 @@ API operations:
 - [api_operation!](#the-api_operation-method-1)
 - [api_definitions](#the-api-definitions-method)
 
-### The `api_params` method
+#### The `api_params` method
 
 `api_params` can be used to read request parameters as an instance of an operation's model
 class. The request parameters are casted according the operation's `parameter` and
@@ -1255,7 +1319,7 @@ else
 end
 ```
 
-### The `api_response` method
+#### The `api_response` method
 
 `api_response` can be used to serialize an object according to one of the API operation's
 `response` specifications.
@@ -1269,16 +1333,20 @@ argument specifies the name of the API operation. It can be omitted if the contr
 one API operation only. `status` specifies the HTTP status code of the response to be selected.
 If `status` is not present, the default response of the API operation is selected.
 
-### The `api_operation` method
+#### The `api_operation` method
 
-`api_operation` performs an API operation by calling the given block. The request parameters
-are passed as an instance of the operation's model class to the block.
+`api_operation` performs an API operation by calling the given block.
 
-This method implicitly renders the JSON representation of the object returned by the block
-when the content type is a JSON MIME type. This can be a hash or an object providing
-corresponding methods for all properties of the response. When content type is
-`application/json-seq`, the object returned by the block is streamed in JSON sequence text
-format.
+The request parameters are passed as an instance of the operation's model class to the block.
+Parameter names are converted to snake case.
+
+The object returned by the block is implicitly rendered or streamed according to the most
+appropriate +response+ specification if the media type of that response is one of:
+
+- `application/json`, `text/json`, `\*/\*+json` - The JSON representation of the object
+  is rendered.
+- `application/json-seq` - The object is streamed in JSON sequence text format.
+- `text/plain` - The `to_s` representation of the object is rendered.
 
 ```ruby
 api_operation('foo', status: 200) do |api_params|
@@ -1294,10 +1362,10 @@ the response to be selected. If `status` is not present, the default response of
 operation is selected.
 
 If an exception is raised while performing the block, an error response according to the first
-matching rescue handler is rendered and all of the callbacks are called. If no matching rescue
-handler could be found, the exception is raised again.
+matching rescue handler is rendered and all of the callbacks are called. If no rescue handler
+matches, the exception is raised again.
 
-### The `api_operation!` method
+#### The `api_operation!` method
 
 Like `api_operation`, except that a `Jsapi::Controller::ParametersInvalid` exception is raised
 on invalid request parameters.
@@ -1311,7 +1379,7 @@ end
 The `errors` instance method of `Jsapi::Controller::ParametersInvalid` returns all of the
 validation errors encountered.
 
-### The `api_definitions` method
+#### The `api_definitions` method
 
 `api_definitions` returns the API definitions of the controller class. In particular,  this
 method can be used to create an OpenAPI document.
@@ -1343,6 +1411,124 @@ en:
 ```
 
 The default pattern is `{name} isn't allowed`.
+
+### Callbacks
+
+The `api_operation` and `api_operation!` methods support the following callbacks:
+
+- [api_before_processing](#api-before-processing-callbacks)
+- [api_before_rendering](#api-before-rendering-callbacks)
+
+A callback can be implemented as below.
+
+```ruby
+api_before_processing :foo
+
+def foo(api_params)
+  # Implement callback here
+end
+```
+
+```ruby
+api_before_processing do |api_params|
+  # Implement callback here
+end
+```
+
+By default, callbacks are triggered on all API operations. The API operations on which a
+callback is triggered can be restricted by the `:only` and `:except` keyword arguments.
+
+Callbacks are triggered in the same order as they are defined. Callbacks inherited from
+superclasses are triggered before callbacks that are defined in the actual class.
+
+#### `api_before_processing` callbacks
+
+`api_before_processing` callbacks are triggered before the block of an `api_operation`
+or `api_operation!` method is performed.
+
+```ruby
+api_before_processing do |api_params|
+  # ...
+end
+```
+
+An `api_before_processing` callback must be able to accept one positional argument to
+receive the request parameters. The returned value is not used in further processing.
+
+When an `api_before_processing` callback raises an exception, an appropriate error
+response is produced.
+
+#### `api_before_rendering` callbacks
+
+`api_before_rendering` callbacks are triggered before the response body is rendered.
+They are typically used to enrich responses, for example:
+
+```ruby
+api_before_rendering do |result, api_params|
+  { request_id: api_params.request_id, payload: result }
+end
+```
+
+An `api_before_rendering` callback must be able to accept two positional arguments to
+receive the result to be rendered as the first argument and the request parameters as
+the second argument. Instead of the passed result, the returned value is rendered.
+
+### API actions
+
+API actions can be implemented even more easily using the `api_action` or `api_action!`
+method provided by the `Jsapi::Controller::Actions` module. This module is already
+included in `Jsapi::Controller::Base`.
+
+```ruby
+class FooController < Jsapi::Controller::Base
+  api_operation 'foo' do
+    # Define API operation here
+  end
+
+  api_action :foo, action: :index
+
+  def foo(api_params)
+    # Implement API operation here
+  end
+end
+```
+
+#### The `api_action` method
+
+`api_action` defines a controller action that performs an API operation by wrapping the
+given method or block by [api_operation](#the-api_operation-method).
+
+```ruby
+# Invoke :foo to perform :bar
+api_action :foo, :bar
+
+def foo(api_params)
+  # ...
+end
+```
+
+```ruby
+# Call the given block to perform :bar
+api_action :bar do |api_params|
+  # ...
+end
+```
+
+`api_action` takes up to two positional arguments. If no block is given, the first
+argument specifies the method to be invoked. The optional second argument specifies
+the API operation to be performed. If only one argument is given, it specifies the
+method to be invoked as well as the API operation to be performed. If a block is
+given, the positional argument specifies the API operation to be performed.
+
+The `:action` option specifies the name of the controller action to be defined.
+The default is `:index`.
+
+All other options are passed to `api_operation`.
+
+#### The `api_action!` method
+
+Like `api_action`, except that [api_operation!](#the-api_operation-method-1) is
+used instead of [api_operation](#the-api_operation-method).
 
 ## API models
 

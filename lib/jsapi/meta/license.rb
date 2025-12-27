@@ -22,15 +22,19 @@ module Jsapi
       attribute :url, String, accessors: %i[reader]
 
       def identifier=(identifier) # :nodoc:
-        raise 'identifier and url are mutually exclusive' if url.present?
+        try_modify_attribute!(:identifier) do
+          raise 'identifier and url are mutually exclusive' unless url.nil?
 
-        @identifier = identifier
+          @identifier = identifier
+        end
       end
 
       def url=(url) # :nodoc:
-        raise 'identifier and url are mutually exclusive' if identifier.present?
+        try_modify_attribute!(:url) do
+          raise 'identifier and url are mutually exclusive' unless identifier.nil?
 
-        @url = url
+          @url = url
+        end
       end
 
       # Returns a hash representing the \OpenAPI license object.

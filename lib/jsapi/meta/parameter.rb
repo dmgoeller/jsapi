@@ -2,10 +2,13 @@
 
 require_relative 'parameter/base'
 require_relative 'parameter/reference'
+require_relative 'parameter/wrapper'
 
 module Jsapi
   module Meta
     module Parameter
+      include Model::Wrappable
+
       class << self
         # Creates a Base or Reference.
         def new(name, keywords = {})

@@ -154,8 +154,8 @@ module Jsapi
       #     operation 'bar'
       #   end
       #
-      def api_path(name, &block)
-        api_definitions { path(name, &block) }
+      def api_path(name, **keywords, &block)
+        api_definitions { path(name, **keywords, &block) }
       end
 
       # Defines a reusable request body.

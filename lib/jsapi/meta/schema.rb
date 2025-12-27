@@ -9,6 +9,7 @@ require_relative 'schema/reference'
 require_relative 'schema/validation'
 
 require_relative 'schema/base'
+require_relative 'schema/wrapper'
 require_relative 'schema/array'
 require_relative 'schema/boolean'
 require_relative 'schema/numeric'
@@ -20,12 +21,6 @@ require_relative 'schema/string'
 module Jsapi
   module Meta
     module Schema
-      TYPES = %w[array boolean integer number object string].freeze # :nodoc:
-
-      TYPES.each do |type|
-        Base.define_method("#{type}?") { self.type == type }
-      end
-
       class << self
         # Creates a new schema. The +:type+ keyword determines the type of the schema to be
         # created. Possible types are:
@@ -60,6 +55,22 @@ module Jsapi
           else
             raise InvalidArgumentError.new('type', type, valid_values: TYPES)
           end.new(keywords.except(:type))
+        end
+
+        # Resolves and wraps +schema+.
+        def wrap(schema, definitions)
+          return if schema.nil?
+          return schema if schema.is_a?(Wrapper)
+
+          schema = schema.resolve(definitions)
+          case schema.type
+          when 'array'
+            Array::Wrapper
+          when 'object'
+            Object::Wrapper
+          else
+            Wrapper
+          end.new(schema, definitions)
         end
       end
     end

@@ -2,12 +2,13 @@
 
 require 'test_helper'
 
+require_relative '../test_helper'
+
 module Jsapi
   module Meta
     module Schema
       class StringTest < Minitest::Test
-        include JSONTestHelper
-        include OpenAPITestHelper
+        include TestHelper
 
         def test_max_length
           schema = String.new(max_length: 10)
@@ -16,6 +17,15 @@ module Jsapi
           validation = schema.validations['max_length']
           assert_predicate(validation, :present?)
           assert_equal(10, validation.value)
+        end
+
+        def test_max_length_raises_an_error_when_attributes_are_frozen
+          schema = String.new
+          schema.freeze_attributes
+
+          assert_raises(Model::Attributes::FrozenError) do
+            schema.max_length = 10
+          end
         end
 
         def test_min_length
@@ -27,6 +37,15 @@ module Jsapi
           assert_equal(10, validation.value)
         end
 
+        def test_min_length_raises_an_error_when_attributes_are_frozen
+          schema = String.new
+          schema.freeze_attributes
+
+          assert_raises(Model::Attributes::FrozenError) do
+            schema.min_length = 10
+          end
+        end
+
         def test_pattern
           schema = String.new(pattern: /foo/)
           assert_equal(/foo/, schema.pattern)
@@ -34,6 +53,15 @@ module Jsapi
           validation = schema.validations['pattern']
           assert_predicate(validation, :present?)
           assert_equal('foo', validation.value.source)
+        end
+
+        def test_pattern_raises_an_error_when_attributes_are_frozen
+          schema = String.new
+          schema.freeze_attributes
+
+          assert_raises(Model::Attributes::FrozenError) do
+            schema.pattern = /foo/
+          end
         end
 
         # JSON Schema objects

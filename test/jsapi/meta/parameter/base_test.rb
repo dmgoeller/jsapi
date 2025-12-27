@@ -2,11 +2,13 @@
 
 require 'test_helper'
 
+require_relative '../test_helper'
+
 module Jsapi
   module Meta
     module Parameter
       class BaseTest < Minitest::Test
-        include OpenAPITestHelper
+        include TestHelper
 
         def test_name_and_type
           parameter = Base.new('foo', type: 'string')
@@ -279,9 +281,12 @@ module Jsapi
                     type: 'string'
                   },
                   examples: {
-                    'default' => {
-                      value: 'bar'
-                    }
+                    'default' =>
+                      if version < OpenAPI::V3_2
+                        { value: 'bar' }
+                      else
+                        { dataValue: 'bar' }
+                      end
                   },
                   'x-foo': 'bar'
                 }
@@ -346,9 +351,20 @@ module Jsapi
                   required: %w[bar]
                 },
                 examples: {
-                  'default' => {
-                    value: { 'bar' => 'consectetur adipisici elit' }
-                  }
+                  'default' =>
+                    if version < OpenAPI::V3_2
+                      {
+                        value: {
+                          'bar' => 'consectetur adipisici elit'
+                        }
+                      }
+                    else
+                      {
+                        dataValue: {
+                          'bar' => 'consectetur adipisici elit'
+                        }
+                      }
+                    end
                 },
                 'x-foo': 'bar'
               },
@@ -623,9 +639,12 @@ module Jsapi
                         }
                       end,
                     examples: {
-                      'default' => {
-                        value: 'bar'
-                      }
+                      'default' =>
+                        if version < OpenAPI::V3_2
+                          { value: 'bar' }
+                        else
+                          { dataValue: 'bar' }
+                        end
                     }
                   }
                 }

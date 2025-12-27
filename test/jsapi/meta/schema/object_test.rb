@@ -2,17 +2,27 @@
 
 require 'test_helper'
 
+require_relative '../test_helper'
+
 module Jsapi
   module Meta
     module Schema
       class ObjectTest < Minitest::Test
-        include JSONTestHelper
-        include OpenAPITestHelper
+        include TestHelper
 
         def test_add_property
           schema = Object.new
           property = schema.add_property('foo', type: 'string')
           assert(property.equal?(schema.property('foo')))
+        end
+
+        def test_add_property_raises_an_error_when_frozen
+          schema = Object.new
+          schema.freeze_attributes
+
+          assert_raises(Model::Attributes::FrozenError) do
+            schema.add_property('foo')
+          end
         end
 
         # #resolve_properties
@@ -60,111 +70,6 @@ module Jsapi
             schema.resolve_properties(definitions)
           end
           assert_equal('circular reference: Foo', error.message)
-        end
-
-        # #resolve_schema
-
-        def test_resolve_schema
-          definitions = Definitions.new(
-            schemas: {
-              'Foo' => {},
-              'Bar' => {}
-            }
-          )
-          schema = Object.new(
-            discriminator: { property_name: 'foo' },
-            properties: {
-              'foo' => { type: 'string', default: 'Foo' }
-            }
-          )
-          assert_equal(
-            definitions.find_schema('Foo'),
-            schema.resolve_schema({ foo: 'Foo' }, definitions)
-          )
-          assert_equal(
-            definitions.find_schema('Bar'),
-            schema.resolve_schema({ foo: 'Bar' }, definitions)
-          )
-          assert_equal(
-            definitions.find_schema('Foo'),
-            schema.resolve_schema({ foo: nil }, definitions)
-          )
-        end
-
-        def test_resolve_schema_on_default_mapping
-          definitions = Definitions.new(
-            schemas: { 'Bar' => {} }
-          )
-          schema = Object.new(
-            discriminator: {
-              default_mapping: 'Bar',
-              property_name: 'foo'
-            },
-            properties: {
-              'foo' => { type: 'string' }
-            }
-          )
-          assert_equal(
-            definitions.find_schema('Bar'),
-            schema.resolve_schema({ foo: nil }, definitions)
-          )
-        end
-
-        def test_resolve_schema_raises_an_error_when_discriminating_property_is_missing
-          schema = Object.new(
-            discriminator: { property_name: 'foo' },
-            properties: {
-              'bar' => { type: 'string' }
-            }
-          )
-          error = assert_raises(RuntimeError) do
-            schema.resolve_schema({}, Definitions.new)
-          end
-          assert_equal('discriminator property must be "bar", is "foo"', error.message)
-        end
-
-        def test_resolve_schema_raises_an_error_when_discriminating_value_is_nil
-          schema = Object.new(
-            discriminator: { property_name: 'foo' },
-            properties: {
-              'foo' => { type: 'string' }
-            }
-          )
-          error = assert_raises(RuntimeError) do
-            schema.resolve_schema({}, Definitions.new)
-          end
-          assert_equal("discriminating value can't be nil", error.message)
-        end
-
-        def test_resolve_schema_raises_an_error_when_discriminating_value_could_not_be_resolved
-          schema = Object.new(
-            discriminator: {
-              property_name: 'foo'
-            },
-            properties: {
-              'foo' => { type: 'string' }
-            }
-          )
-          error = assert_raises(RuntimeError) do
-            schema.resolve_schema({ foo: 'Foo' }, Definitions.new)
-          end
-          assert_equal("inheriting schema couldn't be found: \"Foo\"", error.message)
-        end
-
-        def test_resolve_schema_raises_an_error_when_default_mapping_could_not_be_resolved
-          schema = Object.new(
-            discriminator: {
-              default_mapping: 'Bar',
-              property_name: 'foo'
-            },
-            properties: {
-              'foo' => { type: 'string' }
-            }
-          )
-          error = assert_raises(RuntimeError) do
-            schema.resolve_schema({ foo: 'Foo' }, Definitions.new)
-          end
-          assert_equal("inheriting schema couldn't be found: \"Foo\" or \"Bar\"", error.message)
         end
 
         # JSON Schema objects

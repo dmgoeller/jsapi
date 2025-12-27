@@ -8,25 +8,23 @@ module Jsapi
 
       attr_reader :raw_additional_attributes, :raw_attributes
 
-      # Creates a new instance that wraps +params+ according to +operation+. References are
-      # resolved to API components in +definitions+.
+      # Creates a new instance that wraps +params+ according to +operation+.
       #
       # If +strong+ is true+ parameters that can be mapped are accepted only. That means that
       # the instance created is invalid if +params+ contains any parameters that can't be
       # mapped to a parameter or a request body property of +operation+.
-      def initialize(params, request, operation, definitions, strong: false)
+      def initialize(params, request, operation, strong: false)
         params = params.to_h
         unassigned_params = params.dup
 
         @params_to_be_validated = strong == true ? params.dup : {}
-        @raw_attributes = {}
 
         # Parameters
-        operation.resolved_parameters(definitions).each do |name, parameter_model|
-          @raw_attributes[name] = JSON.wrap(
+        @raw_attributes = operation.parameters.transform_values do |parameter_model|
+          JSON.wrap(
             case parameter_model.in
             when 'header'
-              request.headers[name]
+              request.headers[parameter_model.name]
             when 'querystring'
               query_params = request.query_parameters
               keys = query_params.keys
@@ -36,22 +34,19 @@ module Jsapi
 
               parameter_model.object? ? params.slice(*keys) : query_params.to_query
             else
-              unassigned_params.delete(name)
+              unassigned_params.delete(parameter_model.name)
             end,
-            parameter_model.schema.resolve(definitions),
-            definitions,
+            parameter_model.schema,
             context: :request
           )
         end
 
         # Request body
-        request_body_schema = operation.request_body&.resolve(definitions)
-                                       &.schema&.resolve(definitions)
+        request_body_schema = operation.request_body&.content_for(request.media_type)&.schema
         if request_body_schema&.object?
           request_body = JSON.wrap(
             unassigned_params,
             request_body_schema,
-            definitions,
             context: :request
           )
           @raw_attributes.merge!(request_body.raw_attributes)

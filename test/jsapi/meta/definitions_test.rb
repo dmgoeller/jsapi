@@ -2,10 +2,12 @@
 
 require 'test_helper'
 
+require_relative 'test_helper'
+
 module Jsapi
   module Meta
     class DefinitionsTest < Minitest::Test
-      include OpenAPITestHelper
+      include TestHelper
 
       # Inheritance and inclusion
 
@@ -79,6 +81,15 @@ module Jsapi
         assert_equal(Pathname.new('/bar'), operation.parent_path)
       end
 
+      def test_add_operation_raises_an_error_when_frozen
+        definitions = Definitions.new
+        definitions.freeze_attributes
+
+        assert_raises(Model::Attributes::FrozenError) do
+          definitions.add_operation('foo')
+        end
+      end
+
       def test_default_operation_name
         definitions = Definitions.new(
           owner: Struct.new(:name).new('Foo::Bar::FooBarController')
@@ -103,8 +114,54 @@ module Jsapi
         assert_nil(definitions.find_operation(nil))
 
         definitions.add_operation('foo')
-        assert_equal('foo', definitions.find_operation.name)
-        assert_equal('foo', definitions.find_operation('foo').name)
+
+        operation = definitions.find_operation
+        assert_kind_of(Operation::Wrapper, operation)
+        assert_equal('foo', operation.name)
+
+        operation = definitions.find_operation('foo')
+        assert_kind_of(Operation::Wrapper, operation)
+        assert_equal('foo', operation.name)
+      end
+
+      def test_operation_caching
+        definitions = Definitions.new(operations: { 'foo' => {} })
+
+        # Make cached operations accessible
+        definitions.define_singleton_method(:__cached_operations__) do
+          @cache&.fetch(:operations, nil)
+        end
+
+        assert(
+          definitions.__cached_operations__.blank?,
+          'Expected no operations to be cached initially.'
+        )
+        # Look up operation
+        operation = definitions.find_operation('foo')
+        assert(
+          definitions.__cached_operations__['foo'].present?,
+          'Expected operation to be cached.'
+        )
+        assert(
+          operation.eql?(definitions.find_operation('foo')),
+          'Expected cached operation to be returned.'
+        )
+        # Add another operation
+        definitions.add_operation('bar')
+        assert(
+          definitions.__cached_operations__.blank?,
+          'Expected cached operations to be invalidated.'
+        )
+        # Look up operation again
+        operation = definitions.find_operation('foo')
+        assert(
+          definitions.__cached_operations__['foo'].present?,
+          'Expected operation to be cached again.'
+        )
+        assert(
+          operation.eql?(definitions.find_operation('foo')),
+          'Expected cached operation to be returned.'
+        )
       end
 
       # Paths
@@ -117,8 +174,19 @@ module Jsapi
         assert_equal(Pathname.new('foo'), path.name)
       end
 
+      def test_add_path_raises_an_error_when_frozen
+        definitions = Definitions.new
+        definitions.freeze_attributes
+
+        assert_raises(Model::Attributes::FrozenError) do
+          definitions.add_path('foo')
+        end
+      end
+
       %i[description summary].each do |name|
-        define_method("test_path_#{name}") do
+        method_name = :"common_#{name}"
+
+        define_method("test_#{method_name}") do
           definitions = Definitions.new(
             paths: {
               '/foo' => {
@@ -126,10 +194,12 @@ module Jsapi
               }
             }
           )
-          assert_equal('Lorem ipsum', definitions.send(:"path_#{name}", '/foo'))
+          assert_equal('Lorem ipsum', definitions.send(method_name, '/foo'))
+          assert_nil(definitions.send(method_name, '/bar'))
+          assert_nil(definitions.send(method_name, nil))
         end
 
-        define_method("test_path_#{name}_on_inheritance") do
+        define_method("test_#{method_name}_on_inheritance") do
           definitions = Definitions.new(
             parent: Definitions.new(
               paths: {
@@ -142,11 +212,47 @@ module Jsapi
               '/foo' => {}
             }
           )
-          assert_equal('Lorem ipsum', definitions.send(:"path_#{name}", '/foo'))
+          assert_equal('Lorem ipsum', definitions.send(method_name, '/foo'))
         end
       end
 
-      def test_path_parameters
+      def test_common_model
+        definitions = Definitions.new(
+          paths: {
+            '/foo' => { model: model = Class.new },
+            'foo/bar' => {}
+          }
+        )
+        assert_equal(model, definitions.common_model('/foo/bar'))
+        assert_equal(model, definitions.common_model('/foo'))
+        assert_nil(definitions.common_model('/bar'))
+        assert_nil(definitions.common_model(nil))
+      end
+
+      def test_common_model_on_inheritance
+        definitions = Definitions.new(
+          parent: Definitions.new(
+            paths: {
+              '/foo' => { model: model = Class.new }
+            }
+          ),
+          paths: {
+            'foo/bar' => {}
+          }
+        )
+        assert_equal(model, definitions.common_model('/foo/bar'))
+        assert_equal(model, definitions.common_model('/foo'))
+        assert_nil(definitions.common_model('/bar'))
+        assert_nil(definitions.common_model(nil))
+      end
+
+      def test_common_model_caching
+        assert_path_attribute_caching(:model) do |path|
+          path.model = Class.new
+        end
+      end
+
+      def test_common_parameters
         definitions = Definitions.new(
           paths: {
             '/foo' => {
@@ -161,13 +267,13 @@ module Jsapi
             }
           }
         )
-        assert_equal(%w[foo], definitions.path_parameters('/foo').keys)
-        assert_equal(%w[bar foo], definitions.path_parameters('/foo/bar').keys.sort)
-        assert_equal({}, definitions.path_parameters('/bar'))
-        assert_equal({}, definitions.path_parameters(nil))
+        assert_equal(%w[foo bar], definitions.common_parameters('/foo/bar').keys)
+        assert_equal(%w[foo], definitions.common_parameters('/foo').keys)
+        assert_nil(definitions.common_parameters('/bar'))
+        assert_nil(definitions.common_parameters(nil))
       end
 
-      def test_path_parameters_on_inheritance
+      def test_common_parameters_on_inheritance
         definitions = Definitions.new(
           parent: Definitions.new(
             paths: {
@@ -179,85 +285,190 @@ module Jsapi
             }
           ),
           paths: {
-            '/foo' => {
+            '/foo/bar' => {
               parameters: {
                 'bar' => { type: 'string' }
               }
             }
           }
         )
-        assert_equal(%w[bar foo], definitions.path_parameters('/foo').keys.sort)
+        assert_equal(%w[foo bar], definitions.common_parameters('/foo/bar').keys)
+        assert_equal(%w[foo], definitions.common_parameters('/foo').keys)
       end
 
-      def test_memoizes_path_parameters
+      def test_common_parameters_caching
+        assert_path_attribute_caching(:parameters) do |path|
+          path.add_parameter 'foo', type: 'string'
+        end
+      end
+
+      def test_common_request_body
         definitions = Definitions.new(
           paths: {
-            pathname = Pathname.from('foo') => {
-              parameters: {
-                'foo' => { type: 'string' }
+            '/foo' => {
+              request_body: {}
+            },
+            '/foo/bar' => {}
+          }
+        )
+        request_body = definitions.common_request_body('/foo')
+        assert_predicate request_body, :present?
+        assert_equal(request_body, definitions.common_request_body('/foo/bar'))
+
+        assert_nil(definitions.common_request_body('/bar'))
+        assert_nil(definitions.common_request_body(nil))
+      end
+
+      def test_common_request_body_on_inheritance
+        definitions = Definitions.new(
+          parent: Definitions.new(
+            paths: {
+              '/foo' => {
+                request_body: {}
+              }
+            }
+          ),
+          paths: {
+            'foo/bar' => {}
+          }
+        )
+        request_body = definitions.common_request_body('/foo')
+        assert_predicate request_body, :present?
+
+        assert_equal(request_body, definitions.common_request_body('/foo/bar'))
+      end
+
+      def test_common_request_body_caching
+        assert_path_attribute_caching(:request_body) do |path|
+          path.request_body = { type: 'string' }
+        end
+      end
+
+      def test_common_responses
+        definitions = Definitions.new(
+          paths: {
+            '/foo' => {
+              responses: {
+                200 => { type: 'string' }
+              }
+            },
+            'foo/bar' => {
+              responses: {
+                400 => { type: 'string' }
               }
             }
           }
         )
-        # Make memoized path parameters accessible
-        definitions.define_singleton_method(:memoized_path_parameters) do
-          @path_parameters
-        end
+        assert_equal(%w[200 400], definitions.common_responses('/foo/bar').keys)
+        assert_equal(%w[200], definitions.common_responses('/foo').keys)
+        assert_nil(definitions.common_responses('/bar'))
+        assert_nil(definitions.common_responses(nil))
 
-        assert(
-          definitions.memoized_path_parameters.blank?,
-          'Expected no parameters to be memoized initially'
-        )
+        assert_predicate(definitions.common_response('/foo', 200), :present?)
+        assert_nil(definitions.common_response('foo', 400))
+        assert_nil(definitions.common_response('bar', 200))
+      end
 
-        # Query parameters
-        definitions.path_parameters('foo')
-        assert_equal(
-          %w[foo],
-          definitions.memoized_path_parameters[pathname].keys,
-          "Expected parameters for #{pathname} to be memoized"
-        )
-
-        # Add another parameter
-        definitions.path('foo').add_parameter('bar')
-        assert(
-          definitions.memoized_path_parameters[pathname].blank?,
-          "Expected memoized parameters for #{pathname} to be invalidated " \
-          'after another parameter has been added'
-        )
-
-        # Query parameters again
-        definitions.path_parameters('foo')
-        assert_equal(
-          %w[bar foo],
-          definitions.memoized_path_parameters[pathname].keys.sort,
-          "Expected parameters for #{pathname} to be memoized"
-        )
-
-        # Include another instance
-        definitions.include(
-          Definitions.new(
+      def test_common_responses_on_inheritance
+        definitions = Definitions.new(
+            parent: Definitions.new(
+              paths: {
+                '/foo' => {
+                  responses: {
+                    200 => { type: 'string' }
+                  }
+                }
+              }
+            ),
             paths: {
-              pathname => {
-                parameters: {
-                  'baz' => { type: 'string' }
+              '/foo/bar' => {
+                responses: {
+                  400 => { type: 'string' }
                 }
               }
             }
           )
-        )
-        assert(
-          definitions.memoized_path_parameters.blank?,
-          'Expected all memoized parameters to be invalidated after ' \
-          'another Definitions instance has been included'
-        )
+          assert_equal(%w[200 400], definitions.common_responses('/foo/bar').keys)
+          assert_equal(%w[200], definitions.common_responses('/foo').keys)
+      end
 
-        # Query parameters again
-        definitions.path_parameters('foo')
-        assert_equal(
-          %w[bar baz foo],
-          definitions.memoized_path_parameters[pathname].keys.sort,
-          "Expected parameters for #{pathname} to be memoized"
+      def test_common_responses_caching
+        assert_path_attribute_caching(:responses) do |path|
+          path.add_response 200, type: 'string'
+        end
+      end
+
+      def test_common_servers
+        definitions = Definitions.new(
+          paths: {
+            '/foo' => {
+              servers: [
+                { url: 'https://foo.bar/foo' }
+              ]
+            }
+          }
         )
+        assert_equal(%w[https://foo.bar/foo], definitions.common_servers('/foo').map(&:url))
+        assert_nil(definitions.common_servers('bar'))
+        assert_nil(definitions.common_servers(nil))
+      end
+
+      def test_common_servers_on_inheritance
+        definitions = Definitions.new(
+          parent: Definitions.new(
+            paths: {
+              '/foo' => {
+                servers: [
+                  { url: 'https://foo.bar/foo' }
+                ]
+              }
+            }
+          ),
+          paths: {
+            '/foo' => {}
+          }
+        )
+        assert_equal(%w[https://foo.bar/foo], definitions.common_servers('/foo').map(&:url))
+      end
+
+      def test_common_servers_caching
+        assert_path_attribute_caching(:servers) do |path|
+          path.add_server(url: 'https://foo.bar/foo')
+        end
+      end
+
+      def test_common_tags
+        definitions = Definitions.new(
+          paths: {
+            '/foo' => { tags: %w[Foo] },
+            '/foo/bar' => { tags: %w[Bar] }
+          }
+        )
+        assert_equal(%w[Foo], definitions.common_tags('/foo'))
+        assert_equal(%w[Bar Foo], definitions.common_tags('/foo/bar'))
+        assert_nil(definitions.common_tags('/bar'))
+        assert_nil(definitions.common_tags(nil))
+      end
+
+      def test_common_tags_on_inheritance
+        definitions = Definitions.new(
+          parent: Definitions.new(
+            paths: {
+              '/foo' => { tags: %w[Foo] }
+            }
+          ),
+          paths: {
+            '/foo/bar' => { tags: %w[Bar] }
+          }
+        )
+        assert_equal(%w[Foo], definitions.common_tags('/foo'))
+        assert_equal(%w[Bar Foo], definitions.common_tags('/foo/bar'))
+      end
+
+      def test_common_tags_caching
+        assert_path_attribute_caching(:tags) do |path|
+          path.tags = %w[Foo]
+        end
       end
 
       # Components
@@ -267,15 +478,24 @@ module Jsapi
 
         define_method("test_add_and_find_#{name}") do
           definitions = Definitions.new
-          schema = definitions.send("add_#{name}", 'foo')
+          schema = definitions.send(:"add_#{name}", 'foo')
 
           assert_equal(schema, definitions.send("find_#{name}", 'foo'))
-          assert_nil(definitions.send("find_#{name}", nil))
+          assert_nil(definitions.send(:"find_#{name}", nil))
+        end
+
+        define_method("test_add_#{name}_raises_an_error_when_frozen") do
+          definitions = Definitions.new
+          definitions.freeze_attributes
+
+          assert_raises(Model::Attributes::FrozenError) do
+            definitions.send(:"add_#{name}", 'foo')
+          end
         end
 
         define_method("test_find_#{name}_on_inheritance") do
           base_definitions = Definitions.new
-          schema = base_definitions.send("add_#{name}", 'foo')
+          schema = base_definitions.send(:"add_#{name}", 'foo')
 
           definitions = Definitions.new(parent: base_definitions)
           assert_equal(schema, definitions.send("find_#{name}", 'foo'))
@@ -283,52 +503,58 @@ module Jsapi
 
         define_method("test_find_#{name}_on_inclusion") do
           included_definitions = Definitions.new
-          schema = included_definitions.send("add_#{name}", 'foo')
+          schema = included_definitions.send(:"add_#{name}", 'foo')
 
           definitions = Definitions.new(include: [included_definitions])
           assert_equal(schema, definitions.send("find_#{name}", 'foo'))
         end
 
-        define_method("test_memoizes_#{name}_objects") do
+        define_method("test_#{name}_caching") do
           definitions = Definitions.new(
-            plural_name => {
-              'foo' => {}
-            }
+            parent: parent = Definitions.new({ plural_name => {} }),
+            plural_name => { 'foo' => {} }
           )
-          # Make memoized objects accessible
-          definitions.define_singleton_method(:memoized_objects) do
-            @objects
+          # Make cached attributes accessible
+          definitions.define_singleton_method(:__cached_attributes__) do
+            @cache&.fetch(:attributes, nil)
           end
 
           assert(
-            definitions.memoized_objects.blank?,
-            'Expected no objects to be memoized initially'
+            definitions.__cached_attributes__.blank?,
+            'Expected no attributes to be cached initially.'
           )
-
-          # Query object
+          # Query attribute
           definitions.send(:"find_#{name}", 'foo')
-          assert_equal(
-            %w[foo],
-            definitions.memoized_objects[plural_name].keys,
-            "Expected reusable #{name} objects to be memoized"
+          assert(
+            definitions.__cached_attributes__[plural_name].keys == %w[foo],
+            "Expected \"#{name}\" attribute to be cached."
           )
-
-          # Add another schema
+          # Modify attribute
           definitions.send(:"add_#{name}", 'bar')
           assert(
-            definitions.memoized_objects.blank?,
-            'Expected memoized objects to be invalidated after another ' \
-            'object has been added'
+            definitions.__cached_attributes__.blank?,
+            'Expected cached attributes to be invalidated after an ' \
+            'attribute has been modified.'
           )
-
-          # Query schema again
+          # Query attribute again
           definitions.send(:"find_#{name}", 'foo')
-          assert_equal(
-            %w[bar foo],
-            definitions.memoized_objects[plural_name].keys.sort,
-            "Expected reusable #{name} objects to be memoized"
+          assert(
+            definitions.__cached_attributes__[plural_name].keys.sort == %w[bar foo],
+            "Expected \"#{name}\" attribute to be cached (2)."
           )
-
+          # Modify attribute in parent definitions
+          parent.send(:"add_#{name}", 'bar')
+          assert(
+            definitions.__cached_attributes__.blank?,
+            'Expected cached attributes to be invalidated after an ' \
+            'attribute of parent definitions has been modified.'
+          )
+          # Query attribute again
+          definitions.send(:"find_#{name}", 'foo')
+          assert(
+            definitions.__cached_attributes__[plural_name].keys.sort == %w[bar foo],
+            "Expected \"#{name}\" attribute to be cached (3)."
+          )
           # Include another instance
           definitions.include(
             Definitions.new(
@@ -338,17 +564,15 @@ module Jsapi
             )
           )
           assert(
-            definitions.memoized_objects.blank?,
-            'Expected memoized objects to be invalidated after another ' \
-            'Definitions instance has been included'
+            definitions.__cached_attributes__.blank?,
+            'Expected cached attributes to be invalidated after another ' \
+            'Definitions instance has been included.'
           )
-
-          # Query schema again
+          # Query attribute again
           definitions.send(:"find_#{name}", 'foo')
-          assert_equal(
-            %w[bar baz foo],
-            definitions.memoized_objects[plural_name].keys.sort,
-            "Expected reusable #{name} objects to be memoized"
+          assert(
+            definitions.__cached_attributes__[plural_name].keys.sort == %w[bar baz foo],
+            "Expected \"#{name}\" attribute to be cached (4)."
           )
         end
       end
@@ -416,7 +640,7 @@ module Jsapi
           }
         )
         # 'Foo'
-        assert_equal(
+        assert_json_equal(
           {
             type: %w[object null],
             properties: {
@@ -441,7 +665,7 @@ module Jsapi
         )
 
         # 'Bar'
-        assert_equal(
+        assert_json_equal(
           {
             type: %w[object null],
             properties: {
@@ -466,7 +690,7 @@ module Jsapi
         )
 
         # Others
-        assert_nil(definitions.json_schema_document('FooBar'))
+        assert_json_equal(nil, definitions.json_schema_document('FooBar'))
       end
 
       def test_json_schema_document_without_definitions
@@ -479,7 +703,7 @@ module Jsapi
             }
           }
         )
-        assert_equal(
+        assert_json_equal(
           {
             type: %w[object null],
             properties: {
@@ -504,9 +728,9 @@ module Jsapi
             when OpenAPI::V2_0
               { swagger: '2.0' }
             when OpenAPI::V3_0
-              { openapi: '3.0.3' }
+              { openapi: '3.0.4' }
             when OpenAPI::V3_1
-              { openapi: '3.1.1' }
+              { openapi: '3.1.2' }
             when OpenAPI::V3_2
               { openapi: '3.2.0' }
             end,
@@ -522,8 +746,12 @@ module Jsapi
           base_path: '/foo',
           callbacks: {
             'onFoo' => {
-              operations: {
-                '{$request.query.foo}' => {}
+              expressions: {
+                '{$request.query.foo}' => {
+                  operations: {
+                    'get' => {}
+                  }
+                }
               }
             }
           },
@@ -695,7 +923,7 @@ module Jsapi
               }
             when OpenAPI::V3_0
               {
-                openapi: '3.0.3',
+                openapi: '3.0.4',
                 info: {
                   title: 'Foo',
                   version: '1'
@@ -839,7 +1067,7 @@ module Jsapi
               }
             when OpenAPI::V3_1
               {
-                openapi: '3.1.1',
+                openapi: '3.1.2',
                 info: {
                   title: 'Foo',
                   version: '1'
@@ -1068,7 +1296,7 @@ module Jsapi
                   },
                   examples: {
                     'foo' => {
-                      value: 'bar'
+                      dataValue: 'bar'
                     }
                   },
                   requestBodies: {
@@ -1184,7 +1412,7 @@ module Jsapi
         # OpenAPI 3.0
         assert_openapi_equal(
           {
-            openapi: '3.0.3',
+            openapi: '3.0.4',
             info: {
               title: 'Foo',
               version: '1'
@@ -1222,12 +1450,12 @@ module Jsapi
         # OpenAPI 2.0
         assert_equal(
           '/jsapi/meta',
-          definitions.openapi_document('2.0')[:basePath]
+          definitions.openapi_document('2.0')['basePath']
         )
         # OpenAPI 3.0
         assert_equal(
-          [{ url: '/jsapi/meta' }],
-          definitions.openapi_document('3.0')[:servers]
+          [{ 'url' => '/jsapi/meta' }],
+          definitions.openapi_document('3.0')['servers']
         )
       end
 
@@ -1238,9 +1466,115 @@ module Jsapi
           ]
         ).openapi_document('2.0')
 
-        assert_equal(%w[https], openapi_document[:schemes])
-        assert_equal('foo.bar', openapi_document[:host])
-        assert_equal('/foo', openapi_document[:basePath])
+        assert_equal(%w[https], openapi_document['schemes'])
+        assert_equal('foo.bar', openapi_document['host'])
+        assert_equal('/foo', openapi_document['basePath'])
+      end
+
+      def test_openapi_document_skips_responses_not_to_be_documented
+        definitions = Definitions.new(
+          operations: {
+            'operation' => {
+              responses: {
+                '200' => { ref: 'Success' },
+                '500' => { ref: 'Error' }
+              }
+            }
+          },
+          responses: {
+            'Success' => {
+              content_type: 'application/json'
+            },
+            'Error' => {
+              content_type: 'application/problem+json',
+              nodoc: true
+            }
+          }
+        )
+        each_openapi_version do |version|
+          openapi_document = definitions.openapi_document(version)
+
+          if version == OpenAPI::V2_0
+            assert_equal(%w[application/json], openapi_document['produces'])
+            assert_equal(%w[Success], openapi_document['responses'].keys)
+          else
+            assert_equal(%w[Success], openapi_document.dig('components', 'responses').keys)
+          end
+        end
+      end
+
+      private
+
+      def assert_path_attribute_caching(name)
+        method_name = :"common_#{name}"
+        pathname = Pathname.from('foo')
+
+        definitions = Definitions.new(
+          parent: parent = Definitions.new(
+            paths: { pathname => {} }
+          ),
+          paths: { pathname => {} }
+        )
+        # Make cached path attributes accessible
+        definitions.define_singleton_method(:__cached_path_attributes__) do
+          @cache&.fetch(:path_attributes, nil)
+        end
+
+        yield definitions.path(pathname)
+        assert(
+          definitions.__cached_path_attributes__[pathname].blank?,
+          'Expected no path attributes to be cached initially.'
+        )
+
+        # Query attribute
+        definitions.send(method_name, pathname)
+        assert(
+          definitions.__cached_path_attributes__.dig(pathname, name).present?,
+          "Expected \"#{name}\" path attribute to be cached."
+        )
+        # Modify attribute
+        yield definitions.path(pathname)
+        assert(
+          definitions.__cached_path_attributes__.dig(pathname, name).blank?,
+          "Expected cached \"#{name}\" path attribute to be invalidated " \
+          'after it has been modified.'
+        )
+        # Query attribute again
+        definitions.send(method_name, pathname)
+        assert(
+          definitions.__cached_path_attributes__.dig(pathname, name).present?,
+          "Expected \"#{name}\" path attribute to be cached (2)."
+        )
+        # Modify attribute in parent definitions
+        yield parent.path(pathname)
+        assert(
+          definitions.__cached_path_attributes__[pathname].blank?,
+          "Expected cached \"#{name}\" to be invalidated after that " \
+          'path attribute has been modified in parent definitions.'
+        )
+        # Query attribute again
+        definitions.send(method_name, pathname)
+        assert(
+          definitions.__cached_path_attributes__.dig(pathname, name).present?,
+          "Expected \"#{name}\" path attribute to be cached (3)."
+        )
+        # Include another instance
+        definitions.include(
+          Definitions.new.tap do |included|
+            yield included.add_path(pathname)
+          end
+        )
+        assert(
+          definitions.__cached_path_attributes__.blank?,
+          'Expected all cached path attributes to be invalidated after ' \
+          'another Definitions instance has been included.'
+        )
+        # Query attribute again
+        definitions.send(method_name, pathname)
+        assert(
+          definitions.__cached_path_attributes__.dig(pathname, name).present?,
+          "Expected \"#{name}\" path attribute to be cached (4)."
+        )
       end
     end
   end

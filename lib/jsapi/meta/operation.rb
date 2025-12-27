@@ -4,6 +4,7 @@ module Jsapi
   module Meta
     # Specifies an API operation.
     class Operation < Model::Base
+      include Model::Wrappable
       include OpenAPI::Extensions
 
       ##
@@ -34,7 +35,7 @@ module Jsapi
       ##
       # :attr: model
       # The model class to access top-level parameters by, Jsapi::Model::Base by default.
-      attribute :model, Class, default: Jsapi::Model::Base
+      attribute :model, Class
 
       ##
       # :attr_reader: name
@@ -109,7 +110,11 @@ module Jsapi
       end
 
       def add_parameter(name, keywords = {}) # :nodoc:
-        (@parameters ||= {})[name.to_s] = Parameter.new(name, keywords)
+        try_modify_attribute!(:parameters) do
+          name = name.to_s
+
+          (@parameters ||= {})[name.to_s] = Parameter.new(name, keywords)
+        end
       end
 
       # Returns the full path of the operation as a Pathname.
@@ -117,72 +122,100 @@ module Jsapi
         parent_path + path
       end
 
-      # Returns the media type consumed by the operation.
-      def consumes(definitions)
-        request_body&.resolve(definitions)&.content_type
-      end
-
-      # Returns an array containing the media types produced by the operation.
-      def produces(definitions)
-        responses.values.filter_map do |response|
-          response.resolve(definitions).content_type
-        end.uniq.sort
-      end
-
-      # Merges the parameters of this operation and the common parameters of all
-      # parent pathes and resolves them.
-      def resolved_parameters(definitions)
-        (definitions.path_parameters(full_path).presence&.merge(parameters) || parameters)
-          .transform_values { |parameter| parameter.resolve(definitions) }
-      end
-
       # Returns a hash representing the \OpenAPI operation object.
       def to_openapi(version, definitions)
         version = OpenAPI::Version.from(version)
 
+        responses = (
+          definitions
+          &.common_responses(full_path)
+          &.merge(self.responses) || self.responses
+        ).reject { |_status, response| response.resolve(definitions).nodoc? }
+
         with_openapi_extensions(
           operationId: name,
-          tags: tags.presence,
+          tags: [tags, definitions&.common_tags(full_path)].compact.flatten.uniq.presence,
           summary: summary,
           description: description,
           externalDocs: external_docs&.to_openapi,
+          **if version == OpenAPI::V2_0
+              resolved_request_body =
+                (request_body || definitions.common_request_body(full_path))
+                &.resolve(definitions)
+              {
+                consumes: [resolved_request_body&.default_media_range].compact.presence,
+                produces: responses.values.filter_map do |response|
+                  response.resolve(definitions).default_media_type
+                end.uniq.sort.presence,
+                schemes: schemes.presence,
+                parameters:
+                  begin
+                    params = parameters.values.flat_map do |parameter|
+                      parameter.to_openapi_parameters(version, definitions)
+                    end
+                    if resolved_request_body
+                      params << resolved_request_body.to_openapi_parameter
+                    end
+                    params
+                  end
+              }
+            else
+              {
+                servers: servers.map do |server|
+                  server.to_openapi(version)
+                end.presence,
+                callbacks: callbacks.transform_values do |callback|
+                  callback.to_openapi(version, definitions)
+                end.presence,
+                parameters: parameters.values.flat_map do |parameter|
+                  parameter.to_openapi_parameters(version, definitions)
+                end,
+                request_body: request_body&.to_openapi(version)
+              }
+            end,
+          responses: responses.transform_values do |response|
+            response.to_openapi(version, definitions)
+          end,
           deprecated: deprecated?.presence,
           security: security_requirements.map(&:to_openapi).presence
-        ).tap do |result|
-          if version.major == 2
-            if (consumes = consumes(definitions)).present?
-              result[:consumes] = [consumes]
-            end
-            if (produces = produces(definitions)).present?
-              result[:produces] = produces
-            end
-            result[:schemes] = schemes if schemes.present?
-          elsif servers.present?
-            result[:servers] = servers.map do |server|
-              server.to_openapi(version)
-            end
-          end
-          # Parameters (and request body)
-          result[:parameters] = parameters.values.flat_map do |parameter|
-            parameter.to_openapi_parameters(version, definitions)
-          end
-          if request_body
-            if version.major == 2
-              result[:parameters] << request_body.resolve(definitions).to_openapi_parameter
-            else
-              result[:request_body] = request_body.to_openapi(version)
-            end
-          end
-          # Responses
-          result[:responses] = responses.transform_values do |response|
-            response.to_openapi(version, definitions)
-          end
-          # Callbacks
-          if callbacks.present? && version.major > 2
-            result[:callbacks] = callbacks.transform_values do |callback|
-              callback.to_openapi(version, definitions)
-            end
-          end
+        )
+      end
+
+      class Wrapper < Model::Wrapper
+        def full_path
+          @full_path ||= super
+        end
+
+        def model
+          return @model if defined? @model
+
+          @model = super || definitions.common_model(full_path)
+        end
+
+        def parameters
+          @parameters ||=
+            (definitions.common_parameters(full_path)&.merge(super) || super)
+            .transform_values { |parameter| Parameter.wrap(parameter, definitions) }
+        end
+
+        def request_body
+          return @request_body if defined? @request_body
+
+          @request_body = RequestBody.wrap(
+            (super || definitions.common_request_body(full_path)),
+            definitions
+          )
+        end
+
+        def response(status)
+          response = (@responses ||= {})[status = status.to_s]
+          return response if response
+
+          response = Response.wrap(
+            (super || definitions.common_response(full_path, status)),
+            definitions
+          )
+          @responses[status] = response if response
         end
       end
     end

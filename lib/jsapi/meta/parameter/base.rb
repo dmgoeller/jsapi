@@ -191,7 +191,10 @@ module Jsapi
                 }
               else
                 openapi_schema = schema.to_openapi(version).except(:deprecated)
-                openapi_examples = examples&.transform_values(&:to_openapi).presence
+
+                openapi_examples = examples&.transform_values do |example|
+                  example.to_openapi(version)
+                end.presence
                 {
                   deprecated: deprecated.presence,
                   **if content_type.blank?

@@ -7,7 +7,7 @@ module Jsapi
       class Reference < Model::Reference
         ##
         # :attr: existence
-        # The level of Existence. The default level of existence is +ALLOW_OMITTED+.
+        # The level of existence. The default is +ALLOW_OMITTED+.
         attribute :existence, Existence, default: Existence::ALLOW_OMITTED
 
         def resolve(definitions) # :nodoc:

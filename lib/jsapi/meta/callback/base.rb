@@ -17,12 +17,13 @@ module Jsapi
 
           ##
           # :attr: operations
-          # The Operation objects.
+          # The operations. Maps strings to Operation objects.
           attribute :operations, { String => Operation }, accessors: %i[reader writer]
 
           ##
           # :attr: parameters
-          # The Parameter objects applicable for all operations.
+          # The parameters that apply for all operations. Maps parameter names
+          # to Parameter objects or references.
           attribute :parameters, { String => Parameter }, accessors: %i[reader writer]
 
           ##

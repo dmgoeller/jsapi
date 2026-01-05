@@ -9,6 +9,10 @@ module ActionDispatch
       @media_type = headers['Content-Type']
       @query_parameters = query_parameters
     end
+
+    def authorization
+      headers['Authorization']
+    end
   end
 
   class Response

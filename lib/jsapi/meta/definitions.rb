@@ -7,22 +7,29 @@ module Jsapi
 
       ##
       # :attr: base_path
-      # The base path of the API. Applies to \OpenAPI 2.0.
+      # The base path of the API.
+      #
+      # Applies to \OpenAPI 2.0.
       attribute :base_path, Pathname
 
       ##
       # :attr: callbacks
-      # The reusable Callback objects. Applies to \OpenAPI 3.0 and higher.
+      # The reusable callbacks. Maps strings to Callback objects or references.
+      #
+      # Applies to \OpenAPI 3.0 and higher.
       attribute :callbacks, { String => Callback }
 
       ##
       # :attr: defaults
-      # The Defaults.
+      # The registered default values for different schema types. Maps schema
+      # types to Defaults object.
       attribute :defaults, { String => Defaults }, keys: Schema::TYPES
 
       ##
       # :attr: examples
-      # The reusable Example objects. Applies to \OpenAPI 3.0 and higher.
+      # The reusable examples. Maps example names to Example objects or references.
+      #
+      # Applies to \OpenAPI 3.0 and higher.
       attribute :examples, { String => Example }
 
       ##
@@ -32,12 +39,16 @@ module Jsapi
 
       ##
       # :attr: headers
-      # The reusable Header objects. Applies to \OpenAPI 3.0 and higher.
+      # The reusable headers. Maps header names to Header objects or references.
+      #
+      # Applies to \OpenAPI 3.0 and higher.
       attribute :headers, { String => Header }
 
       ##
       # :attr: host
-      # The host serving the API. Applies to \OpenAPI 2.0.
+      # The host serving the API.
+      #
+      # Applies to \OpenAPI 2.0.
       attribute :host, String
 
       ##
@@ -47,7 +58,9 @@ module Jsapi
 
       ##
       # :attr: links
-      # The reusable Link objects. Applies to \OpenAPI 3.0 and higher.
+      # The reusable links. Maps link names to Link objects.
+      #
+      # Applies to \OpenAPI 3.0 and higher.
       attribute :links, { String => Link }
 
       ##
@@ -57,42 +70,45 @@ module Jsapi
 
       ##
       # :attr: operations
-      # The Operation objects.
+      # The operations. Maps operation names to Operation objects.
       attribute :operations, { String => Operation }, accessors: %i[reader writer]
 
       ##
       # :attr: parameters
-      # The reusable Parameter objects.
+      # The reusable parameters. Maps parameter names to Parameter objects
+      # or references.
       attribute :parameters, { String => Parameter }, accessors: %i[reader writer]
 
       ##
       # :attr: paths
-      # The Path objects.
+      # The paths. Maps instances of Pathname to Path objects.
       attribute :paths, { Pathname => Path }, accessors: %i[reader writer]
 
       ##
       # :attr: rescue_handlers
-      # The RescueHandler objects.
+      # The registered rescue handlers.
       attribute :rescue_handlers, [RescueHandler]
 
       ##
       # :attr: request_bodies
-      # The reusable RequestBody objects.
+      # The reusable request bodies. Maps request body names to RequestBody
+      # objects or references.
       attribute :request_bodies, { String => RequestBody }
 
       ##
       # :attr: responses
-      # The reusable Response objects.
+      # The reusable responses. Maps response names to Response objects or
+      # references.
       attribute :responses, { String => Response }
 
       ##
       # :attr: schemas
-      # The reusable Schema objects.
+      # The reusable schemas. Maps schema names to Schema objects or references.
       attribute :schemas, { String => Schema }
 
       ##
       # :attr: schemes
-      # The array of transfer protocols supported by the API. Possible values are:
+      # The transfer protocols supported by the API. Can contain one or more of:
       #
       # - <code>"http"</code>
       # - <code>"https"</code>
@@ -104,24 +120,26 @@ module Jsapi
 
       ##
       # :attr: security_requirements
-      # The array of SecurityRequirement objects.
+      # The top-level security requirements.
       attribute :security_requirements, [SecurityRequirement]
 
       alias add_security add_security_requirement
 
       ##
       # :attr: security_schemes
-      # The SecurityScheme objects.
+      # The security schemes.
       attribute :security_schemes, { String => SecurityScheme }
 
       ##
       # :attr: servers
-      # The array of Server objects. Applies to \OpenAPI 3.0 and higher.
+      # The servers providing the API.
+      #
+      # Applies to \OpenAPI 3.0 and higher.
       attribute :servers, [Server]
 
       ##
       # :attr: tags
-      # The array of Tag objects.
+      # The tags.
       attribute :tags, [Tag]
 
       # The class to which this instance is assigned.
@@ -171,7 +189,7 @@ module Jsapi
       end
 
       # Returns an array containing itself and all of the +Definitions+ instances
-      # inherited/included.
+      # inherited or included.
       def ancestors
         @ancestors ||= [self].tap do |ancestors|
           [@included_definitions, @parent].flatten.each do |definitions|
@@ -183,27 +201,27 @@ module Jsapi
       ##
       # :method: common_description
       # :args: pathname
-      # Returns the most accurate description for +pathname+.
+      # Returns the most accurate description for the specified path.
 
       ##
       # :method: common_model
       # :args: pathname
-      # Returns the common model of all operations in +pathname+.
+      # Returns the common model of all operations in the specified path.
 
       ##
       # :method: common_response_body
       # :args: pathname
-      # Returns the common request body of all operations in +pathname+.
+      # Returns the common request body of all operations in the specified path.
 
       ##
       # :method: common_servers
       # :args: pathname
-      # Returns the most accurate Server objects for +pathname+.
+      # Returns the most accurate servers for the specified path.
 
       ##
       # :method: common_summary
       # :args: pathname
-      # Returns the most accurate summary for +pathname+.
+      # Returns the most accurate summary for the specified path.
 
       %i[description model request_body servers summary].each do |name|
         define_method(:"common_#{name}") do |arg|
@@ -222,12 +240,14 @@ module Jsapi
       ##
       # :method: common_parameters
       # :args: pathname
-      # Returns the parameters that are consumed by all operations in +pathname+.
+      # Returns the parameters that apply to all operations in the
+      # specified path.
 
       ##
       # :method: common_responses
       # :args: pathname
-      # Returns the responses that can be produced by all operations in +pathname+.
+      # Returns the responses that can be produced by all operations in the
+      # specified path.
 
       %i[parameters responses].each do |name|
         define_method(:"common_#{name}") do |arg|
@@ -244,31 +264,38 @@ module Jsapi
       end
 
       ##
-      # Returns the common response for +status+ in +pathname+.
-      def common_response(pathname, status)
-        common_responses(pathname)&.fetch(status.to_s, nil)
-      end
+      # :method: common_security_requirements
+      # :args: pathname
+      # Returns the security requirements that apply to all operations in
+      # the specified path.
 
       ##
       # :method: common_tags
       # :args: pathname
-      # Returns the tags that are applicable to all operations in +pathname+.
+      # Returns the tags that apply to all operations in the specified path.
 
-      def common_tags(arg)
-        arg = Pathname.from(arg || '')
+      %i[security_requirements tags].each do |name|
+        define_method(:"common_#{name}") do |arg|
+          arg = Pathname.from(arg || '')
 
-        cache_path_attribute(arg, :tags) do
-          arg.ancestors.filter_map do |pathname|
-            ancestors.filter_map do |definitions|
-              definitions.path(pathname)&.tags
-            end
-          end.flatten.uniq.presence
+          cache_path_attribute(arg, name) do
+            arg.ancestors.filter_map do |pathname|
+              ancestors.filter_map do |definitions|
+                definitions.path(pathname)&.send(name)
+              end
+            end.flatten.uniq.presence
+          end
         end
       end
 
       # Returns the default value for +type+ within +context+.
       def default_value(type, context: nil)
         cached_attributes.dig(:defaults, type.to_s)&.value(context: context)
+      end
+
+      # The security requirements that apply by default to all operations.
+      def default_security_requirements
+        cached_attributes[:security_requirements]
       end
 
       # Returns the operation with the specified name.
@@ -286,24 +313,30 @@ module Jsapi
         end
       end
 
+      ##
+      # :method: find_parameter
       # Returns the reusable parameter with the specified name.
-      def find_parameter(name)
-        cached_attributes.dig(:parameters, name&.to_s)
-      end
 
+      ##
+      # :method: find_request_body
       # Returns the reusable request body with the specified name.
-      def find_request_body(name)
-        cached_attributes.dig(:request_bodies, name&.to_s)
-      end
 
+      ##
+      # :method: find_response
       # Returns the reusable response with the specified name.
-      def find_response(name)
-        cached_attributes.dig(:responses, name&.to_s)
-      end
 
+      ##
+      # :method: find_schema
       # Returns the reusable schema with the specified name.
-      def find_schema(name)
-        cached_attributes.dig(:schemas, name&.to_s)
+
+      ##
+      # :method: find_security_scheme
+      # Returns the security scheme with the specified name.
+
+      %i[parameters request_bodies responses schemas security_schemes].each do |attribute_name|
+        define_method(:"find_#{attribute_name.to_s.singularize}") do |name|
+          cached_attributes.dig(attribute_name, name&.to_s)
+        end
       end
 
       # Includes +definitions+.
@@ -392,7 +425,7 @@ module Jsapi
         ).index_with do |key|
           value = cached_attributes[key]
           if key == :responses
-            value = value.reject do |_status, response|
+            value = value.reject do |_name, response|
               response.resolve(self).nodoc?
             end
           end
@@ -458,7 +491,8 @@ module Jsapi
         ).as_json
       end
 
-      # Returns the first RescueHandler to handle +exception+, or nil if no one could be found.
+      # Returns the first RescueHandler capable to handle +exception+, or nil
+      # if no one could be found.
       def rescue_handler_for(exception)
         cached_attributes[:rescue_handlers].find { |r| r.match?(exception) }
       end

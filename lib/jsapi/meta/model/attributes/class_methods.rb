@@ -114,6 +114,8 @@ module Jsapi
               end
             end
 
+            default = nil if default == :nil
+
             # Attribute reader
             define_method(name) do
               value = instance_variable_get(instance_variable_name)

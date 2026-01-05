@@ -12,11 +12,11 @@ module Jsapi
         ##
         # :attr: content_type
         # The media type used to describe complex parameters in \OpenAPI 3.0 and higher.
-        attribute :content_type, String
+        attribute :content_type, Media::Type
 
         ##
         # :attr: deprecated
-        # Specifies whether or not the parameter is deprecated.
+        # Specifies whether the parameter is marked as deprecated.
         attribute :deprecated, values: [true, false]
 
         ##
@@ -26,7 +26,7 @@ module Jsapi
 
         ##
         # :attr_reader: examples
-        # The examples.
+        # The examples. Maps example names to Example objects or references.
         attribute :examples, { String => Example }, default_key: 'default'
 
         ##
@@ -95,7 +95,8 @@ module Jsapi
             schema.resolve(definitions),
             version,
             location: self.in,
-            content_type: content_type || ('text/plain' if self.in == 'querystring'),
+            content_type: content_type ||
+              (Media::Type::TEXT_PLAIN if self.in == 'querystring'),
             description: description,
             required: required?,
             deprecated: deprecated?,

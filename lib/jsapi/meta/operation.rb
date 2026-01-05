@@ -9,12 +9,13 @@ module Jsapi
 
       ##
       # :attr: callbacks
-      # The Callback objects. Applies to \OpenAPI 3.0 and higher.
+      # The callbacks that can be triggered by the operation. Maps strings
+      # to Callback objects or references.
       attribute :callbacks, { String => Callback }
 
       ##
       # :attr: deprecated
-      # Specifies whether or not the operation is deprecated.
+      # Specifies whether the operation is marked as deprecated.
       attribute :deprecated, values: [true, false]
 
       ##
@@ -24,7 +25,9 @@ module Jsapi
 
       ##
       # :attr: external_docs
-      # The ExternalDocumentation object.
+      # The additional external documentation for this operation.
+      #
+      # See ExternalDocumentation for further information.
       attribute :external_docs, ExternalDocumentation
 
       ##
@@ -34,7 +37,7 @@ module Jsapi
 
       ##
       # :attr: model
-      # The model class to access top-level parameters by, Jsapi::Model::Base by default.
+      # The model class to access top-level parameters by.
       attribute :model, Class
 
       ##
@@ -44,7 +47,8 @@ module Jsapi
 
       ##
       # :attr: parameters
-      # The parameters of the operation.
+      # The parameters of the operation. Maps parameter names to Parameter
+      # objects or references.
       attribute :parameters, { String => Parameter }, accessors: %i[reader writer]
 
       ##
@@ -59,17 +63,19 @@ module Jsapi
 
       ##
       # :attr: request_body
-      # The request body of the operation.
+      # The request body of the operation as a RequestBody object or reference.
       attribute :request_body, RequestBody
 
       ##
       # :attr: responses
-      # The responses of the operation.
-      attribute :responses, { String => Response }, default_key: 'default'
+      # The responses that can be produced by the operation. Maps instances of
+      # Status::Base to Response objects or references.
+      attribute :responses, { Status => Response }, default_key: Status::DEFAULT
 
       ##
       # :attr: schemes
-      # The transfer protocols supported by the operation. Possible values are:
+      # The transfer protocols supported by the operation. Can contain one or
+      # more of:
       #
       # - <code>"http"</code>
       # - <code>"https"</code>
@@ -81,14 +87,20 @@ module Jsapi
 
       ##
       # :attr: security_requirements
-      # The SecurityRequirement objects.
-      attribute :security_requirements, [SecurityRequirement]
+      # The security requirements that override the top-level security requirements.
+      #
+      # See SecurityRequirement for further information.
+      attribute :security_requirements, [SecurityRequirement], default: :nil
 
       alias add_security add_security_requirement
 
       ##
       # :attr: servers
-      # The Server objects. Applies to \OpenAPI 3.0 and higher.
+      # The servers providing the operation.
+      #
+      # Applies to \OpenAPI 3.0 and higher.
+      #
+      # See Server for further information.
       attribute :servers, [Server]
 
       ##
@@ -125,16 +137,21 @@ module Jsapi
       # Returns a hash representing the \OpenAPI operation object.
       def to_openapi(version, definitions)
         version = OpenAPI::Version.from(version)
+        full_path = self.full_path
 
         responses = (
-          definitions
-          &.common_responses(full_path)
-          &.merge(self.responses) || self.responses
-        ).reject { |_status, response| response.resolve(definitions).nodoc? }
+          definitions.common_responses(full_path)&.merge(self.responses) ||
+          self.responses
+        ).reject do |status, response|
+          response.resolve(definitions).nodoc? ||
+            version == OpenAPI::V2_0 && status.is_a?(Status::Range)
+        end
 
         with_openapi_extensions(
           operationId: name,
-          tags: [tags, definitions&.common_tags(full_path)].compact.flatten.uniq.presence,
+          tags:
+            [tags, definitions.common_tags(full_path)]
+              .compact.flatten.uniq.presence,
           summary: summary,
           description: description,
           externalDocs: external_docs&.to_openapi,
@@ -143,10 +160,13 @@ module Jsapi
                 (request_body || definitions.common_request_body(full_path))
                 &.resolve(definitions)
               {
-                consumes: [resolved_request_body&.default_media_range].compact.presence,
-                produces: responses.values.filter_map do |response|
-                  response.resolve(definitions).default_media_type
-                end.uniq.sort.presence,
+                consumes:
+                  [resolved_request_body&.default_media_range]
+                    .compact.presence,
+                produces:
+                  responses.values.filter_map do |response|
+                    response.resolve(definitions).default_media_type
+                  end.uniq.sort.presence,
                 schemes: schemes.presence,
                 parameters:
                   begin
@@ -161,28 +181,58 @@ module Jsapi
               }
             else
               {
-                servers: servers.map do |server|
-                  server.to_openapi(version)
-                end.presence,
-                callbacks: callbacks.transform_values do |callback|
-                  callback.to_openapi(version, definitions)
-                end.presence,
-                parameters: parameters.values.flat_map do |parameter|
-                  parameter.to_openapi_parameters(version, definitions)
-                end,
+                servers:
+                  servers.map do |server|
+                    server.to_openapi(version)
+                  end.presence,
+                callbacks:
+                  callbacks.transform_values do |callback|
+                    callback.to_openapi(version, definitions)
+                  end.presence,
+                parameters:
+                  parameters.values.flat_map do |parameter|
+                    parameter.to_openapi_parameters(version, definitions)
+                  end,
                 request_body: request_body&.to_openapi(version)
               }
             end,
-          responses: responses.transform_values do |response|
-            response.to_openapi(version, definitions)
-          end,
+          responses:
+            responses.transform_values do |response|
+              response.to_openapi(version, definitions)
+            end,
           deprecated: deprecated?.presence,
-          security: security_requirements.map(&:to_openapi).presence
+          security:
+            [security_requirements, definitions.common_security_requirements(full_path)]
+              .compact.presence&.flatten&.map(&:to_openapi)
         )
       end
 
       class Wrapper < Model::Wrapper
-        def full_path
+        ##
+        # :attr_reader: model
+
+        ##
+        # :attr_reader: parameters
+
+        ##
+        # :attr_reader: request_body
+
+        ##
+        # :attr_reader: responses
+
+        ##
+        # :attr_reader :security_requirements
+
+        # Returns the most appropriate response for +status_code+.
+        def find_response(status_code)
+          status_code = Status::Code.from(status_code)
+
+          responses.find do |status, _response|
+            status.match?(status_code)
+          end&.second
+        end
+
+        def full_path # :nodoc:
           @full_path ||= super
         end
 
@@ -207,15 +257,21 @@ module Jsapi
           )
         end
 
-        def response(status)
-          response = (@responses ||= {})[status = status.to_s]
-          return response if response
+        def responses
+          @responses ||=
+            (definitions.common_responses(full_path)&.merge(super) || super)
+            .transform_values { |response| Response.wrap(response, definitions) }
+            .sort_by { |status, _response| status }
+            .to_h
+        end
 
-          response = Response.wrap(
-            (super || definitions.common_response(full_path, status)),
-            definitions
-          )
-          @responses[status] = response if response
+        def security_requirements
+          return @security_requirements if defined? @security_requirements
+
+          @security_requirements =
+            [definitions.common_security_requirements(full_path), super]
+              .compact.presence&.flatten ||
+              definitions.default_security_requirements
         end
       end
     end

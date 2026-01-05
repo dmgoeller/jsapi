@@ -9,7 +9,7 @@ module Jsapi
       ##
       # :method: deprecated
       # :args: arg
-      # Specifies whether or not the response is deprecated.
+      # Specifies whether the response is marked as deprecated.
       #
       #   deprecated true
 
@@ -70,7 +70,8 @@ module Jsapi
       ##
       # :method: locale
       # :args: arg
-      # Specifies the locale to be used when producing a response.
+      # Specifies the locale to be used instead of the default locale when
+      # producing a response.
       #
       #   locale :en
     end

@@ -12,16 +12,16 @@ module Jsapi
       # #api_operation and #api_operation!
 
       %i[api_operation api_operation!].each do |method|
-        name = method.to_s.gsub('!', '_bang')
+        name = method.to_s.sub('!', '_bang')
 
         define_method("test_#{name}_without_block") do
           controller = controller do
             api_operation do
-              response 200, type: 'string'
+              response type: 'string'
             end
           end
           response = controller.instance_eval do
-            send(method, status: 200)
+            send(method, status: :ok)
             self.response
           end
 
@@ -34,12 +34,12 @@ module Jsapi
           controller = controller do
             api_operation do
               parameter 'foo', type: 'string'
-              response 200, type: 'string', content_type: 'text/plain'
+              response type: 'string', content_type: 'text/plain'
             end
           end
           response = controller.instance_eval do
             params['foo'] = 'bar'
-            send(method, status: 200) do |api_params|
+            send(method, status: :ok) do |api_params|
               "value of foo is #{api_params.foo}"
             end
             self.response
@@ -50,14 +50,48 @@ module Jsapi
           assert_equal('value of foo is bar', response.body)
         end
 
-        define_method("test_#{name}_raises_an_error_when_operation_is_missing") do
-          error = assert_raises(RuntimeError) do
+        define_method("test_#{name}_authentication") do
+          controller_class = controller_class do
+            include Authentication
+
+            api_authenticate do |credentials|
+              credentials.api_key == 'foo'
+            end
+
+            api_operation do
+              response type: 'string'
+            end
+
+            api_security_scheme 'api_key', type: 'api_key', in: 'header', name: 'X-API-KEY'
+            api_security_requirement { scheme 'api_key' }
+          end
+
+          # Request with valid credentials
+          assert(
+            controller_class.new.instance_eval do
+              request.headers['X-API-KEY'] = 'foo'
+              send(method, status: :ok)
+              self.response.status
+            end == 200,
+            'Expected request with valid credentials to be accepted.'
+          )
+          # Request with invalid credentials
+          assert_raises(Unauthorized) do
+            controller_class.new.instance_eval do
+              request.headers['X-API-KEY'] = 'bar'
+              send(method, status: :ok)
+            end
+          end
+        end
+
+        define_method("test_#{name}_raises_an_error_when_operation_is_undefined") do
+          error = assert_raises(OperationNotDefined) do
             controller.instance_eval { send(method, :foo) }
           end
           assert_equal('operation not defined: foo', error.message)
         end
 
-        define_method("test_#{name}_raises_an_error_when_status_code_is_invalid") do
+        define_method("test_#{name}_raises_an_error_when_no_matching_response_exists") do
           controller = controller do
             api_operation do
               response 200, type: 'string'
@@ -66,7 +100,7 @@ module Jsapi
           error = assert_raises(RuntimeError) do
             controller.instance_eval { send(method, status: 204) }
           end
-          assert_equal('status code not defined: 204', error.message)
+          assert_equal('no matching response found: 204', error.message)
         end
 
         # Callbacks
@@ -98,7 +132,7 @@ module Jsapi
           controller = controller do
             api_operation do
               parameter 'request_id', type: 'integer'
-              response 200 do
+              response do
                 property 'request_id', type: 'integer'
                 property 'foo', type: 'string'
               end
@@ -110,7 +144,7 @@ module Jsapi
           end
           response = controller.instance_eval do
             params['request_id'] = 1
-            send(method, status: 200) { 'bar' }
+            send(method) { 'bar' }
             self.response
           end
           assert_equal('{"request_id":1,"foo":"bar"}', response.body)
@@ -121,7 +155,7 @@ module Jsapi
         define_method("test_response_produced_by_#{name}_on_explicit_rendering") do
           controller = controller do
             api_operation do
-              response 200, type: 'string'
+              response type: 'string'
             end
           end
           response = controller.instance_eval do
@@ -139,7 +173,24 @@ module Jsapi
         define_method("test_response_produced_by_#{name}_on_json_seq") do
           controller = controller do
             api_operation do
-              response 200, type: 'string', content_type: 'application/json-seq'
+              response type: 'string', content_type: 'application/json-seq'
+            end
+          end
+          response = controller.instance_eval do
+            send(method) { 'foo' }
+            self.response
+          end
+
+          assert_nil(response.status)
+          assert_equal('application/json-seq', response.content_type)
+          assert_equal("\u001E\"foo\"\n", response.stream.string)
+          assert_predicate(response.stream, :closed?)
+        end
+
+        define_method("test_response_produced_by_#{name}_on_json_seq_and_status") do
+          controller = controller do
+            api_operation do
+              response type: 'string', content_type: 'application/json-seq'
             end
           end
           response = controller.instance_eval do
@@ -156,11 +207,11 @@ module Jsapi
         define_method("test_#{name}_produces_no_response_when_media_type_is_not_supported") do
           controller = controller do
             api_operation do
-              response 200, type: 'string', content_type: 'text/html'
+              response type: 'string', content_type: 'text/html'
             end
           end
           response = controller.instance_eval do
-            send(method, status: 200) { 'foo' }
+            send(method) { 'foo' }
             self.response
           end
 
@@ -174,7 +225,7 @@ module Jsapi
         define_method("test_#{name}_produces_the_most_appropriate_response") do
           controller_class = controller_class do
             api_operation do
-              response 200 do
+              response do
                 content 'application/json', type: 'string'
                 content 'text/plain', type: 'string'
               end
@@ -189,24 +240,30 @@ module Jsapi
             'text/plain' => text_plain,
             'text/*' => text_plain
           }.each do |media_range, (media_type, response_body)|
-            controller = controller_class.new(
-              request_headers: { 'Accept' => media_range }
-            )
-            response = controller.instance_eval do
-              send(method, status: 200) { 'foo' }
-              self.response
-            end
+            [nil, 200].each do |status|
+              controller = controller_class.new(
+                request_headers: { 'Accept' => media_range }
+              )
+              response = controller.instance_eval do
+                send(method, status: status) { 'foo' }
+                self.response
+              end
 
-            assert(
-              response.content_type = media_type,
-              "Expected #{media_type.inspect} to be the most appropriate " \
-              "media type for #{media_range.inspect}"
-            )
-            assert(
-              response.body == response_body,
-              "Expected #{response_body.inspect} to be the most appropriate " \
-              "response body for #{media_range.inspect}"
-            )
+              assert(
+                response.status == status,
+                "Expected response status to be #{status}, is: #{response.status}."
+              )
+              assert(
+                response.content_type = media_type,
+                "Expected #{media_type.inspect} to be the most appropriate " \
+                "media type for #{media_range.inspect}"
+              )
+              assert(
+                response.body == response_body,
+                "Expected #{response_body.inspect} to be the most appropriate " \
+                "response body for #{media_range.inspect}"
+              )
+            end
           end
         end
 
@@ -218,13 +275,13 @@ module Jsapi
               rescue_from RuntimeError, with: 500
 
               operation do
-                response 200, type: 'string'
-                response 500, type: 'string', content_type: 'application/problem+json'
+                response type: 'string'
+                response '5xx', type: 'string', content_type: 'application/problem+json'
               end
             end
           end
           response = controller.instance_eval do
-            send(method, status: 200) { raise 'foo' }
+            send(method) { raise 'foo' }
             self.response
           end
 
@@ -240,8 +297,8 @@ module Jsapi
               on_rescue :notice_error
 
               operation do
-                response 200, type: 'string'
-                response 500, type: 'string'
+                response type: 'string'
+                response '5xx', type: 'string'
               end
             end
 
@@ -252,7 +309,7 @@ module Jsapi
             end
           end
           error = controller.instance_eval do
-            send(method, status: 200) { raise 'foo' }
+            send(method) { raise 'foo' }
             self.error
           end
 
@@ -269,13 +326,13 @@ module Jsapi
               on_rescue { |e| error = e }
 
               operation do
-                response 200, type: 'string'
-                response 500, type: 'string'
+                response type: 'string'
+                response '5xx', type: 'string'
               end
             end
           end
           controller.instance_eval do
-            send(method, status: 200) { raise 'foo' }
+            send(method) { raise 'foo' }
           end
 
           assert_kind_of(RuntimeError, error)
@@ -408,8 +465,8 @@ module Jsapi
         assert(api_params.errors.added?(:base, "'bar' isn't allowed"))
       end
 
-      def test_api_params_raises_an_error_when_operation_is_missing
-        error = assert_raises(RuntimeError) do
+      def test_api_params_raises_an_error_when_operation_is_undefined
+        error = assert_raises(OperationNotDefined) do
           controller.instance_eval { api_params('foo') }
         end
         assert_equal('operation not defined: foo', error.message)
@@ -420,11 +477,11 @@ module Jsapi
       def test_api_response
         controller = controller do
           api_operation do
-            response 200, type: 'string'
+            response type: 'string'
           end
         end
         response = controller.instance_eval do
-          api_response('foo', status: 200)
+          api_response('foo')
         end
         assert_equal('"foo"', response.to_json)
       end
@@ -432,7 +489,7 @@ module Jsapi
       def test_api_response_takes_the_most_appropriate_media_type
         controller_class = controller_class do
           api_operation do
-            response 200 do
+            response do
               content 'application/vnd.str+json', type: 'string'
               content 'application/vnd.int+json', type: 'integer'
             end
@@ -446,7 +503,7 @@ module Jsapi
             request_headers: { 'Accept' => media_type }
           )
           response = controller.instance_eval do
-            api_response(88, status: 200)
+            api_response(88)
           end.to_json
           assert(
             expected == response,
@@ -456,8 +513,8 @@ module Jsapi
         end
       end
 
-      def test_api_response_raises_an_error_when_operation_is_missing
-        error = assert_raises(RuntimeError) do
+      def test_api_response_raises_an_error_when_operation_is_undefined
+        error = assert_raises(OperationNotDefined) do
           controller.instance_eval do
             api_response('foo', 'foo', status: 200)
           end
@@ -465,7 +522,7 @@ module Jsapi
         assert_equal('operation not defined: foo', error.message)
       end
 
-      def test_api_response_raises_an_error_when_status_code_is_invalid
+      def test_api_response_raises_an_error_when_no_matching_response_exists
         controller = controller do
           api_operation do
             response 200, type: 'string'
@@ -476,7 +533,7 @@ module Jsapi
             controller.api_response('foo', status: 204)
           end
         end
-        assert_equal('status code not defined: 204', error.message)
+        assert_equal('no matching response found: 204', error.message)
       end
     end
   end

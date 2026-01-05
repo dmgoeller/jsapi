@@ -18,7 +18,9 @@ module Jsapi
 
       ##
       # :attr: kind
-      # The category of the tag. Applies to \OpenAPI 3.2 and higher.
+      # The category of the tag.
+      #
+      # Applies to \OpenAPI 3.2 and higher.
       attribute :kind, String
 
       ##
@@ -28,12 +30,16 @@ module Jsapi
 
       ##
       # :attr: parent
-      # The name of the parent tag. Applies to \OpenAPI 3.2 and higher.
+      # The name of the parent tag.
+      #
+      # Applies to \OpenAPI 3.2 and higher.
       attribute :parent, String
 
       ##
       # :attr: summary
-      # The short summary of the tag. Applies to \OpenAPI 3.2 and higher.
+      # The short summary of the tag.
+      #
+      # Applies to \OpenAPI 3.2 and higher.
       attribute :summary, String
 
       # Returns a hash representing the \OpenAPI tag object.

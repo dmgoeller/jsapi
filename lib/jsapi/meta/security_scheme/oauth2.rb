@@ -25,9 +25,11 @@ module Jsapi
                            device_authorization
                            implicit
                            password]
+
         ##
         # :attr: oauth2_metadata_url
         # The URL of the OAuth2 authorization server metadata.
+        #
         # Applies to \OpenAPI 3.2 and higher.
         attribute :oauth2_metadata_url, String
 

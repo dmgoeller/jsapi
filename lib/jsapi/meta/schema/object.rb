@@ -29,7 +29,7 @@ module Jsapi
 
         ##
         # :attr: properties
-        # The properties.
+        # The properties. Maps property names to Property objects.
         attribute :properties, { String => Property }, accessors: %i[reader writer]
 
         def add_property(name, keywords = {}) # :nodoc:

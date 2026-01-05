@@ -7,13 +7,13 @@ module Jsapi
       class Scheme < Model::Base
         ##
         # :attr: scopes
-        # The array of scopes.
+        # The scopes.
         attribute :scopes, [String]
       end
 
       ##
       # :attr_reader: schemes
-      # The schemes.
+      # The schemes. Maps strings to Scheme objects.
       attribute :schemes, { String => Scheme }
 
       # Returns a hash representing the \OpenAPI security requirement object.

@@ -6,7 +6,7 @@ rescue_from Jsapi::Controller::ParametersInvalid, with: 400
 
 operation path: '/echo' do
   parameter 'call', type: 'string', existence: true
-  response 200, type: 'object' do
+  response type: 'object' do
     property 'echo', type: 'string'
   end
   response 400, type: 'object' do

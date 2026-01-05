@@ -143,7 +143,7 @@ module Jsapi
           'Expected operation to be cached.'
         )
         assert(
-          operation.eql?(definitions.find_operation('foo')),
+          operation.equal?(definitions.find_operation('foo')),
           'Expected cached operation to be returned.'
         )
         # Add another operation
@@ -159,7 +159,7 @@ module Jsapi
           'Expected operation to be cached again.'
         )
         assert(
-          operation.eql?(definitions.find_operation('foo')),
+          operation.equal?(definitions.find_operation('foo')),
           'Expected cached operation to be returned.'
         )
       end
@@ -349,52 +349,118 @@ module Jsapi
           paths: {
             '/foo' => {
               responses: {
-                200 => { type: 'string' }
+                '4xx' => { type: 'string' }
               }
             },
             'foo/bar' => {
               responses: {
-                400 => { type: 'string' }
+                'default' => { type: 'string' }
               }
             }
           }
         )
-        assert_equal(%w[200 400], definitions.common_responses('/foo/bar').keys)
-        assert_equal(%w[200], definitions.common_responses('/foo').keys)
+        assert_equal(
+          [Status::Range::CLIENT_ERROR, Status::DEFAULT],
+          definitions.common_responses('/foo/bar').keys
+        )
+        assert_equal(
+          [Status::Range::CLIENT_ERROR],
+          definitions.common_responses('/foo').keys
+        )
         assert_nil(definitions.common_responses('/bar'))
         assert_nil(definitions.common_responses(nil))
-
-        assert_predicate(definitions.common_response('/foo', 200), :present?)
-        assert_nil(definitions.common_response('foo', 400))
-        assert_nil(definitions.common_response('bar', 200))
       end
 
       def test_common_responses_on_inheritance
         definitions = Definitions.new(
-            parent: Definitions.new(
-              paths: {
-                '/foo' => {
-                  responses: {
-                    200 => { type: 'string' }
-                  }
-                }
-              }
-            ),
+          parent: Definitions.new(
             paths: {
-              '/foo/bar' => {
+              '/foo' => {
                 responses: {
-                  400 => { type: 'string' }
+                  '4xx' => { type: 'string' }
                 }
               }
             }
-          )
-          assert_equal(%w[200 400], definitions.common_responses('/foo/bar').keys)
-          assert_equal(%w[200], definitions.common_responses('/foo').keys)
+          ),
+          paths: {
+            '/foo/bar' => {
+              responses: {
+                'default' => { type: 'string' }
+              }
+            }
+          }
+        )
+        assert_equal(
+          [Status::Range::CLIENT_ERROR, Status::DEFAULT],
+          definitions.common_responses('/foo/bar').keys
+        )
+        assert_equal(
+          [Status::Range::CLIENT_ERROR],
+          definitions.common_responses('/foo').keys
+        )
       end
 
       def test_common_responses_caching
         assert_path_attribute_caching(:responses) do |path|
-          path.add_response 200, type: 'string'
+          path.add_response nil, type: 'string'
+        end
+      end
+
+      def test_common_security_requirements
+        definitions = Definitions.new(
+          paths: {
+            '/foo' => {
+              security_requirements: [
+                { schemes: { 'foo' => nil } }
+              ]
+            },
+            '/foo/bar' => {
+              security_requirements: [
+                { schemes: { 'bar' => nil } }
+              ]
+            }
+          }
+        )
+        { '/foo' => %w[foo], 'foo/bar' => %w[bar foo] }.each do |pathname, expected|
+          assert_equal(
+            expected,
+            definitions.common_security_requirements(pathname).flat_map { |s| s.schemes.keys }
+          )
+        end
+        assert_nil(definitions.common_security_requirements('/bar'))
+        assert_nil(definitions.common_security_requirements(nil))
+      end
+
+      def test_common_security_requirements_on_inheritance
+        definitions = Definitions.new(
+          parent: Definitions.new(
+            paths: {
+              '/foo' => {
+                security_requirements: [
+                  { schemes: { 'foo' => nil } }
+                ]
+              }
+            }
+          ),
+          paths: {
+            '/foo/bar' => {
+              security_requirements: [
+                { schemes: { 'bar' => nil } }
+              ]
+            }
+          }
+        )
+        { '/foo' => %w[foo], 'foo/bar' => %w[bar foo] }.each do |pathname, expected|
+          assert_equal(
+            expected,
+            definitions.common_security_requirements(pathname).flat_map { |s| s.schemes.keys }
+          )
+        end
+      end
+
+      def test_common_security_requirements_caching
+        assert_path_attribute_caching(:security_requirements) do |path|
+          path.add_security_requirement(schemes: {})
         end
       end
 
@@ -467,7 +533,7 @@ module Jsapi
 
       def test_common_tags_caching
         assert_path_attribute_caching(:tags) do |path|
-          path.tags = %w[Foo]
+          path.add_tag('Foo')
         end
       end
 
@@ -577,35 +643,55 @@ module Jsapi
         end
       end
 
-      # #rescue_handler_for
+      # Security requirements
+
+      def test_default_security_requirements
+        security_requirements = Definitions.new(
+          parent: Definitions.new(
+            security_requirements: [
+              { schemes: { 'bar' => nil } }
+            ]
+          ),
+          security_requirements: [
+            { schemes: { 'foo' => nil } }
+          ]
+        ).default_security_requirements
+
+        assert_equal(
+          %w[foo bar],
+          security_requirements.flat_map { |s| s.schemes.keys }
+        )
+      end
+
+      # Rescue handlers
 
       def test_rescue_handler_for
+        bad_request = Class.new(StandardError)
+
         definitions = Definitions.new(
           rescue_handlers: [
             {
-              error_class: Controller::ParametersInvalid,
-              status: 400
+              error_class: bad_request,
+              status_code: 400
             },
             {
               error_class: StandardError,
-              status: 500
+              status_code: 500
             }
           ]
         )
         assert_equal(
-          400,
-          definitions.rescue_handler_for(
-            Controller::ParametersInvalid.new(Jsapi::Model::Base.new({}))
-          ).status
+          Status::Code.from(400),
+          definitions.rescue_handler_for(bad_request.new).status_code
         )
         assert_equal(
-          500,
-          definitions.rescue_handler_for(StandardError.new).status
+          Status::Code.from(500),
+          definitions.rescue_handler_for(StandardError.new).status_code
         )
         assert_nil(definitions.rescue_handler_for(Exception.new))
       end
 
-      # #default_value
+      # Default values
 
       def test_default_value
         definitions = Definitions.new(

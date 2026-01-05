@@ -36,7 +36,7 @@ module Jsapi
 
       ##
       # :attr: scopes
-      # The hash containing the scopes.
+      # The scopes. Maps strings to Scope objects.
       attribute :scopes, { String => Scope }
 
       ##

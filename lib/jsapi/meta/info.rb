@@ -23,7 +23,9 @@ module Jsapi
 
       ##
       # :attr: summary
-      # The short summary of the API. Applies to \OpenAPI 3.1 and higher.
+      # The short summary of the API.
+      #
+      # Applies to \OpenAPI 3.1 and higher.
       attribute :summary, String
 
       ##

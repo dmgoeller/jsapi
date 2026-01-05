@@ -9,7 +9,7 @@ module Jsapi
       ##
       # :method: deprecated
       # :args: arg
-      # Specifies whether or not the request body is deprecated.
+      # Specifies whether the request body is marked as deprecated.
       #
       #   deprecated true
 

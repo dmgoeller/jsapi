@@ -176,6 +176,27 @@ module Jsapi
         assert_equal('foo', request_body.ref)
       end
 
+      def test_request_body_reference_by_name
+        request_body = operation do
+          request_body 'foo'
+        end.request_body
+
+        assert_predicate(request_body, :present?)
+        assert_equal('foo', request_body.ref)
+      end
+
+      def test_request_body_raises_an_error_if_name_and_keywords_are_specified_together
+        error = assert_raises(Error) do
+          operation do
+            request_body 'foo', type: 'object'
+          end
+        end
+        assert_equal(
+          "name can't be specified together with keywords or a block (at request body)",
+          error.message
+        )
+      end
+
       # #response
 
       def test_response
@@ -254,10 +275,10 @@ module Jsapi
         assert_equal('foo', response.ref)
       end
 
-      def test_response_raises_an_error_when_name_and_keywords_are_specified_together
+      def test_response_raises_an_error_if_name_and_keywords_are_specified_together
         error = assert_raises(Error) do
           operation do
-            response 200, 'foo', description: 'Lorem ipsum'
+            response 200, 'foo', type: 'object'
           end
         end
         assert_equal(

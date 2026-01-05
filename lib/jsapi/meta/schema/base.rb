@@ -15,7 +15,7 @@ module Jsapi
 
         ##
         # :attr: deprecated
-        # Specifies whether or not the schema is deprecated.
+        # Specifies whether the schema is marked as deprecated.
         attribute :deprecated, values: [true, false]
 
         ##
@@ -35,7 +35,7 @@ module Jsapi
 
         ##
         # :attr: external_docs
-        # The OpenAPI::ExternalDocumentation object.
+        # The ExternalDocumentation object.
         attribute :external_docs, ExternalDocumentation
 
         ##

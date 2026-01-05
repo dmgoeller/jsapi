@@ -348,7 +348,10 @@ module Jsapi
           rescue_from StandardError, with: 500
         end.rescue_handlers
 
-        assert_equal([500], rescue_handlers.map(&:status))
+        assert_equal(
+          [Status::Code.from(500)],
+          rescue_handlers.map(&:status_code)
+        )
       end
 
       # #response

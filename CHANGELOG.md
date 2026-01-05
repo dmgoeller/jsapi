@@ -33,6 +33,18 @@ def foo(api_params)
 end
 ```
 
+#### Support of HTTP status code ranges
+
+The status of a response can now be a range of HTTP status codes.
+
+```ruby
+api_operation do
+  response 'DefaultResponse'
+  response '4xx', 'ErrorResponse'
+  response '5xx', 'ErrorResponse'
+end
+```
+
 #### Support of "text/plain" media type
 
 The `api_operation` and `api_operation!` methods now render the textual representation of

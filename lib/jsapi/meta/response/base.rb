@@ -12,7 +12,8 @@ module Jsapi
 
         ##
         # :attr_reader: contents
-        # The Media::Type and Content objects.
+        # The alternative contents of the response. Maps instances of
+        # Media::Range to Content objects.
         attribute :contents, { Media::Type => Content }, accessors: %i[reader writer]
 
         ##
@@ -22,27 +23,31 @@ module Jsapi
 
         ##
         # :attr: headers
-        # The Header objects.
+        # The headers of the response. Maps header names to Header objects or
+        # references.
         attribute :headers, { String => Header }
 
         ##
         # :attr: links
-        # The Link objects.
+        # The linked operations. Maps link names to Link objects.
         attribute :links, { String => Link }
 
         ##
         # :attr: locale
-        # The locale to be used when rendering a response.
+        # The locale to be used instead of the default locale when rendering
+        # a response.
         attribute :locale, Symbol
 
         ##
         # :attr: nodoc
-        # Prevents response to be described in generated \OpenAPI documents.
+        # Prevents the response to be described in generated \OpenAPI documents.
         attribute :nodoc, values: [true, false], default: false
 
         ##
         # :attr: summary
-        # The short description of the response. Applies to \OpenAPI 3.2 and higher.
+        # The short description of the response.
+        #
+        # Applies to \OpenAPI 3.2 and higher.
         attribute :summary, String
 
         def initialize(keywords = {})

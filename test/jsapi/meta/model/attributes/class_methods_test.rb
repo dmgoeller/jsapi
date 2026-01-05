@@ -61,6 +61,11 @@ module Jsapi
               attribute :foo, Object, default: 'bar'
             end
             assert_equal('bar', model.foo)
+
+            model = model do
+              attribute :foo, Object, default: :nil
+            end
+            assert_nil(model.foo)
           end
 
           # Boolean attributes

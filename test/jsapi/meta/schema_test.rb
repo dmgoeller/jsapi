@@ -93,7 +93,7 @@ module Jsapi
 
       def test_wrap_prevents_double_wrapping
         wrapper = Schema.wrap(Schema.new(type: 'string'), nil)
-        assert(wrapper.eql?(Schema.wrap(wrapper, nil)))
+        assert(wrapper.equal?(Schema.wrap(wrapper, nil)))
       end
     end
   end

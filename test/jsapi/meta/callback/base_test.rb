@@ -101,25 +101,7 @@ module Jsapi
           callback = Base.new
 
           each_openapi_version(from: OpenAPI::V3_0) do |version|
-            assert_openapi_equal({}, callback, version, nil)
-          end
-        end
-
-        def test_minimal_openapi_path_item_object
-          callback = Base.new(
-            expressions: {
-              '{$request.query.foo}' => {}
-            }
-          )
-          each_openapi_version(from: OpenAPI::V3_0) do |version|
-            assert_openapi_equal(
-              {
-                "{$request.query.foo}": {}
-              },
-              callback,
-              version,
-              nil
-            )
+            assert_openapi_equal({}, callback, version, Definitions.new)
           end
         end
 
@@ -165,7 +147,25 @@ module Jsapi
               },
               callback,
               version,
-              nil
+              Definitions.new
+            )
+          end
+        end
+
+        def test_openapi_callback_object_with_minimal_path_item_object
+          callback = Base.new(
+            expressions: {
+              '{$request.query.foo}' => {}
+            }
+          )
+          each_openapi_version(from: OpenAPI::V3_0) do |version|
+            assert_openapi_equal(
+              {
+                "{$request.query.foo}": {}
+              },
+              callback,
+              version,
+              Definitions.new
             )
           end
         end

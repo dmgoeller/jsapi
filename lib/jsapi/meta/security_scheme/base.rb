@@ -11,7 +11,8 @@ module Jsapi
 
         ##
         # :attr: deprecated
-        # Specifies whether or not the security scheme is deprecated.
+        # Specifies whether the security scheme is marked as deprecated.
+        #
         # Applies to \OpenAPI 3.2 and higher.
         attribute :deprecated, values: [true, false]
 

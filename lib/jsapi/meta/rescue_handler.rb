@@ -2,31 +2,32 @@
 
 module Jsapi
   module Meta
-    # Maps an error class to a response status.
+    # Specifies a rescue handler.
     class RescueHandler < Model::Base
       ##
       # :attr: error_class
-      # The error class to be mapped.
-      attribute :error_class, default: StandardError
+      # The error class to be rescued.
+      attribute :error_class, default: StandardError, accessors: %i[reader]
 
       ##
-      # :attr: status
-      # The response status. The default is <code>"default"</code>.
-      attribute :status, default: 'default'
+      # :attr: status_code
+      # The Status::Code replacing the original status code when rescuing an
+      # instance of error_class.
+      attribute :status_code, Status::Code
 
-      def initialize(keywords = {})
-        super
-        unless error_class.is_a?(Class)
-          raise ArgumentError, "#{error_class.inspect} isn't a class"
-        end
-        unless error_class <= StandardError
-          raise ArgumentError, "#{error_class.inspect} isn't a rescuable class"
-        end
+      def error_class=(klass) # :nodoc:
+        raise ArgumentError, "#{klass.inspect} isn't a class" \
+        unless klass.is_a?(Class)
+
+        raise ArgumentError, "#{klass.inspect} isn't a rescuable class" \
+        unless klass <= StandardError
+
+        @error_class = klass
       end
 
-      # Returns true if +exception+ is an instance of the class to be mapped, false otherwise.
-      def match?(exception)
-        exception.is_a?(error_class)
+      # Returns true if +error+ is an instance of error_class.
+      def match?(error)
+        error.is_a?(error_class)
       end
     end
   end

@@ -40,7 +40,7 @@ module Jsapi
       ##
       # :method: deprecated
       # :args: arg
-      # Specifies whether or not the schema is deprecated.
+      # Specifies whether the schema is marked as deprecated.
       #
       #   deprecated true
 

@@ -3,9 +3,14 @@
 module Jsapi
   module DSL
     class Path < Base
-      include CommonMethods
+      include SharedOperationMethods
 
-      # Specifies an operation within the current path.
+      ##
+      # :method: description
+      # :args: arg
+      # Specifies the common description for all operations in this path.
+
+      # Specifies an operation within this path.
       #
       #   operation 'foo' do
       #     parameter 'bar', type: 'string'
@@ -33,6 +38,29 @@ module Jsapi
           end
         end
       end
+
+      # :method: server
+      # :args: arg
+      # Specifies a server providing all operations in this path.
+
+      ##
+      # :method: summary
+      # :args: arg
+      # Specifies the common summary for all operations in this path.
+
+      ##
+      # :method: tag
+      # :args: name
+      # Adds a tag.
+      #
+      #   tag 'foo'
+
+      ##
+      # :method: tags
+      # :args: names
+      # Specifies all tags at once.
+      #
+      #   tags %w[foo bar]
     end
   end
 end

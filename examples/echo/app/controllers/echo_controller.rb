@@ -2,7 +2,7 @@
 
 class EchoController < Jsapi::Controller::Base
   def index
-    api_operation! status: 200 do |api_params|
+    api_operation! do |api_params|
       {
         echo: "#{api_params.call}, again"
       }

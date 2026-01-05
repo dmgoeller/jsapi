@@ -43,7 +43,7 @@ module Jsapi
 
         def test_wrap_prevents_double_wrapping
           wrapper = Dummy.wrap(Dummy.new, Definitions.new)
-          assert(wrapper.eql?(Dummy.wrap(wrapper, nil)))
+          assert(wrapper.equal?(Dummy.wrap(wrapper, nil)))
         end
       end
     end

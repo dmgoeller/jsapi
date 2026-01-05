@@ -42,7 +42,10 @@ module Jsapi
       #     # ...
       #   end
       #
-      # +operation_name+ can be +nil+ if the controller handles one operation only.
+      # +operation_name+ can be omitted if the controller handles one operation only. If the
+      # operation isn't defined, an OperationNotDefined exception is raised.
+      #
+      # +:status+ specifies the HTTP status code of the response to be produced.
       #
       # If +:strong+ is +true+, parameters that can be mapped are accepted only. That means
       # that the model passed to the block is invalid if there are any request parameters
@@ -54,7 +57,8 @@ module Jsapi
       # - +:empty+ - All of the  properties whose value is empty are omitted.
       # - +:nil+ - All of the properties whose value is +nil+ are omitted.
       #
-      # Raises an +ArgumentError+ when +:omit+ is other than +:empty+, +:nil+ or +nil+.
+      # Raises an Unauthorized exception if the Authentication module is included and the
+      # current request could not be authenticated.
       #
       # See Callbacks::ClassMethods for possible callbacks.
 
@@ -72,16 +76,21 @@ module Jsapi
       [true, false].each do |bang|
         define_method(bang ? :api_operation! : :api_operation) \
         do |operation_name = nil, omit: nil, status: nil, strong: false, &block|
-          operation_model = _api_operation_model(operation_name)
-          response_model = _api_response_model(operation_model, status)
-
-          # Perform operation
-          api_params = _api_params(operation_model, strong: strong)
+          operation = _api_operation(operation_name)
+          response_model = nil
 
           result = begin
-            _api_before_processing(operation_name, api_params)
+            # Authenticate request first if Authentication is included
+            raise Unauthorized if respond_to?(:_api_authenticated?, true) &&
+                                  !_api_authenticated?(operation)
+
+            status = Status::Code.from(status)
+            response_model = _api_response_model(operation, status)
+
+            api_params = _api_params(operation, strong: strong)
             raise ParametersInvalid.new(api_params) if bang && api_params.invalid?
 
+            _api_before_processing(operation, api_params)
             block&.call(api_params)
           rescue StandardError => e
             definitions = api_definitions
@@ -90,9 +99,9 @@ module Jsapi
             rescue_handler = definitions.rescue_handler_for(e)
             raise e if rescue_handler.nil?
 
-            # Change the HTTP status code and response model
-            status = rescue_handler.status
-            response_model = operation_model.response(status)
+            # Replace the status code and response model
+            status = rescue_handler.status_code
+            response_model = operation.find_response(status)
             raise e if response_model.nil?
 
             # Call on_rescue callbacks
@@ -116,12 +125,20 @@ module Jsapi
             locale: response_model.locale
           )
           if media_type.json?
-            render(json: api_response, status: status, content_type: media_type.to_s)
+            render(
+              json: api_response,
+              status: status&.to_i,
+              content_type: media_type.to_s
+            )
           elsif media_type == Media::Type::TEXT_PLAIN
-            render(plain: result, status: status, content_type: media_type.to_s)
+            render(
+              plain: result,
+              status: status&.to_i,
+              content_type: media_type.to_s
+            )
           elsif media_type == Media::Type::APPLICATION_JSON_SEQ
             self.content_type = media_type.to_s
-            response.status = status
+            response.status = status&.to_i
 
             response.stream.tap do |stream|
               api_response.write_json_seq_to(stream)
@@ -137,7 +154,8 @@ module Jsapi
       #
       #   params = api_params('foo')
       #
-      # +operation_name+ can be +nil+ if the controller handles one operation only.
+      # +operation_name+ can be omitted if the controller handles one operation only. If the
+      # operation isn't defined, an OperationNotDefined exception is raised.
       #
       # If +strong+ is +true+, parameters that can be mapped are accepted only. That means
       # that the model returned is invalid if there are any request parameters that can't be
@@ -145,7 +163,7 @@ module Jsapi
       #
       # Note that each call of +api_params+ returns a newly created instance.
       def api_params(operation_name = nil, strong: false)
-        _api_params(_api_operation_model(operation_name), strong: strong)
+        _api_params(_api_operation(operation_name), strong: strong)
       end
 
       # Returns a Response to serialize the JSON representation of +result+ according to the
@@ -153,18 +171,20 @@ module Jsapi
       #
       #   render(json: api_response(bar, 'foo', status: 200))
       #
-      # +operation_name+ can be +nil+ if the controller handles one operation only.
+      # +operation_name+ can be omitted if the controller handles one operation only. If the
+      # operation isn't defined, an OperationNotDefined exception is raised.
+      #
+      # +:status+ specifies the HTTP status code of the response to be produced.
       #
       # The +:omit+ option specifies on which conditions properties are omitted.
       # Possible values are:
       #
       # - +:empty+ - All of the  properties whose value is empty are omitted.
       # - +:nil+ - All of the properties whose value is +nil+ are omitted.
-      #
-      # Raises an +ArgumentError+ when +:omit+ is other than +:empty+, +:nil+ or +nil+.
       def api_response(result, operation_name = nil, omit: nil, status: nil)
-        operation_model = _api_operation_model(operation_name)
-        response_model = _api_response_model(operation_model, status)
+        status = Status::Code.from(status)
+        operation = _api_operation(operation_name)
+        response_model = _api_response_model(operation, status)
 
         Response.new(
           result,
@@ -182,29 +202,29 @@ module Jsapi
         )
       end
 
-      def _api_operation_model(operation_name)
-        operation_model = api_definitions.find_operation(operation_name)
-        return operation_model if operation_model
+      def _api_operation(operation_name)
+        operation = api_definitions.find_operation(operation_name)
+        return operation if operation
 
-        raise "operation not defined: #{operation_name}"
+        raise OperationNotDefined, operation_name
       end
 
-      def _api_params(operation_model, strong:)
-        (operation_model.model || Model::Base).new(
+      def _api_params(operation, strong:)
+        (operation.model || Model::Base).new(
           Parameters.new(
             params.except(:action, :controller, :format).permit!,
             request,
-            operation_model,
+            operation,
             strong: strong
           )
         )
       end
 
-      def _api_response_model(operation_model, status)
-        response_model = operation_model.response(status)
+      def _api_response_model(operation, status_code)
+        response_model = operation.find_response(status_code)
         return response_model if response_model
 
-        raise "status code not defined: #{status}"
+        raise "no matching response found: #{status_code}"
       end
     end
   end

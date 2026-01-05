@@ -5,7 +5,7 @@ require 'test_helper'
 module Jsapi
   module Meta
     class RescueHandlerTest < Minitest::Test
-      def test_raises_an_error_on_invalid_class
+      def test_raises_an_error_on_invalid_error_class
         # Not a class
         error = assert_raises(ArgumentError) do
           RescueHandler.new(error_class: 'foo')

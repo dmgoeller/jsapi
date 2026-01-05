@@ -23,7 +23,7 @@ module Jsapi
 
         ##
         # :attr: deprecated
-        # Specifies whether or not the header is deprecated.
+        # Specifies whether the header is marked as deprecated.
         attribute :deprecated, values: [true, false]
 
         ##

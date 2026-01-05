@@ -11,7 +11,7 @@ module Jsapi
 
       ##
       # :attr: examples
-      # The Example objects.
+      # The examples. Maps example names to Example objects or references.
       attribute :examples, { String => Example }, default_key: 'default'
 
       ##

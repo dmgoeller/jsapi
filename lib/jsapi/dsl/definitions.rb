@@ -190,14 +190,16 @@ module Jsapi
         end
       end
 
-      # Specifies the HTTP status code of an error response rendered when an exception of
+      # Specifies the status code of a response to be produced when an error of
       # any of +klasses+ has been raised.
       #
       #   rescue_from Jsapi::Controller::ParametersInvalid, with: 400
       #
       def rescue_from(*klasses, with: nil)
         klasses.each do |klass|
-          @meta_model.add_rescue_handler({ error_class: klass, status: with })
+          @meta_model.add_rescue_handler(
+            { error_class: klass, status_code: with }
+          )
         end
       end
 

@@ -13,7 +13,9 @@ module Jsapi
 
       ##
       # :attr: name
-      # The optional unique name of the server. Applies to \OpenAPI 3.2 and higher.
+      # The optional unique name of the server.
+      #
+      # Applies to \OpenAPI 3.2 and higher.
       attribute :name, String
 
       ##
@@ -23,7 +25,7 @@ module Jsapi
 
       ##
       # :attr_reader: variables
-      # The ServerVariable objects.
+      # The server variables. Maps strings to ServerVariable objects.
       attribute :variables, { String => ServerVariable }
 
       # Returns a hash representing the \OpenAPI server object.

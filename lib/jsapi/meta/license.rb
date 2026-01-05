@@ -8,7 +8,9 @@ module Jsapi
 
       ##
       # :attr: identifier
-      # The SDPX identifier of the license. Applies to \OpenAPI 3.1 and higher.
+      # The SDPX identifier of the license.
+      #
+      # Applies to \OpenAPI 3.1 and higher.
       attribute :identifier, String, accessors: %i[reader]
 
       ##

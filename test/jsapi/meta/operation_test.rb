@@ -77,7 +77,7 @@ module Jsapi
             existence: true
           },
           responses: {
-            nil => {
+            'default' => {
               contents: {
                 'application/json' => {
                   type: 'string'
@@ -87,7 +87,7 @@ module Jsapi
                 }
               }
             },
-            400 => {
+            '4xx' => {
               contents: {
                 'application/problem+json' => {
                   type: 'string'
@@ -135,7 +135,6 @@ module Jsapi
                 ],
                 produces: %w[
                   application/json
-                  application/problem+json
                 ],
                 parameters: [
                   {
@@ -153,11 +152,6 @@ module Jsapi
                 ],
                 responses: {
                   'default' => {
-                    schema: {
-                      type: 'string'
-                    }
-                  },
-                  400 => {
                     schema: {
                       type: 'string'
                     }
@@ -211,7 +205,7 @@ module Jsapi
                       }
                     end
                   },
-                  400 => {
+                  '4XX' => {
                     content: {
                       'application/problem+json' => {
                         schema: {
@@ -280,7 +274,7 @@ module Jsapi
                       }
                     end
                   },
-                  400 => {
+                  '4XX' => {
                     content: {
                       'application/problem+json' => {
                         schema: {
@@ -317,6 +311,24 @@ module Jsapi
         end
       end
 
+      def test_openapi_operation_object_with_empty_security_array
+        operation = Operation.new('foo', security_requirements: [])
+
+        each_openapi_version do |version|
+          assert_openapi_equal(
+            {
+              operationId: 'foo',
+              parameters: [],
+              responses: {},
+              security: []
+            },
+            operation,
+            version,
+            Definitions.new
+          )
+        end
+      end
+
       def test_openapi_operation_object_with_path_defaults
         operation = Operation.new(
           'foo',
@@ -327,11 +339,14 @@ module Jsapi
           paths: {
             '/bar' => {
               responses: {
-                200 => {
+                'default' => {
                   type: 'string',
                   existence: true
                 }
               },
+              security_requirements: [
+                { schemes: { 'http_basic' => nil } }
+              ],
               tags: %w[Bar]
             }
           }
@@ -344,12 +359,15 @@ module Jsapi
                 produces: %w[application/json],
                 parameters: [],
                 responses: {
-                  '200' => {
+                  'default' => {
                     schema: {
                       type: 'string'
                     }
                   }
                 },
+                security: [
+                  { 'http_basic' => [] }
+                ],
                 tags: %w[Foo Bar]
               }
             else
@@ -357,7 +375,7 @@ module Jsapi
                 operationId: 'foo',
                 parameters: [],
                 responses: {
-                  '200' => {
+                  'default' => {
                     content: {
                       'application/json' => {
                         schema: {
@@ -367,6 +385,9 @@ module Jsapi
                     }
                   }
                 },
+                security: [
+                  { 'http_basic' => [] }
+                ],
                 tags: %w[Foo Bar]
               }
             end,
@@ -384,7 +405,7 @@ module Jsapi
             '200' => {
               content_type: 'application/json'
             },
-            '5XX' => {
+            '500' => {
               content_type: 'application/problem+json',
               nodoc: true
             }

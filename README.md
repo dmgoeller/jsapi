@@ -41,7 +41,7 @@ Specify the operation to be bound to the API endpoint in `jsapi/api_defs/echo.rb
 
 operation path: '/echo' do
   parameter 'call', type: 'string', existence: true
-  response 200, type: 'object' do
+  response type: 'object' do
     property 'echo', type: 'string'
   end
   response 400, type: 'object' do
@@ -60,7 +60,7 @@ Create a controller that inherits from `Jsapi::Controller::Base`:
 
 class EchoController < Jsapi::Controller::Base
   def index
-    api_operation! status: 200 do |api_params|
+    api_operation! do |api_params|
       {
         echo: "#{api_params.call}, again"
       }
@@ -172,10 +172,10 @@ class EchoController < Jsapi::Controller::Base
 
   api_operation path: '/echo' do
     parameter 'call', type: 'string', existence: true
-    response 200, type: 'object' do
+    response type: 'object' do
       property 'echo', type: 'string'
     end
-    response 400, type: 'object' do
+    response '4xx', type: 'object' do
       property 'status', type: 'integer'
       property 'message', type: 'string'
     end
@@ -196,10 +196,10 @@ class EchoController < Jsapi::Controller::Base
 
     operation path: '/echo' do
       parameter 'call', type: 'string', existence: true
-      response 200, type: 'object'  do
+      response type: 'object'  do
         property 'echo', type: 'string'
       end
-      response 400, type: 'object' do
+      response '4xx', type: 'object' do
         property 'status', type: 'integer'
         property 'message', type: 'string'
       end
@@ -263,9 +263,12 @@ keywords:
 - `:summary` - The short description of the operation.
 - `:tags` - The tags to group operations in an OpenAPI document.
 
-All keywords except `:model`, `:parameters`, `:request_body` and `:responses` are only used to
-describe the operation in an OpenAPI document. The relative path of an operation is derived
-from the controller name, unless it is explictly specified by the `:path` keyword.
+All keywords except `:model`, `:parameters`, `:request_body`, `:responses` and
+`:security_requirements` are only used to describe the operation in generated OpenAPI
+documents.
+
+The relative path of an operation is derived from the controller name, unless it is
+explictly specified by the `:path` keyword.
 
 #### Callbacks
 
@@ -323,6 +326,7 @@ api_path 'foos' do
 
   path '{id}' do
     parameter 'id', type: 'integer'
+    response 404, 'ErrorResponse'
     operation 'read_foo'
     operation 'update_foo', method: 'patch'
     operation 'delete_foo', method: 'delete'
@@ -335,14 +339,22 @@ takes the following keywords:
 
 - `:description` - The description that applies to all operations in this path.
 - `:model` - The default model of all operations in this path.
-- `:parameters` - The parameters that are consumed by all operations in this path.
-- `:request_body` - The default request body of all operations in this path.
+  See [API models](#api-models) for further information.
+- `:parameters` - The parameters that apply to all operations in this path.
+  See [Specifying parameters] for further information.
+- `:request_body` - The request body used by default by all operations in this path.
+  See [Specifying request bodies] for further information.
 - `:responses` - The responses that can be produced by all operations in this path.
-- `:servers` - See [Specifying API locations].
+  See [Specifying responses] for further information.
+- `:security_requirements` - The security requirements that apply to all operations in
+  this path. See [Specifying security schemes and requirements] for further information.
+- `:servers` - The servers that apply by default to all operations in this path.
+   See [Specifying API locations] for further information.
 - `:summary` - The summary that applies to all operations in this path.
 - `:tags` - The tags that apply to all operations in this path.
 
-These keywords are only used to describe the path in an OpenAPI document.
+The `:description`, `:servers`, `:summary` and `:tags` keywords are only used to describe
+the path in generated OpenAPI documents.
 
 ### Specifying parameters
 
@@ -368,7 +380,7 @@ parameter. Additionally, the following keywords may be specified:
 - `:ref` - Refers a reusable parameter.
 
 The `:content_type`, `:example`, `examples` and `:openapi_extensions` keywords are only used
-to describe a parameter in an OpenAPI document.
+to describe a parameter in generated OpenAPI documents.
 
 #### Query Parameters
 
@@ -437,7 +449,7 @@ schema of the request body. Additionally, the following keywords may be specifie
 - `:ref` - Refers a reusable request body.
 
 The `:example`, `:examples` and `:openapi_extensions` keywords are only used to describe the
-request body in an OpenAPI document.
+request body in generated OpenAPI documents.
 
 #### Different types of content
 
@@ -500,15 +512,22 @@ for example:
 
 ```ruby
 api_operation do
-  response 200 do
+  response 'default' do
     property 'foo', type: 'string'
   end
 end
 ```
 
-The optional positional argument specifies the response status. The default response status is
-`"default"`. The `response` directive takes all keywords described in [Specifying schemas] to
-define the schema of the response. Additionally, the following keywords may be specified:
+The optional positional argument specifies the response status. Possible values are:
+
+- HTTP status codes, for example: `200`
+- ranges of HTTP status codes, for example: `"2xx"` or `"2XX"`
+- `"default"`
+
+The default response status is `"default"`.
+
+The `response` directive takes all keywords described in [Specifying schemas] to define the
+schema of the response. Additionally, the following keywords may be specified:
 
 - `:content_type`- The content type of the response, `"application/json"` by default.
 - `:example`, `:examples` - See [Specifying examples].
@@ -525,7 +544,7 @@ code.  This can especially be used to return error responses in English regardle
 language of regular responses.
 
 The `:example`, `:examples`, `:headers`, `:links` `:openapi_extensions` and `summary` keywords
-are only used to describe a response in an OpenAPI document.
+are only used to describe a response in generated OpenAPI documents.
 
 #### Different types of content
 
@@ -554,7 +573,7 @@ keywords may be specified:
 - `:example`, `:examples` - See [Specifying examples].
 - `:openapi_extensions` - See [Specifying OpenAPI extensions].
 
-These keywords are only used to describe a type of content in an OpenAPI document.
+These keywords are only used to describe a type of content in generated OpenAPI documents.
 
 #### Reusable responses
 
@@ -733,15 +752,15 @@ or property.
 - `:properties` - See [Specifying properties].
 - `:schema` - See [Reusable schemas].
 - `:title` - The title of the parameter, request body, response or property.
-- `:type` - The type of a parameter, response or property. Possible values are - `"array"`,
+- `:type` - The type of a parameter, response or property. Possible values are `"array"`,
   `"boolean"`,  `"integer"`, `"number"`, `"object"` and `"string"`. The default type is
   `"object"`.
 
-The `:deprecated`, `:description`, `:example`, `:examples`, and `:title` keywords are only used
-to describe a schema in an OpenAPI or JSON Schema document. Note that examples of a parameter,
-request body and response differ from other schemas because they are compliant to the OpenAPI
-specification, whereas in all other cases examples are compliant to the JSON Schema
-specification.
+The `:deprecated`, `:description`, `:example`, `:examples`, and `:title` keywords are only
+used to describe a schema in generated OpenAPI and JSON Schema documents. Note that examples
+of a parameter, request body and response differ from other schemas because they are compliant
+to the OpenAPI specification, whereas in all other cases examples are compliant to the JSON
+Schema specification.
 
 #### The `:existence` keyword
 
@@ -1153,15 +1172,16 @@ document.
 
 ### Specifying rescue handlers and callbacks
 
-To rescue exceptions raised while performing an operation, a rescue handler can be defined by
-an `api_rescue_from` directive, for example:
+To rescue exceptions raised while performing an operation, one or more rescue handlers can be
+defined by `api_rescue_from` directives, for example:
 
 ```ruby
 api_rescue_from Jsapi::Controller::ParametersInvalid, with: 400
+api_rescue_from StandardError, with: 500
 ```
 
 The one and only positional argument specifies the exception class to be rescued. The `:with`
-keyword specifies the status of the error response to be produced.
+keyword specifies the status code of the error response to be produced.
 
 To notice exceptions caught by a rescue handler, a callback can be added by an `api_on_rescue`
 directive, for example:
@@ -1304,7 +1324,8 @@ params = api_params('foo')
 ```
 
 The one and only positional argument specifies the name of the API operation. It can be
-omitted if the controller handles one API operation only.
+omitted if the controller handles one API operation only. If the operation isn't defined,
+an `Jsapi::Controller::OperationNotDefined` exception is raised.
 
 Note that each call of `api_params` returns a newly created instance. Thus, the instance
 returned by `api_params` must be locally stored when validating request parameters,
@@ -1328,10 +1349,12 @@ end
 render(json: api_response(foo, 'foo', status: 200))
 ```
 
-The object to be serialized is passed as the first positional argument. The second positional
-argument specifies the name of the API operation. It can be omitted if the controller handles
-one API operation only. `status` specifies the HTTP status code of the response to be selected.
-If `status` is not present, the default response of the API operation is selected.
+The object to be serialized is passed as the first positional argument. The second
+positional argument specifies the name of the API operation. It can be omitted if the
+controller handles one API operation only. If the operation isn't defined, an
+`Jsapi::Controller::OperationNotDefined` exception is raised.
+
+`:status` specifies the HTTP status code of the response to be produced.
 
 #### The `api_operation` method
 
@@ -1356,14 +1379,15 @@ api_operation('foo', status: 200) do |api_params|
 end
 ```
 
-The one and only positional argument specifies the name of the API operation. It can be omitted
-if the controller handles one API operation only. `status` specifies the HTTP status code of
-the response to be selected. If `status` is not present, the default response of the API
-operation is selected.
+The one and only positional argument specifies the name of the API operation. It can be
+omitted if the controller handles one API operation only. If the operation isn't defined,
+an `Jsapi::Controller::OperationNotDefined` exception is raised.
 
-If an exception is raised while performing the block, an error response according to the first
-matching rescue handler is rendered and all of the callbacks are called. If no rescue handler
-matches, the exception is raised again.
+`:status` specifies the HTTP status code of the response to be produced.
+
+If an exception is raised while performing the operation, an error response according to the
+first matching rescue handler is rendered and all of the callbacks are called. If no rescue
+handler matches, the exception is raised again.
 
 #### The `api_operation!` method
 
@@ -1529,6 +1553,30 @@ All other options are passed to `api_operation`.
 
 Like `api_action`, except that [api_operation!](#the-api_operation-method-1) is
 used instead of [api_operation](#the-api_operation-method).
+
+### Authentication
+
+```ruby
+class FooController < Jsapi::Controller::Base
+  include Jsapi::Controller::Authentication
+
+  rescue_from Jsapi::Controller::OperationNotDefined do
+    head :not_found
+  end
+
+  api_rescue_from Jsapi::Controller::Unauthorized, with: 401
+
+  api_authenticate 'basic_auth' do |credentials|
+    credentials.username == 'api_user' && credentials.password == 'secret'
+  end
+
+  api_security_scheme 'basic_auth', type: 'http', scheme: 'basic'
+
+  api_security_requirement do
+    scheme 'basic_auth'
+  end
+end
+```
 
 ## API models
 

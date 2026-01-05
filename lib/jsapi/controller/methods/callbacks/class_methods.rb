@@ -11,8 +11,8 @@ module Jsapi
           #   api_before_processing(method, except: nil, only: nil)
           #   api_before_processing(except: nil, only: nil, &block)
           #
-          # Triggered by +api_operation+ and +api_operation!+ before the block is
-          # performed.
+          # Triggered by +api_operation+ and +api_operation!+ before the operation is
+          # processed.
           #
           #   api_before_processing do |api_params
           #     # ...
@@ -42,9 +42,11 @@ module Jsapi
 
           %i[before_processing before_rendering].each do |kind|
             define_method(:"api_#{kind}") do |method = nil, **options, &block|
-              raise ArgumentError, 'neither method nor block is given' if !method && !block
+              method_or_block = method || block
+              raise ArgumentError, 'either a method or a block must be ' \
+                                   'specified' unless method_or_block
 
-              ((@_api_callbacks ||= {})[kind] ||= []) << Callback.new(method || block, **options)
+              ((@_api_callbacks ||= {})[kind] ||= []) << Callback.new(method_or_block, **options)
             end
           end
 

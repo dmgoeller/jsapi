@@ -4,7 +4,7 @@ module Jsapi
   module DSL
     # Used to define an API operation.
     class Operation < Base
-      include CommonMethods
+      include SharedOperationMethods
 
       # Specifies a callback.
       #
@@ -36,7 +36,7 @@ module Jsapi
       ##
       # :method: deprecated
       # :args: arg
-      # Specifies whether or not the operation is deprecated.
+      # Specifies whether the operation is marked as deprecated.
       #
       #   deprecated true
 
@@ -79,10 +79,14 @@ module Jsapi
       #
       # See Meta::Operation#security_requirements for further information.
 
+      # :method: server
+      # :args: arg
+      # Specifies a server providing the operation.
+
       ##
       # :method: summary
       # :args: arg
-      # Specifies the short summary of the operation.
+      # Specifies the short description of the operation.
 
       ##
       # :method: tag

@@ -12,7 +12,8 @@ module Jsapi
 
         ##
         # :attr_reader: contents
-        # The Media::Range and Content objects.
+        # The alternative contents of the request body. Maps instances of
+        # Media::Range to Content objects.
         attribute :contents, { Media::Range => Content }, accessors: %i[reader writer]
 
         ##
@@ -71,6 +72,7 @@ module Jsapi
         end
 
         # Returns a hash representing the \OpenAPI parameter object.
+        #
         # Applies to \OpenAPI 2.0.
         def to_openapi_parameter
           schema = default_content.schema
@@ -87,6 +89,7 @@ module Jsapi
         end
 
         # Returns a hash representing the \OpenAPI request body object.
+        #
         # Applies to \OpenAPI 3.0 and higher.
         def to_openapi(version, *)
           with_openapi_extensions(

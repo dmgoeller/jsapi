@@ -1580,11 +1580,14 @@ end
 #### The `api_authenticate` method
 
 The `api_authenticate` class method registers a handler to authenticate requests according to
-a security scheme.
+one or more security schemes.
 
 ```ruby
 api_authenticate 'basic_auth', with: :authenticate
 ```
+
+If no security schemes are specified, the handler is used as fallback for all security schemes
+for which no handler is registered.
 
 The `:with` option specifies the method to be called. Alternatively, a block can be given
 as handler.

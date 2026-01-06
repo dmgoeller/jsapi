@@ -6,13 +6,27 @@ module Jsapi
       module ClassMethods
         ##
         # :call-seq:
-        #   api_authenticate(scheme_name, with:)
-        #   api_authenticate(scheme_name, &block)
+        #   api_authenticate(scheme_name = nil, with:)
+        #   api_authenticate(scheme_name = nil, &block)
         #
-        # Registers a handler to authenticate requests according to the security
-        # scheme with the specified name.
+        # Registers a handler to authenticate requests according to the specified
+        # security scheme.
         #
         #   api_authenticate 'basic_auth', with: :authenticate
+        #
+        # If +scheme_name+ is nil, the handler is used as fallback for all schemes
+        # for which no handler is registered.
+        #
+        # The +:with+ option specifies the method to be called to authenticate
+        # requests. Alternatively, a block can be given as handler.
+        #
+        # If the handler returns a truthy value, the request is assumed to be authenticated
+        # successfully.
+        #
+        #   def authenticate(credentials)
+        #     credentials.username == 'api_user' &&
+        #       credentials.password == 'secret'
+        #   end
         def api_authenticate(scheme_name = nil, with: nil, &block)
           handler = with || block
           raise ArgumentError, 'either the :with keyword argument or a block ' \

@@ -5,7 +5,7 @@ require_relative 'authentication/class_methods'
 
 module Jsapi
   module Controller
-    # \Authentication add-on.
+    # The \Authentication add-on.
     #
     #   class FooController < Jsapi::Controller::Base
     #     include Jsapi::Controller::Authentication
@@ -56,6 +56,7 @@ module Jsapi
             credentials = Credentials.create(request, security_scheme)
             next false unless credentials&.well_formed?
 
+            # Call authentication handler
             if authentication_handler.respond_to?(:call)
               authentication_handler.call(credentials)
             else

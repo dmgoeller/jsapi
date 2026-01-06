@@ -1,6 +1,6 @@
 # Change log
 
-## 2.0 (2025-12-27)
+## 2.0 (2026-01-05)
 
 ### New features
 
@@ -17,6 +17,28 @@ api_action :foo, action: :index
 
 def foo(api_params)
   # Implement API operation here
+end
+```
+
+### Authentication
+
+Requests can now be authenticated according to the security requirements associated with an
+API operation.
+
+```ruby
+class FooController < Jsapi::Controller::Base
+  include Jsapi::Controller::Authentication
+
+  api_authenticate 'basic_auth' do |credentials|
+    credentials.username == 'api_user' &&
+      credentials.password == 'secret'
+  end
+
+  api_security_scheme 'basic_auth', type: 'http', scheme: 'basic'
+
+  api_security_requirement do
+    scheme 'basic_auth'
+  end
 end
 ```
 
@@ -48,7 +70,7 @@ end
 #### Support of "text/plain" media type
 
 The `api_operation` and `api_operation!` methods now render the textual representation of
-the object returned by the block when the media type of the response is `text/plain`.
+the object returned by the block if the media type of the response is `text/plain`.
 
 #### Content Negotiation
 

@@ -6,9 +6,11 @@ require_relative 'credentials/http'
 module Jsapi
   module Controller
     module Authentication
+      # Provides classes to pass credentials to an authentication handler.
       module Credentials
         class << self
-          # Creates credentials from +request+ according to +security_scheme+.
+          # Creates credentials from +request+ according to the specified
+          # security scheme.
           def create(request, security_scheme)
             case security_scheme
             when Meta::SecurityScheme::APIKey

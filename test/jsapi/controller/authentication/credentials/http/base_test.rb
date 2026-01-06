@@ -9,18 +9,18 @@ module Jsapi
         module HTTP
           class BaseTest < Minitest::Test
             def test_auth_scheme_and_auth_param
-              credentials = Base.new('foo bar')
-              assert_equal('foo', credentials.auth_scheme)
-              assert_equal('bar', credentials.auth_param)
+              credentials = Base.new('Basic Og==')
+              assert_equal('Basic', credentials.auth_scheme)
+              assert_equal('Og==', credentials.auth_param)
             end
 
             def test_well_formed
               assert(
-                Base.new('foo bar').well_formed? == true,
+                Base.new('Basic Og==').well_formed? == true,
                 'Expected HTTP Authentication credentials created from ' \
-                '"foo bar" to be well formed.'
+                '"Basic Og==" to be well formed.'
               )
-              [nil, '', 'foo', 'foo '].each do |authorization|
+              [nil, '', 'Basic', 'Basic '].each do |authorization|
                 assert(
                   Base.new(authorization).well_formed? == false,
                   'Expected HTTP Authentication credentials created from ' \

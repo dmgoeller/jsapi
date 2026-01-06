@@ -13,18 +13,18 @@ module Jsapi
           end
 
           def test_well_formed
-            assert(
-              APIKey.new('foo').well_formed? == true,
-              'Expected API key credentials created from ' \
-              '"foo" to be well formed.'
-            )
-            [nil, ''].each do |api_key|
+            ['', 'foo'].each do |api_key|
               assert(
-                APIKey.new(api_key).well_formed? == false,
+                APIKey.new(api_key).well_formed? == true,
                 'Expected API key credentials created from ' \
-                "#{api_key.inspect} not to be well formed."
+                "#{api_key.inspect} to be well formed."
               )
             end
+            assert(
+              APIKey.new(nil).well_formed? == false,
+              'Expected API key credentials created from ' \
+              'nil not to be well formed.'
+            )
           end
         end
       end

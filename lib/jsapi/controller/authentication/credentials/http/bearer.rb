@@ -7,7 +7,7 @@ module Jsapi
     module Authentication
       module Credentials
         module HTTP
-          # \HTTP \Bearer \Authentication credentials
+          # Holds a token passed according to \HTTP \Bearer \Authentication.
           class Bearer < Base
             # The decoded token.
             attr_reader :token
@@ -20,7 +20,7 @@ module Jsapi
             end
 
             def well_formed? # :nodoc:
-              token.present?
+              !token.nil?
             end
           end
         end

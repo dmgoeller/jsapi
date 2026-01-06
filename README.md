@@ -1467,8 +1467,8 @@ superclasses are triggered before callbacks that are defined in the actual class
 
 #### `api_before_processing` callbacks
 
-`api_before_processing` callbacks are triggered before the block of an `api_operation`
-or `api_operation!` method is performed.
+`api_before_processing` callbacks are triggered before the block passed to an
+`api_operation` or `api_operation!` method is called.
 
 ```ruby
 api_before_processing do |api_params|
@@ -1495,7 +1495,8 @@ end
 
 An `api_before_rendering` callback must be able to accept two positional arguments to
 receive the result to be rendered as the first argument and the request parameters as
-the second argument. Instead of the passed result, the returned value is rendered.
+the second argument. The value returned by the callback replaces the result to be
+rendered.
 
 ### API actions
 
@@ -1556,18 +1557,16 @@ used instead of [api_operation](#the-api_operation-method).
 
 ### Authentication
 
+If the optional `Jsapi::Controller::Authentication` module is included, requests can be
+authenticated according to the security requirements associated with an API operation.
+
 ```ruby
 class FooController < Jsapi::Controller::Base
   include Jsapi::Controller::Authentication
 
-  rescue_from Jsapi::Controller::OperationNotDefined do
-    head :not_found
-  end
-
-  api_rescue_from Jsapi::Controller::Unauthorized, with: 401
-
   api_authenticate 'basic_auth' do |credentials|
-    credentials.username == 'api_user' && credentials.password == 'secret'
+    credentials.username == 'api_user' &&
+      credentials.password == 'secret'
   end
 
   api_security_scheme 'basic_auth', type: 'http', scheme: 'basic'
@@ -1576,6 +1575,43 @@ class FooController < Jsapi::Controller::Base
     scheme 'basic_auth'
   end
 end
+```
+
+#### The `api_authenticate` method
+
+The `api_authenticate` class method registers a handler to authenticate requests according to
+a security scheme.
+
+```ruby
+api_authenticate 'basic_auth', with: :authenticate
+```
+
+The `:with` option specifies the method to be called. Alternatively, a block can be given
+as handler.
+
+```ruby
+api_authenticate 'basic_auth' do |credentials|
+  # Implement handler here
+end
+```
+
+If the handler returns a truthy value, the request is assumed to be authenticated successfully.
+
+#### Authenticating requests
+
+If a controller class includes the `Jsapi::Controller:Authentication` module the `api_operation`
+and `api_operation!` methods implicitly authenticate requests before performing the operation.
+When the current request could not be authenticated, a `Jsapi::Controller::Unauthorized`
+exception is raised. Such exceptions can be rescued as below to produce an error response.
+
+```ruby
+api_rescue_from Jsapi::Controller::Unauthorized, with: 401
+```
+
+Alternatively, requests can be authenticated by the `api_authenticated?` method.
+
+```ruby
+head :unauthorized && return unless api_authenticated?('foo')
 ```
 
 ## API models

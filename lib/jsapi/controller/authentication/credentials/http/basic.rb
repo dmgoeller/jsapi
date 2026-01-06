@@ -7,27 +7,24 @@ module Jsapi
     module Authentication
       module Credentials
         module HTTP
-          # \HTTP \Basic \Authentication credentials
+          # Holds a username and password passed according to \HTTP
+          # \Basic \Authentication.
           class Basic < Base
-            ##
-            # :attr: username
-            # The decoded username.
-
-            ##
-            # :attr: password
             # The decoded password.
+            attr_reader :password
 
-            attr_reader :username, :password
+            # The decoded username.
+            attr_reader :username
 
             def initialize(authorization)
               super
               @username, @password =
-                Base64.decode64(auth_param).split(':') \
+                Base64.decode64(auth_param).split(':', 2) \
                 if auth_scheme == 'Basic' && auth_param.present?
             end
 
             def well_formed? # :nodoc:
-              username.present? && password.present?
+              !username.nil? && !password.nil?
             end
           end
         end

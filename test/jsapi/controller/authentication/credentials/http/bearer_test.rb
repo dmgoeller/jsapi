@@ -21,7 +21,7 @@ module Jsapi
                 'Expected HTTP Bearer Authentication credentials created ' \
                 "from \"Bearer #{auth_param}\" to be well formed."
               )
-              [nil, '', 'Bearer', 'Bearer ', "Foo #{auth_param}"].each do |authorization|
+              [nil, '', 'Bearer', 'Bearer ', 'Basic Og==}'].each do |authorization|
                 assert(
                   Bearer.new(authorization).well_formed? == false,
                   'Expected HTTP Bearer Authentication credentials created ' \

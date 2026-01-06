@@ -5,7 +5,7 @@ module Jsapi
     module Authentication
       module Credentials
         module HTTP
-          # \Base \HTTP \Authentication credentials
+          # Holds credentials passed according to \HTTP \Authentication.
           class Base
             attr_reader :auth_scheme, :auth_param
 

@@ -51,7 +51,6 @@ module Jsapi
           )
           @raw_attributes.merge!(request_body.raw_attributes)
           @raw_additional_attributes = request_body.raw_additional_attributes
-          @params_to_be_validated.except!(*@raw_additional_attributes.keys)
         else
           @raw_additional_attributes = {}
         end
@@ -61,18 +60,24 @@ module Jsapi
       # otherwise. Detected errors are added to +errors+.
       def validate(errors)
         validate_attributes(errors) &&
-          validate_parameters(@params_to_be_validated, attributes, errors)
+          validate_parameters(@params_to_be_validated, self, errors)
       end
 
       private
 
-      def validate_parameters(params, attributes, errors, path = [])
+      def validate_parameters(params, model, errors, path = [])
         params.each.map do |key, value|
-          if attributes.key?(key)
-            # Validate nested parameters
-            !value.respond_to?(:keys) || validate_parameters(
+          if model.raw_attributes.key?(key)
+            validate_parameter(
               value,
-              attributes[key].try(:attributes) || {},
+              model.raw_attributes[key],
+              errors,
+              path + [key]
+            )
+          elsif model.raw_additional_attributes.key?(key)
+            validate_parameter(
+              value,
+              model.raw_additional_attributes[key],
               errors,
               path + [key]
             )
@@ -88,6 +93,10 @@ module Jsapi
             false
           end
         end.all?
+      end
+
+      def validate_parameter(value, model, errors, path)
+        !model.schema.object? || validate_parameters(value, model, errors, path)
       end
     end
   end

@@ -130,10 +130,12 @@ module Jsapi
         operation.add_parameter('foo', type: 'string', existence: true)
         errors = Model::Errors.new
 
+        # Good
         assert(parameters(foo: 'Value of foo').validate(errors))
         assert_predicate(errors, :empty?)
 
-        assert(!parameters(foo: '').validate(errors))
+        # Bad
+        assert_not(parameters(foo: '').validate(errors))
         assert(errors.added?(:foo, "can't be blank"))
       end
 
@@ -142,17 +144,20 @@ module Jsapi
         parameter.schema.add_property('bar', type: 'string', existence: true)
         errors = Model::Errors.new
 
+        # Good
         assert(parameters(foo: { 'bar' => 'Value of foo.bar' }).validate(errors))
         assert_predicate(errors, :empty?)
 
-        assert(!parameters(foo: {}).validate(errors))
+        # Bad
+        assert_not(parameters(foo: {}).validate(errors))
         assert(errors.added?(:foo, "'bar' can't be blank"))
       end
 
-      def test_validates_forbidden_parameters
+      def test_detects_forbidden_parameters
         operation.add_parameter('foo', type: 'object')
         errors = Model::Errors.new
 
+        # Good
         assert(parameters(strong: true).validate(errors))
         assert_predicate(errors, :empty?)
 
@@ -161,14 +166,75 @@ module Jsapi
           assert_predicate(errors, :empty?)
         end
 
-        assert(!parameters(bar: 'Value of bar', strong: true).validate(errors))
+        # Bad
+        assert_not(parameters(bar: 'Value of bar', strong: true).validate(errors))
         assert(errors.added?(:base, "'bar' isn't allowed"))
 
-        assert(!parameters(bar: 'Value of bar', strong: true).validate(errors))
-        assert(errors.added?(:base, "'bar' isn't allowed"))
-
-        assert(!parameters(foo: { bar: 'Value of foo.bar' }, strong: true).validate(errors))
+        assert_not(parameters(foo: { bar: 'Value of foo.bar' }, strong: true).validate(errors))
         assert(errors.added?(:base, "'foo.bar' isn't allowed"))
+      end
+
+      def test_detects_forbidden_parameters_in_top_level_additional_properties
+        operation.request_body = {
+          type: 'object',
+          additional_properties: {
+            type: 'object',
+            properties: {
+              'bar' => { type: 'string' }
+            }
+          }
+        }
+        errors = Model::Errors.new
+
+        # Good
+        params = parameters(foo: { bar: '*' }, strong: true)
+        assert(
+          params.validate(errors) == true,
+          "Expected #{params.inspect} to be valid."
+        )
+        assert_predicate(errors, :empty?)
+
+        # Bad
+        params = parameters(foo: { baz: '*' }, strong: true)
+        assert(
+          params.validate(errors) == false,
+          "Expected #{params.inspect} to be invalid."
+        )
+        assert(errors.added?(:base, "'foo.baz' isn't allowed"))
+      end
+
+      def test_detects_forbidden_parameters_in_nested_additional_properties
+        operation.request_body = {
+          type: 'object',
+          properties: {
+            'foo' => {
+              type: 'object',
+              additional_properties: {
+                type: 'object',
+                properties: {
+                  'bar' => { type: 'string' }
+                }
+              }
+            }
+          }
+        }
+        errors = Model::Errors.new
+
+        # Good
+        params = parameters(foo: { bar: { bar: '*' } }, strong: true)
+        assert(
+          params.validate(errors) == true,
+          "Expected #{params.inspect} to be valid."
+        )
+        assert_predicate(errors, :empty?)
+
+        # Bad
+        params = parameters(foo: { bar: { baz: '*' } }, strong: true)
+        assert(
+          params.validate(errors) == false,
+          "Expected #{params.inspect} to be invalid."
+        )
+        assert(errors.added?(:base, "'foo.bar.baz' isn't allowed"))
       end
 
       private

@@ -116,6 +116,9 @@ module Jsapi
 
           # Produce response
           media_type, content_model = _api_media_type_and_content_model(response_model)
+          status = status&.to_i
+          return head(status) unless content_model
+
           result = _api_before_rendering(operation_name, result, api_params)
 
           api_response = Response.new(
@@ -127,18 +130,18 @@ module Jsapi
           if media_type.json?
             render(
               json: api_response,
-              status: status&.to_i,
+              status: status,
               content_type: media_type.to_s
             )
           elsif media_type == Media::Type::TEXT_PLAIN
             render(
               plain: result,
-              status: status&.to_i,
+              status: status,
               content_type: media_type.to_s
             )
           elsif media_type == Media::Type::APPLICATION_JSON_SEQ
             self.content_type = media_type.to_s
-            response.status = status&.to_i
+            response.status = status
 
             response.stream.tap do |stream|
               api_response.write_json_seq_to(stream)

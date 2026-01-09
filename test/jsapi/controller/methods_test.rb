@@ -152,59 +152,78 @@ module Jsapi
 
         # Responses
 
-        define_method("test_response_produced_by_#{name}_on_explicit_rendering") do
-          controller = controller do
+        define_method("test_#{name}_produces_a_json_response_" \
+                      'if_content_type_is_application_json') do
+          controller_class = controller_class do
             api_operation do
-              response type: 'string'
+              response type: 'string', content_type: 'application/json'
             end
           end
-          response = controller.instance_eval do
-            send(method, status: 200) do
-              render plain: 'bar', status: 201, content_type: 'text/plain'
+          [200, 201].each do |status|
+            response = controller_class.new.instance_eval do
+              send(method, status: status) { 'foo' }
+              self.response
             end
-            self.response
+            assert_equal(status, response.status)
+            assert_equal('application/json', response.content_type)
+            assert_equal('"foo"', response.body)
           end
-
-          assert_equal(201, response.status)
-          assert_equal('text/plain', response.content_type)
-          assert_equal('bar', response.body)
         end
 
-        define_method("test_response_produced_by_#{name}_on_json_seq") do
-          controller = controller do
+        define_method("test_#{name}_produces_a_plain_response_" \
+                      'if_content_type_is_text_plain') do
+          controller_class = controller_class do
+            api_operation do
+              response type: 'string', content_type: 'text/plain'
+            end
+          end
+          [200, 201].each do |status|
+            response = controller_class.new.instance_eval do
+              send(method, status: status) { 'foo' }
+              self.response
+            end
+            assert_equal(status, response.status)
+            assert_equal('text/plain', response.content_type)
+            assert_equal('foo', response.body)
+          end
+        end
+
+        define_method("test_#{name}_streams_a_json_object_" \
+                      'if_content_type_is_application_json_seq') do
+          controller_class = controller_class do
             api_operation do
               response type: 'string', content_type: 'application/json-seq'
             end
           end
-          response = controller.instance_eval do
-            send(method) { 'foo' }
-            self.response
+          [200, 201].each do |status|
+            response = controller_class.new.instance_eval do
+              send(method, status: status) { 'foo' }
+              self.response
+            end
+            assert_equal('application/json-seq', response.content_type)
+            assert_equal("\u001E\"foo\"\n", response.stream.string)
+            assert_predicate(response.stream, :closed?)
           end
-
-          assert_nil(response.status)
-          assert_equal('application/json-seq', response.content_type)
-          assert_equal("\u001E\"foo\"\n", response.stream.string)
-          assert_predicate(response.stream, :closed?)
         end
 
-        define_method("test_response_produced_by_#{name}_on_json_seq_and_status") do
+        define_method("test_#{name}_produces_an_empty_response_" \
+                      'if_no_content_is_givem') do
           controller = controller do
             api_operation do
-              response type: 'string', content_type: 'application/json-seq'
+              response contents: {}
             end
           end
           response = controller.instance_eval do
-            send(method, status: 200) { 'foo' }
+            send(method, status: 204)
             self.response
           end
-
-          assert_equal(200, response.status)
-          assert_equal('application/json-seq', response.content_type)
-          assert_equal("\u001E\"foo\"\n", response.stream.string)
-          assert_predicate(response.stream, :closed?)
+          assert_equal(204, response.status)
+          assert_nil(response.content_type)
+          assert_equal([''], response.body)
         end
 
-        define_method("test_#{name}_produces_no_response_when_media_type_is_not_supported") do
+        define_method("test_#{name}_produces_no_response_" \
+                     'if_media_type_is_not_supported') do
           controller = controller do
             api_operation do
               response type: 'string', content_type: 'text/html'
@@ -218,6 +237,24 @@ module Jsapi
           assert_nil(response.status)
           assert_nil(response.content_type)
           assert_nil(response.body)
+        end
+
+        define_method("test_#{name}_keeps_an_explictly_rendered_response") do
+          controller = controller do
+            api_operation do
+              response type: 'string', content_type: 'application/json'
+            end
+          end
+          response = controller.instance_eval do
+            send(method, status: 200) do
+              render plain: 'bar', status: 201, content_type: 'text/plain'
+            end
+            self.response
+          end
+
+          assert_equal(201, response.status)
+          assert_equal('text/plain', response.content_type)
+          assert_equal('bar', response.body)
         end
 
         # Content negotiation
@@ -240,30 +277,23 @@ module Jsapi
             'text/plain' => text_plain,
             'text/*' => text_plain
           }.each do |media_range, (media_type, response_body)|
-            [nil, 200].each do |status|
-              controller = controller_class.new(
-                request_headers: { 'Accept' => media_range }
-              )
-              response = controller.instance_eval do
-                send(method, status: status) { 'foo' }
-                self.response
-              end
-
-              assert(
-                response.status == status,
-                "Expected response status to be #{status}, is: #{response.status}."
-              )
-              assert(
-                response.content_type = media_type,
-                "Expected #{media_type.inspect} to be the most appropriate " \
-                "media type for #{media_range.inspect}"
-              )
-              assert(
-                response.body == response_body,
-                "Expected #{response_body.inspect} to be the most appropriate " \
-                "response body for #{media_range.inspect}"
-              )
+            controller = controller_class.new(
+              request_headers: { 'Accept' => media_range }
+            )
+            response = controller.instance_eval do
+              send(method) { 'foo' }
+              self.response
             end
+            assert(
+              response.content_type = media_type,
+              "Expected #{media_type.inspect} to be the most appropriate " \
+              "media type for #{media_range.inspect}"
+            )
+            assert(
+              response.body == response_body,
+              "Expected #{response_body.inspect} to be the most appropriate " \
+              "response body for #{media_range.inspect}"
+            )
           end
         end
 

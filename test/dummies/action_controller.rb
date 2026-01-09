@@ -30,6 +30,7 @@ module ActionController
 
     def head(*args)
       response.status = args.first
+      response.body = ['']
       true
     end
 

@@ -84,11 +84,6 @@ module Jsapi
           @default_media_type ||= contents.keys.first
         end
 
-        def freeze_attributes # :nodoc:
-          add_content if contents.blank?
-          super
-        end
-
         # Returns the most appropriate media type and content for the given
         # media ranges.
         def media_type_and_content_for(*media_ranges)
@@ -108,33 +103,36 @@ module Jsapi
 
           with_openapi_extensions(
             if version == OpenAPI::V2_0
-              contents.first.then do |media_type, content|
-                {
-                  description: description,
-                  schema: content.schema.to_openapi(version),
-                  headers: headers.transform_values do |header|
+              media_type, content = contents.first
+              example = content&.examples&.values&.first
+              {
+                description: description,
+                schema: content&.schema&.to_openapi(version),
+                headers:
+                  headers.transform_values do |header|
                     header.to_openapi(version) unless header.reference?
                   end.compact.presence,
-                  examples: (
-                    if (example = content.examples.values.first).present?
-                      { media_type => example.resolve(definitions).value }
-                    end
-                  )
-                }
-              end
+                examples:
+                  if media_type.present? && example.present?
+                    { media_type => example.resolve(definitions).value }
+                  end
+              }
             else
               {
                 summary: (summary if version >= OpenAPI::V3_2),
                 description: description,
-                headers: headers.transform_values do |header|
-                  header.to_openapi(version)
-                end.presence,
-                content: contents.to_h do |media_type, content|
-                  [media_type, content.to_openapi(version, media_type)]
-                end,
-                links: links.transform_values do |link|
-                  link.to_openapi(version)
-                end.presence
+                headers:
+                  headers.transform_values do |header|
+                    header.to_openapi(version)
+                  end.presence,
+                content:
+                  contents.to_h do |nth_media_type, nth_content|
+                    [nth_media_type, nth_content.to_openapi(version, nth_media_type)]
+                  end.presence,
+                links:
+                  links.transform_values do |link|
+                    link.to_openapi(version)
+                  end.presence
               }
             end
           )
@@ -143,7 +141,7 @@ module Jsapi
         private
 
         def last_content
-          contents.values.last || add_content
+          contents.values.last || (add_content unless attributes_frozen?)
         end
       end
     end

@@ -77,53 +77,22 @@ module Jsapi
             assert(
               response.media_type_and_content_for(*media_ranges) == expected,
               "Expected #{expected.inspect} to be most appropriate " \
-              "for #{media_ranges.inspect}."
+              "content for #{media_ranges.inspect}."
             )
           end
         end
 
-        def test_freeze_attributes_adds_a_content_when_none_is_present
-          response = Base.new
-          assert_changes('response.contents.count', from: 0, to: 1) do
-            response.freeze_attributes
-          end
-        end
-
-        def test_freeze_attributes_adds_no_content_when_at_least_one_is_present
-          response = Base.new(content_type: 'application/json')
-          assert_no_changes('response.contents') do
-            response.freeze_attributes
-          end
+        def test_media_type_and_content_for_returns_nil_if_no_content_is_present
+          assert_nil(Base.new.media_type_and_content_for('*/*'))
         end
 
         # OpenAPI objects
 
         def test_minimal_openapi_response_object
-          response = Base.new(type: 'string', existence: true)
+          response = Base.new
 
           each_openapi_version do |version|
-            assert_openapi_equal(
-              if version == OpenAPI::V2_0
-                {
-                  schema: {
-                    type: 'string'
-                  }
-                }
-              else
-                {
-                  content: {
-                    'application/json' => {
-                      schema: {
-                        type: 'string'
-                      }
-                    }
-                  }
-                }
-              end,
-              response,
-              version,
-              nil
-            )
+            assert_openapi_equal({}, response, version, nil)
           end
         end
 
@@ -212,6 +181,35 @@ module Jsapi
                     }
                   },
                   'x-foo': 'bar'
+                }
+              end,
+              response,
+              version,
+              nil
+            )
+          end
+        end
+
+        def test_openapi_response_object_with_minimal_content
+          response = Base.new(type: 'string', existence: true)
+
+          each_openapi_version do |version|
+            assert_openapi_equal(
+              if version == OpenAPI::V2_0
+                {
+                  schema: {
+                    type: 'string'
+                  }
+                }
+              else
+                {
+                  content: {
+                    'application/json' => {
+                      schema: {
+                        type: 'string'
+                      }
+                    }
+                  }
                 }
               end,
               response,

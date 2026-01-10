@@ -1324,8 +1324,8 @@ params = api_params('foo')
 ```
 
 The one and only positional argument specifies the name of the API operation. It can be
-omitted if the controller handles one API operation only. If the operation isn't defined,
-an `Jsapi::Controller::OperationNotDefined` exception is raised.
+omitted if the controller handles one API operation only. If no operation could be found for
+this name, an `Jsapi::Controller::OperationNotFound` exception is raised.
 
 Note that each call of `api_params` returns a newly created instance. Thus, the instance
 returned by `api_params` must be locally stored when validating request parameters,
@@ -1351,8 +1351,8 @@ render(json: api_response(foo, 'foo', status: 200))
 
 The object to be serialized is passed as the first positional argument. The second
 positional argument specifies the name of the API operation. It can be omitted if the
-controller handles one API operation only. If the operation isn't defined, an
-`Jsapi::Controller::OperationNotDefined` exception is raised.
+controller handles one API operation only.  If no operation could be found for this name,
+an `Jsapi::Controller::OperationNotFound` exception is raised.
 
 `:status` specifies the HTTP status code of the response to be produced.
 
@@ -1380,8 +1380,8 @@ end
 ```
 
 The one and only positional argument specifies the name of the API operation. It can be
-omitted if the controller handles one API operation only. If the operation isn't defined,
-an `Jsapi::Controller::OperationNotDefined` exception is raised.
+omitted if the controller handles one API operation only. If no operation could be found for
+this name, an `Jsapi::Controller::OperationNotFound` exception is raised.
 
 `:status` specifies the HTTP status code of the response to be produced.
 

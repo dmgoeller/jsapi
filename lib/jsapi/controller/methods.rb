@@ -42,8 +42,10 @@ module Jsapi
       #     # ...
       #   end
       #
-      # +operation_name+ can be omitted if the controller handles one operation only. If the
-      # operation isn't defined, an OperationNotDefined exception is raised.
+      # +operation_name+ can be omitted if the controller handles one operation only.
+      #
+      # If no operation could be found for +operation_name+, an OperationNotFound exception
+      # is raised.
       #
       # +:status+ specifies the HTTP status code of the response to be produced.
       #
@@ -157,8 +159,10 @@ module Jsapi
       #
       #   params = api_params('foo')
       #
-      # +operation_name+ can be omitted if the controller handles one operation only. If the
-      # operation isn't defined, an OperationNotDefined exception is raised.
+      # +operation_name+ can be omitted if the controller handles one operation only.
+      #
+      # If no operation could be found for +operation_name+, an OperationNotFound exception
+      # is raised.
       #
       # If +strong+ is +true+, parameters that can be mapped are accepted only. That means
       # that the model returned is invalid if there are any request parameters that can't be
@@ -174,8 +178,10 @@ module Jsapi
       #
       #   render(json: api_response(bar, 'foo', status: 200))
       #
-      # +operation_name+ can be omitted if the controller handles one operation only. If the
-      # operation isn't defined, an OperationNotDefined exception is raised.
+      # +operation_name+ can be omitted if the controller handles one operation only.
+      #
+      # If no operation could be found for +operation_name+, an OperationNotFound exception
+      # is raised.
       #
       # +:status+ specifies the HTTP status code of the response to be produced.
       #
@@ -209,7 +215,7 @@ module Jsapi
         operation = api_definitions.find_operation(operation_name)
         return operation if operation
 
-        raise OperationNotDefined, operation_name
+        raise OperationNotFound, operation_name
       end
 
       def _api_params(operation, strong:)

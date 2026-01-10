@@ -84,14 +84,16 @@ module Jsapi
           end
         end
 
-        define_method("test_#{name}_raises_an_error_when_operation_is_undefined") do
-          error = assert_raises(OperationNotDefined) do
+        define_method("test_#{name}_raises_an_error_when_the_" \
+                      'operation_could_not_be_found') do
+          error = assert_raises(OperationNotFound) do
             controller.instance_eval { send(method, :foo) }
           end
-          assert_equal('operation not defined: foo', error.message)
+          assert_equal('operation not found: foo', error.message)
         end
 
-        define_method("test_#{name}_raises_an_error_when_no_matching_response_exists") do
+        define_method("test_#{name}_raises_an_error_when_no_suitable_" \
+                      'response_could_be_found') do
           controller = controller do
             api_operation do
               response 200, type: 'string'
@@ -495,11 +497,11 @@ module Jsapi
         assert(api_params.errors.added?(:base, "'bar' isn't allowed"))
       end
 
-      def test_api_params_raises_an_error_when_operation_is_undefined
-        error = assert_raises(OperationNotDefined) do
+      def test_api_params_raises_an_error_when_the_operation_could_not_be_found
+        error = assert_raises(OperationNotFound) do
           controller.instance_eval { api_params('foo') }
         end
-        assert_equal('operation not defined: foo', error.message)
+        assert_equal('operation not found: foo', error.message)
       end
 
       # #api_response
@@ -543,16 +545,16 @@ module Jsapi
         end
       end
 
-      def test_api_response_raises_an_error_when_operation_is_undefined
-        error = assert_raises(OperationNotDefined) do
+      def test_api_response_raises_an_error_when_the_operation_could_not_be_found
+        error = assert_raises(OperationNotFound) do
           controller.instance_eval do
             api_response('foo', 'foo', status: 200)
           end
         end
-        assert_equal('operation not defined: foo', error.message)
+        assert_equal('operation not found: foo', error.message)
       end
 
-      def test_api_response_raises_an_error_when_no_matching_response_exists
+      def test_api_response_raises_an_error_when_no_suitable_response_could_be_found
         controller = controller do
           api_operation do
             response 200, type: 'string'

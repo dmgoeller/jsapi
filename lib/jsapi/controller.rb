@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative 'controller/operation_not_defined'
+require_relative 'controller/operation_not_found'
 require_relative 'controller/parameters_invalid'
 require_relative 'controller/unauthorized'
 require_relative 'controller/error'

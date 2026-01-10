@@ -4,6 +4,14 @@ module Jsapi
   module Meta
     # Specifies a property
     class Property < Model::Base
+      class Wrapper < Model::Wrapper
+        delegate :additional_properties, :default_value, :items, to: :schema
+
+        def schema
+          @schema ||= Schema.wrap(super, definitions)
+        end
+      end
+
       include Model::Wrappable
 
       delegate_missing_to :schema
@@ -65,14 +73,6 @@ module Jsapi
         schema.to_openapi(version).tap do |result|
           result[:readOnly] = true if read_only?
           result[:writeOnly] = true if write_only? && version.major > 2
-        end
-      end
-
-      class Wrapper < Model::Wrapper
-        delegate :additional_properties, :default_value, :items, to: :schema
-
-        def schema
-          @schema ||= Schema.wrap(super, definitions)
         end
       end
     end

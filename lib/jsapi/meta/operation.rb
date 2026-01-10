@@ -4,8 +4,93 @@ module Jsapi
   module Meta
     # Specifies an API operation.
     class Operation < Model::Base
-      include Model::Wrappable
       include OpenAPI::Extensions
+
+      class Wrapper < Model::Wrapper
+        # Returns the most appropriate response for +status_code+.
+        def find_response(status_code)
+          status_code = Status::Code.from(status_code)
+
+          responses.find do |status, _response|
+            status.match?(status_code)
+          end&.second
+        end
+
+        def full_path # :nodoc:
+          @full_path ||= super
+        end
+
+        ##
+        # :attr_reader: model
+        # The model class of the wrapped operation or the default model class
+        # for the path.
+
+        # -
+        def model
+          return @model if defined? @model
+
+          @model = super || definitions.common_model(full_path)
+        end
+
+        ##
+        # :attr_reader: parameters
+        # The parameters of the wrapped operation in combination with the
+        # parameters applying to all operations in the path.
+
+        # -
+        def parameters
+          @parameters ||=
+            (definitions.common_parameters(full_path)&.merge(super) || super)
+            .transform_values { |parameter| Parameter.wrap(parameter, definitions) }
+        end
+
+        ##
+        # :attr_reader: request_body
+        # The request body of the wrapped operation or the default request
+        # body for the path.
+
+        # -
+        def request_body
+          return @request_body if defined? @request_body
+
+          @request_body = RequestBody.wrap(
+            (super || definitions.common_request_body(full_path)),
+            definitions
+          )
+        end
+
+        ##
+        # :attr_reader: responses
+        # The responses of the wrapped operation in combination with the
+        # responses applying to all operations in the path.
+
+        # -
+        def responses
+          @responses ||=
+            (definitions.common_responses(full_path)&.merge(super) || super)
+            .transform_values { |response| Response.wrap(response, definitions) }
+            .sort_by { |status, _response| status }
+            .to_h
+        end
+
+        ##
+        # :attr_reader: security_requirements
+        # The security requirements of the wrapped operation in combination
+        # with the security requirements applying to all operations in the
+        # path or the default security requirements.
+
+        # -
+        def security_requirements
+          return @security_requirements if defined? @security_requirements
+
+          @security_requirements =
+            [definitions.common_security_requirements(full_path), super]
+              .compact.presence&.flatten ||
+              definitions.default_security_requirements
+        end
+      end
+
+      include Model::Wrappable
 
       ##
       # :attr: callbacks
@@ -205,74 +290,6 @@ module Jsapi
             [security_requirements, definitions.common_security_requirements(full_path)]
               .compact.presence&.flatten&.map(&:to_openapi)
         )
-      end
-
-      class Wrapper < Model::Wrapper
-        ##
-        # :attr_reader: model
-
-        ##
-        # :attr_reader: parameters
-
-        ##
-        # :attr_reader: request_body
-
-        ##
-        # :attr_reader: responses
-
-        ##
-        # :attr_reader :security_requirements
-
-        # Returns the most appropriate response for +status_code+.
-        def find_response(status_code)
-          status_code = Status::Code.from(status_code)
-
-          responses.find do |status, _response|
-            status.match?(status_code)
-          end&.second
-        end
-
-        def full_path # :nodoc:
-          @full_path ||= super
-        end
-
-        def model
-          return @model if defined? @model
-
-          @model = super || definitions.common_model(full_path)
-        end
-
-        def parameters
-          @parameters ||=
-            (definitions.common_parameters(full_path)&.merge(super) || super)
-            .transform_values { |parameter| Parameter.wrap(parameter, definitions) }
-        end
-
-        def request_body
-          return @request_body if defined? @request_body
-
-          @request_body = RequestBody.wrap(
-            (super || definitions.common_request_body(full_path)),
-            definitions
-          )
-        end
-
-        def responses
-          @responses ||=
-            (definitions.common_responses(full_path)&.merge(super) || super)
-            .transform_values { |response| Response.wrap(response, definitions) }
-            .sort_by { |status, _response| status }
-            .to_h
-        end
-
-        def security_requirements
-          return @security_requirements if defined? @security_requirements
-
-          @security_requirements =
-            [definitions.common_security_requirements(full_path), super]
-              .compact.presence&.flatten ||
-              definitions.default_security_requirements
-        end
       end
     end
   end

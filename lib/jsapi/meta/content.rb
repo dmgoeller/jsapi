@@ -4,8 +4,15 @@ module Jsapi
   module Meta
     # Specifies the content of a request body or response.
     class Content < Model::Base
-      include Model::Wrappable
       include OpenAPI::Extensions
+
+      class Wrapper < Model::Wrapper
+        def schema
+          @schema ||= Schema.wrap(super, definitions)
+        end
+      end
+
+      include Model::Wrappable
 
       delegate_missing_to :schema
 
@@ -46,12 +53,6 @@ module Jsapi
               example.to_openapi(version)
             end.presence
         )
-      end
-
-      class Wrapper < Model::Wrapper
-        def schema
-          @schema ||= Schema.wrap(super, definitions)
-        end
       end
     end
   end

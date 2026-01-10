@@ -15,6 +15,33 @@ module Jsapi
         end
       end
 
+      class HashReader # :nodoc:
+        delegate_missing_to :@hash
+
+        def initialize(hash)
+          @hash = hash
+        end
+
+        def [](key)
+          return unless @hash.key?(key)
+
+          (@read_keys ||= []) << key
+          @hash[key]
+        end
+
+        def additional_properties
+          if @hash.key?('additional_properties')
+            @hash['additional_properties']
+          elsif @hash.key?(:additional_properties)
+            @hash[:additional_properties]
+          elsif @read_keys
+            @hash.except(*@read_keys)
+          else
+            @hash
+          end
+        end
+      end
+
       # Creates a new instance to jsonify +object+ according to +content_model+.
       #
       # The +:omit+ option specifies on which conditions properties are omitted.
@@ -125,33 +152,35 @@ module Jsapi
 
       def jsonify_object(object, schema)
         schema = schema.resolve_schema(object, context: :response)
-        properties = {}
+        additional_properties = schema.additional_properties
+        object = HashReader.new(object) if additional_properties && object.is_a?(Hash)
 
-        # Add properties
-        schema.resolve_properties(context: :response).each_value do |property|
-          property_schema = property.schema
-          property_value = property.reader.call(object)
-          property_value = property_schema.default if property_value.nil?
-          next if @omittable_check&.call(property_value, property_schema)
+        {}.tap do |properties|
+          # Add properties
+          schema.resolve_properties(context: :response).each_value do |property|
+            property_schema = property.schema
+            property_value = property.reader.call(object)
+            property_value = property_schema.default if property_value.nil?
+            next if @omittable_check&.call(property_value, property_schema)
 
-          properties[property.name] = jsonify(property_value, property_schema)
-        rescue JsonifyError => e
-          raise e.prepend(".#{property.name}")
-        end
-        # Add additional properties
-        if (additional_properties = schema.additional_properties)
-          additional_properties_schema = additional_properties.schema
-
-          additional_properties.source.call(object)&.each do |key, value|
-            next if properties.key?(key = key.to_s)
-
-            properties[key] = jsonify(value, additional_properties_schema)
+            properties[property.name] = jsonify(property_value, property_schema)
           rescue JsonifyError => e
-            raise e.prepend(".#{key}")
+            raise e.prepend(".#{property.name}")
           end
-        end
+          # Add additional properties
+          if additional_properties
+            additional_properties_schema = additional_properties.schema
 
-        properties.presence
+            additional_properties.source.call(object)&.each do |key, value|
+              key = key.to_s
+              next if properties.key?(key)
+
+              properties[key] = jsonify(value, additional_properties_schema)
+            rescue JsonifyError => e
+              raise e.prepend(".#{key}")
+            end
+          end
+        end.presence
       end
 
       def with_locale(&block)

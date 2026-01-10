@@ -178,24 +178,53 @@ module Jsapi
       def test_to_json_on_object_with_additional_properties
         content_model = content_model(
           type: 'object',
+          properties: {
+            'foo' => { type: 'integer' }
+          },
           additional_properties: { type: 'string' }
         )
-        content_model.add_property('foo', type: 'string')
+        struct = Struct.new(:foo, :additional_properties, keyword_init: true)
 
+        # Object
+        response = Response.new(
+          struct.new(foo: 1, additional_properties: { bar: 2 }),
+          content_model
+        )
+        assert_equal('{"foo":1,"bar":"2"}', response.to_json)
+
+        # Object without additional properties
+        response = Response.new(
+          struct.new(foo: 1),
+          content_model
+        )
+        assert_equal('{"foo":1}', response.to_json)
+
+        # Hash
         response = Response.new(
           {
-            foo: 'bar',
+            foo: 1,
+            bar: 2
+          },
+          content_model
+        )
+        assert_equal('{"foo":1,"bar":"2"}', response.to_json)
+
+        # Hash with explicit additional properties
+        response = Response.new(
+          {
+            foo: 1,
             additional_properties: {
-              foo: 'foo',
-              bar: 'foo'
+              foo: 2, # Expected to be skipped
+              bar: 3
             }
           },
           content_model
         )
-        assert_equal('{"foo":"bar","bar":"foo"}', response.to_json)
+        assert_equal('{"foo":1,"bar":"3"}', response.to_json)
 
-        response = Response.new({ foo: 'bar' }, content_model)
-        assert_equal('{"foo":"bar"}', response.to_json)
+        # Hash without additional properties
+        response = Response.new({ foo: 1 }, content_model)
+        assert_equal('{"foo":1}', response.to_json)
       end
 
       def test_to_json_on_object_with_additional_properties_only
@@ -205,10 +234,8 @@ module Jsapi
         )
         response = Response.new(
           {
-            additional_properties: {
-              foo: 'bar',
-              bar: 'foo'
-            }
+            foo: 'bar',
+            bar: 'foo'
           },
           content_model
         )

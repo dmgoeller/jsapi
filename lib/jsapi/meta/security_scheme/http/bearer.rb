@@ -22,11 +22,11 @@ module Jsapi
             version = OpenAPI::Version.from(version)
             return if version < OpenAPI::V3_0
 
-            with_openapi_extensions(
-              base_openapi_fields('http', version).merge(
-                scheme: 'bearer',
-                bearerFormat: bearer_format
-              )
+            openapi_security_scheme_object(
+              'http',
+              version,
+              scheme: 'bearer',
+              bearerFormat: bearer_format
             )
           end
         end

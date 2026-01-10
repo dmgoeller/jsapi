@@ -37,23 +37,26 @@ module Jsapi
         def to_openapi(version, *)
           version = OpenAPI::Version.from(version)
 
-          with_openapi_extensions(
-            base_openapi_fields('oauth2', version).tap do |fields|
-              flows = oauth_flows
-              flows = flows.except('device_authorization') unless version >= OpenAPI::V3_2
+          flows = oauth_flows
+          flows = flows.except('device_authorization') if version < OpenAPI::V3_2
 
-              if version >= OpenAPI::V3_0
-                fields[:flows] = flows.to_h do |key, value|
-                  [key.to_s.camelize(:lower), value.to_openapi(version)]
-                end if flows.any?
-
-                fields[:oauth2MetadataUrl] = oauth2_metadata_url if version >= OpenAPI::V3_2
+          openapi_security_scheme_object(
+            'oauth2',
+            version,
+            **if version >= OpenAPI::V3_0
+                {
+                  flows:
+                    flows.to_h do |key, value|
+                      [key.to_s.camelize(:lower), value.to_openapi(version)]
+                    end.presence,
+                  oauth2MetadataUrl: (oauth2_metadata_url if version >= OpenAPI::V3_2)
+                }
               elsif flows.one?
                 key, flow = flows.first
-                fields[:flow] = key
-                fields.merge!(flow.to_openapi(version))
+                { flow: key, **flow.to_openapi(version) }
+              else
+                {}
               end
-            end
           )
         end
       end

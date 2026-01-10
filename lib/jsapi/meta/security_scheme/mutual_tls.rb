@@ -13,9 +13,7 @@ module Jsapi
           version = OpenAPI::Version.from(version)
           return if version < OpenAPI::V3_1
 
-          with_openapi_extensions(
-            base_openapi_fields('mutualTLS', version)
-          )
+          openapi_security_scheme_object('mutualTLS', version)
         end
       end
     end

@@ -27,8 +27,11 @@ module Jsapi
         def to_openapi(version, *)
           version = OpenAPI::Version.from(version)
 
-          with_openapi_extensions(
-            base_openapi_fields('apiKey', version).merge(name: name, in: self.in)
+          openapi_security_scheme_object(
+            'apiKey',
+            version,
+            name: name,
+            in: self.in
           )
         end
       end

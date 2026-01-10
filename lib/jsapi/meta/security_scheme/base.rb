@@ -18,12 +18,13 @@ module Jsapi
 
         private
 
-        def base_openapi_fields(type, version)
-          {
+        def openapi_security_scheme_object(type, version, **keywords)
+          with_openapi_extensions(
             type: type,
             description: description,
-            deprecated: (deprecated?.presence if version >= OpenAPI::V3_2)
-          }
+            deprecated: (deprecated?.presence if version >= OpenAPI::V3_2),
+            **keywords
+          )
         end
       end
     end

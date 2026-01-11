@@ -47,8 +47,8 @@ module Jsapi
         assert_kind_of(Schema::String, schema)
       end
 
-      def test_new_raises_exception_on_invalid_type
-        error = assert_raises(InvalidArgumentError) do
+      def test_new_raises_an_error_on_invalid_type
+        error = assert_raises(ArgumentError) do
           Schema.new(type: 'foo')
         end
         assert_equal(

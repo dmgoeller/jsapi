@@ -8,7 +8,7 @@ module Jsapi
       def test_initialize_raises_an_error_when_omit_is_invalid
         content_model = content_model(type: 'boolean')
 
-        error = assert_raises(InvalidArgumentError) do
+        error = assert_raises(ArgumentError) do
           Response.new({}, content_model, omit: :foo)
         end
         assert_equal('omit must be one of :empty or :nil, is :foo', error.message)

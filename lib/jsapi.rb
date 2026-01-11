@@ -1,8 +1,6 @@
 # frozen_string_literal: true
 
-require 'jsapi/invalid_value_helper'
-require 'jsapi/invalid_value_error'
-require 'jsapi/invalid_argument_error'
+require 'jsapi/messages'
 require 'jsapi/configuration'
 require 'jsapi/media'
 require 'jsapi/status'

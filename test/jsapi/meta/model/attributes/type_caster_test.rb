@@ -25,7 +25,7 @@ module Jsapi
             type_caster = TypeCaster.new(Symbol, values: %i[foo bar])
             assert_equal(:foo, type_caster.cast(:foo))
 
-            error = assert_raises(InvalidArgumentError) { type_caster.cast(nil) }
+            error = assert_raises(ArgumentError) { type_caster.cast(nil) }
             assert_equal('value must be one of :foo or :bar, is nil', error.message)
           end
 

@@ -20,7 +20,7 @@ module Jsapi
         # - <code>"oauth2"</code>
         # - <code>"open_id_connect"</code>
         #
-        # Raises an InvalidArgumentError if the given type is invalid.
+        # Raises an ArgumentError if the given type is invalid.
         def new(keywords = {})
           type = keywords[:type]
           keywords = keywords.except(:type)
@@ -39,9 +39,9 @@ module Jsapi
           when 'open_id_connect' # OpenAPI 3.0 and higher
             OpenIDConnect.new(keywords)
           else
-            raise InvalidArgumentError.new(
-              'type',
-              type,
+            raise ArgumentError.new(
+              name: 'type',
+              value: type,
               valid_values: %w[api_key basic http oauth2 open_id_connect]
             )
           end

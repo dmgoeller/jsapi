@@ -95,9 +95,9 @@ module Jsapi
 
             discriminating_property = properties[discriminator.property_name]
             if discriminating_property.nil?
-              raise InvalidValueError.new(
-                'discriminator property',
-                discriminator.property_name,
+              raise Messages.invalid_value(
+                name: 'discriminator property',
+                value: discriminator.property_name,
                 valid_values: properties.keys
               )
             end

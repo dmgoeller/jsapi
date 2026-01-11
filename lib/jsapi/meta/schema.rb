@@ -34,7 +34,7 @@ module Jsapi
         #
         # The default type is <code>"object"</code>.
         #
-        # Raises an InvalidArgumentError if the given type is invalid.
+        # Raises an ArgumentError if the given type is invalid.
         def new(keywords = {})
           return Reference.new(keywords) if keywords.key?(:ref)
 
@@ -53,7 +53,11 @@ module Jsapi
           when 'string'
             String
           else
-            raise InvalidArgumentError.new('type', type, valid_values: TYPES)
+            raise ArgumentError, Messages.invalid_value(
+              name: 'type',
+              value: type,
+              valid_values: TYPES
+            )
           end.new(keywords.except(:type))
         end
 

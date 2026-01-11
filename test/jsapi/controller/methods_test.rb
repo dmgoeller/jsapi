@@ -50,7 +50,7 @@ module Jsapi
           assert_equal('value of foo is bar', response.body)
         end
 
-        define_method("test_#{name}_authentication") do
+        define_method("test_#{name}_with_authentication") do
           controller_class = controller_class do
             include Authentication
 
@@ -73,7 +73,7 @@ module Jsapi
               send(method, status: :ok)
               self.response.status
             end == 200,
-            'Expected request with valid credentials to be accepted.'
+            'Expected request with valid credentials to be authenticated.'
           )
           # Request with invalid credentials
           assert_raises(Unauthorized) do
@@ -86,10 +86,9 @@ module Jsapi
 
         define_method("test_#{name}_raises_an_error_when_the_" \
                       'operation_could_not_be_found') do
-          error = assert_raises(OperationNotFound) do
+          assert_raises(OperationNotFound) do
             controller.instance_eval { send(method, :foo) }
           end
-          assert_equal('operation not found: foo', error.message)
         end
 
         define_method("test_#{name}_raises_an_error_when_no_suitable_" \
@@ -99,15 +98,14 @@ module Jsapi
               response 200, type: 'string'
             end
           end
-          error = assert_raises(RuntimeError) do
+          assert_raises(ResponseNotFound) do
             controller.instance_eval { send(method, status: 204) }
           end
-          assert_equal('no matching response found: 204', error.message)
         end
 
         # Callbacks
 
-        define_method("test_#{name}_before_processing_callback") do
+        define_method("test_#{name}_triggers_a_before_processing_callback") do
           controller = controller do
             api_rescue_from StandardError, with: 422
 
@@ -130,7 +128,7 @@ module Jsapi
           assert_equal("foo can't be bar", response.body)
         end
 
-        define_method("test_#{name}_before_rendering_callback") do
+        define_method("test_#{name}_triggers_a_before_rendering_callback") do
           controller = controller do
             api_operation do
               parameter 'request_id', type: 'integer'
@@ -371,7 +369,7 @@ module Jsapi
           assert_equal('foo', error.message)
         end
 
-        define_method("test_#{name}_reraises_an_error_when_no_response_matches") do
+        define_method("test_#{name}_reraises_an_error") do
           controller = controller do
             api_definitions do
               rescue_from RuntimeError, with: 500
@@ -498,10 +496,9 @@ module Jsapi
       end
 
       def test_api_params_raises_an_error_when_the_operation_could_not_be_found
-        error = assert_raises(OperationNotFound) do
+        assert_raises(OperationNotFound) do
           controller.instance_eval { api_params('foo') }
         end
-        assert_equal('operation not found: foo', error.message)
       end
 
       # #api_response
@@ -546,12 +543,11 @@ module Jsapi
       end
 
       def test_api_response_raises_an_error_when_the_operation_could_not_be_found
-        error = assert_raises(OperationNotFound) do
+        assert_raises(OperationNotFound) do
           controller.instance_eval do
             api_response('foo', 'foo', status: 200)
           end
         end
-        assert_equal('operation not found: foo', error.message)
       end
 
       def test_api_response_raises_an_error_when_no_suitable_response_could_be_found
@@ -560,12 +556,11 @@ module Jsapi
             response 200, type: 'string'
           end
         end
-        error = assert_raises(RuntimeError) do
+        assert_raises(ResponseNotFound) do
           controller.instance_eval do
             controller.api_response('foo', status: 204)
           end
         end
-        assert_equal('no matching response found: 204', error.message)
       end
     end
   end

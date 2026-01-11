@@ -1,6 +1,5 @@
 # frozen_string_literal: true
 
-require_relative 'dsl/error'
 require_relative 'dsl/base'
 require_relative 'dsl/examples'
 require_relative 'dsl/schema'

@@ -36,13 +36,13 @@ module Jsapi
       end
 
       def test_raises_an_error_when_type_is_blank
-        assert_raises(InvalidArgumentError) do
+        assert_raises(ArgumentError) do
           SecurityScheme.new(type: nil)
         end
       end
 
       def test_raises_an_error_when_type_is_invalid
-        assert_raises(InvalidArgumentError) do
+        assert_raises(ArgumentError) do
           SecurityScheme.new(type: 'foo')
         end
       end

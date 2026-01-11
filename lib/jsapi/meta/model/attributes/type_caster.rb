@@ -38,12 +38,16 @@ module Jsapi
 
           # Casts +value+.
           #
-          # Raises an InvalidArgumentError if the (casted) value is invalid.
+          # Raises an ArgumentError if the (casted) value is invalid.
           def cast(value)
             casted_value = @caster.call(value)
             return casted_value unless @values&.exclude?(casted_value)
 
-            raise InvalidArgumentError.new(@name, casted_value, valid_values: @values)
+            raise ArgumentError, Messages.invalid_value(
+              name: @name,
+              value: casted_value,
+              valid_values: @values
+            )
           end
         end
       end

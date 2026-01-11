@@ -4,6 +4,55 @@ require_relative 'methods/callbacks'
 
 module Jsapi
   module Controller
+    # Raised when no operation with the specified name could be found.
+    class OperationNotFound < StandardError
+      def initialize(operation_name)
+        super("operation not found: #{operation_name}")
+      end
+    end
+
+    # Raised when no suitable response could be found.
+    class ResponseNotFound < StandardError
+      def initialize(operation, status)
+        super(
+          if operation.responses.none?
+            "#{operation.name.inspect} has no responses"
+          else
+            "#{operation.name.inspect} has no response for status #{status}"
+          end
+        )
+      end
+    end
+
+    # Raised when the current request could not be authenticated.
+    class Unauthorized < StandardError
+      def initialize # :nodoc:
+        super('request could not be authenticated')
+      end
+    end
+
+    # Raised when the request parameters are invalid.
+    class ParametersInvalid < StandardError
+
+      # The parameters.
+      attr_reader :params
+
+      def initialize(params)
+        @params = params
+        super('')
+      end
+
+      # Returns the errors encountered.
+      def errors
+        @params.errors.errors
+      end
+
+      # Overrides <code>Exception#message</code> to lazily generate the error message.
+      def message
+        "#{@params.errors.full_messages.map { |m| m.delete_suffix('.') }.join('. ')}."
+      end
+    end
+
     module Methods
       def self.included(base) # :nodoc:
         base.include(Callbacks)
@@ -215,7 +264,7 @@ module Jsapi
         operation = api_definitions.find_operation(operation_name)
         return operation if operation
 
-        raise OperationNotFound, operation_name
+        raise OperationNotFound.new(operation_name)
       end
 
       def _api_params(operation, strong:)
@@ -229,11 +278,11 @@ module Jsapi
         )
       end
 
-      def _api_response_model(operation, status_code)
-        response_model = operation.find_response(status_code)
+      def _api_response_model(operation, status)
+        response_model = operation.find_response(status)
         return response_model if response_model
 
-        raise "no matching response found: #{status_code}"
+        raise ResponseNotFound.new(operation, status)
       end
     end
   end

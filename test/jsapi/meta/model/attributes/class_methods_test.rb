@@ -50,7 +50,7 @@ module Jsapi
             assert(result.equal?(model.foo))
 
             # Errors
-            error = assert_raises(InvalidArgumentError) do
+            error = assert_raises(ArgumentError) do
               model.foo = 'baz'
             end
             assert_equal('foo must be one of "foo" or "bar", is "baz"', error.message)
@@ -155,7 +155,7 @@ module Jsapi
             assert(result.equal?(model.foos))
 
             # Errors
-            error = assert_raises(InvalidArgumentError) do
+            error = assert_raises(ArgumentError) do
               model.foos = %w[baz]
             end
             assert_equal('foo must be one of "foo" or "bar", is "baz"', error.message)
@@ -170,7 +170,7 @@ module Jsapi
             assert_equal(%w[foo], model.foos)
 
             # Errors
-            error = assert_raises(InvalidArgumentError) do
+            error = assert_raises(ArgumentError) do
               model.add_foo('bar')
             end
             assert_equal('foo must be "foo", is "bar"', error.message)
@@ -241,12 +241,12 @@ module Jsapi
             end
             assert_equal("key can't be blank", error.message)
 
-            error = assert_raises(InvalidArgumentError) do
+            error = assert_raises(ArgumentError) do
               model.foos = { 'bar' => 'bar' }
             end
             assert_equal('key must be "foo", is "bar"', error.message)
 
-            error = assert_raises(InvalidArgumentError) do
+            error = assert_raises(ArgumentError) do
               model.foos = { 'foo' => 'foo' }
             end
             assert_equal('value must be "bar", is "foo"', error.message)
@@ -266,12 +266,12 @@ module Jsapi
             end
             assert_equal("key can't be blank", error.message)
 
-            error = assert_raises(InvalidArgumentError) do
+            error = assert_raises(ArgumentError) do
               model.add_foo 'bar', 'bar'
             end
             assert_equal('key must be "foo", is "bar"', error.message)
 
-            error = assert_raises(InvalidArgumentError) do
+            error = assert_raises(ArgumentError) do
               model.add_foo 'foo', 'foo'
             end
             assert_equal('value must be "bar", is "foo"', error.message)

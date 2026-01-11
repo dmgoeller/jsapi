@@ -64,7 +64,11 @@ module Jsapi
           when :empty
             ->(value, schema) { schema.omittable? && value.try(:empty?) }
           else
-            raise InvalidArgumentError.new('omit', omit, valid_values: %i[empty nil])
+            raise ArgumentError, Messages.invalid_value(
+              name: 'omit',
+              value: omit,
+              valid_values: %i[empty nil]
+            )
           end
 
         @locale = locale

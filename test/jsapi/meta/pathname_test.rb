@@ -22,7 +22,7 @@ module Jsapi
 
       def test_pathname_from_slash
         pathname = Pathname.from('/')
-        assert_equal([''], pathname.segments)
+        assert_equal([], pathname.segments)
       end
 
       def test_pathname_from_empty_string
@@ -48,9 +48,9 @@ module Jsapi
 
         assert_equal(pathname, pathname + nil)
         # rubocop:disable Style/StringConcatenation
+        assert_equal(['foo'], (pathname + '/').segments)
         assert_equal(['foo', ''], (pathname + '').segments)
-        assert_equal(['foo', ''], (pathname + '/').segments)
-        assert_equal(['foo', '', ''], (pathname + '//').segments)
+        assert_equal(['foo', ''], (pathname + '//').segments)
         assert_equal(%w[foo bar], (pathname + '/bar').segments)
         # rubocop:enable Style/StringConcatenation
         assert_equal(%w[foo bar], (pathname + Pathname.new('/bar')).segments)
@@ -61,9 +61,9 @@ module Jsapi
 
         assert_equal(root, root + nil)
         # rubocop:disable Style/StringConcatenation
+        assert_equal([], (root + '/').segments)
         assert_equal([''], (root + '').segments)
-        assert_equal([''], (root + '/').segments)
-        assert_equal(['', ''], (root + '//').segments)
+        assert_equal([''], (root + '//').segments)
         assert_equal(['foo'], (root + '/foo').segments)
         # rubocop:enable Style/StringConcatenation
         assert_equal(['foo'], (root + Pathname.new('/foo')).segments)

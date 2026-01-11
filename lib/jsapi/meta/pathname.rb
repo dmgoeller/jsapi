@@ -9,6 +9,7 @@ module Jsapi
         def from(name)
           return name if name.is_a?(Pathname)
 
+          name = name[1..].presence if name&.match?(%r{\A/+\z})
           name.nil? ? new : new(name)
         end
       end

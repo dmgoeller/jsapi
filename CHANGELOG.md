@@ -6,7 +6,8 @@
 
 #### API Actions
 
-API actions can now be implemented by `api_action` or `api_action!`.
+Starting with Jsapi 2.0 the `api_action` and `api_action!` can be used to define API
+actions.
 
 ```ruby
 api_operation 'foo' do

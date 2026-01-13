@@ -40,11 +40,11 @@ module Jsapi
         # Resolves +ref+ by looking up the object with that name in +definitions+.
         #
         # Raises a ReferenceError if +ref+ could not be resolved.
-        def resolve(definitions)
+        def resolve(definitions, deep: true)
           object = definitions.send("find_#{self.class.component_type}", ref)
           raise ReferenceError, ref if object.nil?
 
-          object.resolve(definitions)
+          deep ? object.resolve(definitions, deep: true) : object
         end
 
         # Returns a hash representing the \OpenAPI reference object.

@@ -10,6 +10,8 @@ module Jsapi
       class BaseTest < Minitest::Test
         include TestHelper
 
+        # Contents
+
         def test_initial_contents
           contents = Base.new(
             content_type: 'text/plain',
@@ -84,6 +86,13 @@ module Jsapi
 
         def test_media_type_and_content_for_returns_nil_if_no_content_is_present
           assert_nil(Base.new.media_type_and_content_for('*/*'))
+        end
+
+        # #hidden?
+
+        def test_hidden
+          assert(Base.new(nodoc: true).hidden?)
+          assert_not(Base.new.hidden?)
         end
 
         # OpenAPI objects

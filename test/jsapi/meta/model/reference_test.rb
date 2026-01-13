@@ -2,13 +2,27 @@
 
 require 'test_helper'
 
+require_relative '../test_helper'
+
 module Jsapi
   module Meta
     module Model
       class ReferenceTest < Minitest::Test
+        include TestHelper
+
         class DummyReference < Reference
           def self.name
             'Jsapi::Meta::Model::FooBar::Reference'
+          end
+        end
+
+        class DummyDefinitions
+          def initialize(**args)
+            @args = args.stringify_keys
+          end
+
+          def find_foo_bar(name)
+            @args[name]
           end
         end
 
@@ -21,18 +35,15 @@ module Jsapi
         # #resolve
 
         def test_resolve
-          definitions = Class.new do
-            def initialize(**args)
-              @args = args.stringify_keys
-            end
-
-            def find_foo_bar(name)
-              @args[name]
-            end
-          end.new(foo: model = Base.new)
-
+          definitions = DummyDefinitions.new(
+            foo: dummy = Base.new,
+            foo_ref: dummy_ref = DummyReference.new(ref: 'foo')
+          )
           reference = DummyReference.new(ref: 'foo')
-          assert_equal(model, reference.resolve(definitions))
+          assert_equal(dummy, reference.resolve(definitions))
+
+          reference = DummyReference.new(ref: 'foo_ref')
+          assert_equal(dummy_ref, reference.resolve(definitions, deep: false))
 
           reference = DummyReference.new(ref: 'bar')
           error = assert_raises(ReferenceError) { reference.resolve(definitions) }
@@ -44,16 +55,16 @@ module Jsapi
         def test_minimal_openapi_reference_object
           reference = DummyReference.new(ref: 'foo')
 
-          # OpenAPI 2.0
-          assert_equal(
-            { '$ref': '#/fooBars/foo' },
-            reference.to_openapi('2.0')
-          )
-          # OpenAPI 3.x
-          %w[3.0 3.1 3.2].each do |version|
-            assert_equal(
-              { '$ref': '#/components/fooBars/foo' },
-              reference.to_openapi(version)
+          each_openapi_version do |version|
+            assert_openapi_equal(
+              if version == OpenAPI::V2_0
+                { '$ref': '#/fooBars/foo' }
+              else
+                { '$ref': '#/components/fooBars/foo' }
+              end,
+              reference,
+              version,
+              nil
             )
           end
         end
@@ -64,25 +75,23 @@ module Jsapi
             summary: 'Lorem ipsum',
             description: 'Dolor sit amet'
           )
-          # OpenAPI 2.0
-          assert_equal(
-            { '$ref': '#/fooBars/foo' },
-            reference.to_openapi('2.0')
-          )
-          # OpenAPI 3.0
-          assert_equal(
-            { '$ref': '#/components/fooBars/foo' },
-            reference.to_openapi('3.0')
-          )
-          # OpenAPI 3.1 and 3.2
-          %w[3.1 3.2].each do |version|
-            assert_equal(
-              {
-                '$ref': '#/components/fooBars/foo',
-                summary: 'Lorem ipsum',
-                description: 'Dolor sit amet'
-              },
-              reference.to_openapi(version)
+          each_openapi_version do |version|
+            assert_openapi_equal(
+              case version
+              when OpenAPI::V2_0
+                { '$ref': '#/fooBars/foo' }
+              when OpenAPI::V3_0
+                { '$ref': '#/components/fooBars/foo' }
+              else
+                {
+                  '$ref': '#/components/fooBars/foo',
+                  summary: 'Lorem ipsum',
+                  description: 'Dolor sit amet'
+                }
+              end,
+              reference,
+              version,
+              nil
             )
           end
         end

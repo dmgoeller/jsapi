@@ -97,6 +97,11 @@ module Jsapi
             end.first || contents.first
         end
 
+        # Returns true if and only if +nodoc?+ returns true.
+        def hidden?(*)
+          nodoc?
+        end
+
         # Returns a hash representing the \OpenAPI response object.
         def to_openapi(version, definitions)
           version = OpenAPI::Version.from(version)

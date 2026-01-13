@@ -520,7 +520,7 @@ end
 
 The optional positional argument specifies the response status. Possible values are:
 
-- HTTP status codes, for example: `200`
+- HTTP status codes, for example: `200` or `":ok"`
 - ranges of HTTP status codes, for example: `"2xx"` or `"2XX"`
 - `"default"`
 
@@ -539,8 +539,8 @@ schema of the response. Additionally, the following keywords may be specified:
 - `:ref` - Refers a reusable response.
 - `:summary` - The short description of the response.
 
-The `:locale` keyword allows to produce responses in different languages depending on status
-code.  This can especially be used to return error responses in English regardless of the
+`:locale` allows producing responses with different status codes in different languages.
+ This can especially be used to return error responses in English regardless of the
 language of regular responses.
 
 The `:example`, `:examples`, `:headers`, `:links` `:openapi_extensions` and `summary` keywords
@@ -1386,8 +1386,8 @@ this name, an `Jsapi::Controller::OperationNotFound` exception is raised.
 `:status` specifies the HTTP status code of the response to be produced.
 
 If an exception is raised while performing the operation, an error response according to the
-first matching rescue handler is rendered and all of the callbacks are called. If no rescue
-handler matches, the exception is raised again.
+first matching rescue handler is rendered. If no rescue handler matches, the exception is
+raised again.
 
 #### The `api_operation!` method
 

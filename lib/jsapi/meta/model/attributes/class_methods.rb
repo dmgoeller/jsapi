@@ -31,24 +31,28 @@ module Jsapi
                 type_caster = TypeCaster.new(type.first, values: values, name: singular_name)
 
                 # Attribute writer
-                define_method("#{name}=") do |argument|
-                  instance_variable_set(instance_variable_name, []).tap do
-                    Array.wrap(argument).each { |element| send(add_method, element) }
-                  end
-                end if accessors.include?(:writer)
-
-                # Add method
-                define_method(add_method) do |argument = nil|
-                  try_modify_attribute!(name) do
-                    type_caster.cast(argument).tap do |casted_argument|
-                      if instance_variable_defined?(instance_variable_name)
-                        instance_variable_get(instance_variable_name)
-                      else
-                        instance_variable_set(instance_variable_name, [])
-                      end << casted_argument
+                if accessors.include?(:writer)
+                  define_method("#{name}=") do |argument|
+                    instance_variable_set(instance_variable_name, []).tap do
+                      Array.wrap(argument).each { |element| send(add_method, element) }
                     end
                   end
-                end if accessors.include?(:add)
+                end
+
+                # Add method
+                if accessors.include?(:add)
+                  define_method(add_method) do |argument = nil|
+                    try_modify_attribute!(name) do
+                      type_caster.cast(argument).tap do |casted_argument|
+                        if instance_variable_defined?(instance_variable_name)
+                          instance_variable_get(instance_variable_name)
+                        else
+                          instance_variable_set(instance_variable_name, [])
+                        end << casted_argument
+                      end
+                    end
+                  end
+                end
               end
             when Hash
               # General default
@@ -59,53 +63,61 @@ module Jsapi
               key_type_caster = TypeCaster.new(key_type, values: keys, name: 'key')
 
               # Lookup method
-              define_method(singular_name) do |key = nil|
-                key = default_key if key.to_s.empty?
-                send(name)[key_type_caster.cast(key)]
-              end if accessors.include?(:reader)
+              if accessors.include?(:reader)
+                define_method(singular_name) do |key = nil|
+                  key = default_key if key.to_s.empty?
+                  send(name)[key_type_caster.cast(key)]
+                end
+              end
 
               if accessors.include?(:add) || accessors.include?(:writer)
                 add_method = "add_#{singular_name}"
                 value_type_caster = TypeCaster.new(value_type, values: values)
 
                 # Attribute writer
-                define_method("#{name}=") do |argument|
-                  instance_variable_set(instance_variable_name, {}).tap do
-                    Hash(argument).each { |key, value| send(add_method, key, value) }
+                if accessors.include?(:writer)
+                  define_method("#{name}=") do |argument|
+                    instance_variable_set(instance_variable_name, {}).tap do
+                      Hash(argument).each { |key, value| send(add_method, key, value) }
+                    end
                   end
-                end if accessors.include?(:writer)
+                end
 
                 # Add method
-                define_method(add_method) do |key_or_value, value = nil|
-                  try_modify_attribute!(name) do
-                    if value.nil? && default_key
-                      key = default_key
-                      value = key_or_value
-                    else
-                      key = key_or_value
-                      key = default_key if key.to_s.empty?
-                    end
-                    raise ArgumentError, "key can't be blank" if key.to_s.empty?
+                if accessors.include?(:add)
+                  define_method(add_method) do |key_or_value, value = nil|
+                    try_modify_attribute!(name) do
+                      if value.nil? && default_key
+                        key = default_key
+                        value = key_or_value
+                      else
+                        key = key_or_value
+                        key = default_key if key.to_s.empty?
+                      end
+                      raise ArgumentError, "key can't be blank" if key.to_s.empty?
 
-                    if instance_variable_defined?(instance_variable_name)
-                      instance_variable_get(instance_variable_name)
-                    else
-                      instance_variable_set(instance_variable_name, {})
-                    end[key_type_caster.cast(key)] = value_type_caster.cast(value)
+                      if instance_variable_defined?(instance_variable_name)
+                        instance_variable_get(instance_variable_name)
+                      else
+                        instance_variable_set(instance_variable_name, {})
+                      end[key_type_caster.cast(key)] = value_type_caster.cast(value)
+                    end
                   end
-                end if accessors.include?(:add)
+                end
               end
             else
               # Predicate method
-              define_method("#{name}?") do
-                value = instance_variable_get(instance_variable_name)
-                value.nil? ? default || false : value
-              end if values == [true, false] && accessors.include?(:reader)
+              if values == [true, false] && accessors.include?(:reader)
+                define_method("#{name}?") do
+                  value = instance_variable_get(instance_variable_name)
+                  value.nil? ? (default == true) || false : value
+                end
+              end
 
+              # Attribute writer
               if accessors.include?(:writer)
                 type_caster = TypeCaster.new(type, values: values, name: name)
 
-                # Attribute writer
                 define_method("#{name}=") do |argument = nil|
                   try_modify_attribute!(name) do
                     instance_variable_set(instance_variable_name, type_caster.cast(argument))
@@ -114,13 +126,15 @@ module Jsapi
               end
             end
 
-            default = nil if default == :nil
-
             # Attribute reader
-            define_method(name) do
-              value = instance_variable_get(instance_variable_name)
-              value.nil? ? default : value
-            end if accessors.include?(:reader)
+            if accessors.include?(:reader)
+              default = nil if default == :nil
+
+              define_method(name) do
+                value = instance_variable_get(instance_variable_name)
+                value.nil? ? default : value
+              end
+            end
           end
 
           def attribute_names

@@ -402,10 +402,10 @@ module Jsapi
         operation = Operation.new(
           nil,
           responses: {
-            '200' => {
+            'default' => {
               content_type: 'application/json'
             },
-            '500' => {
+            '5xx' => {
               content_type: 'application/problem+json',
               nodoc: true
             }
@@ -416,12 +416,41 @@ module Jsapi
         each_openapi_version do |version|
           openapi_operation_object = operation.to_openapi(version, definitions).as_json
 
-          assert_equal(
-            %w[application/json],
-            openapi_operation_object['produces']
-          ) if version == OpenAPI::V2_0
+          if version == OpenAPI::V2_0
+            assert_equal(
+              %w[application/json],
+              openapi_operation_object['produces']
+            )
+          end
 
-          assert_equal(%w[200], openapi_operation_object['responses'].keys)
+          assert_equal(%w[default], openapi_operation_object['responses'].keys)
+        end
+      end
+
+      def test_to_openapi_skips_response_references_not_to_be_documented
+        operation = Operation.new(
+          nil,
+          responses: {
+            '404' => {
+              ref: 'error'
+            },
+            '5xx' => {
+              ref: 'error',
+              nodoc: true
+            }
+          }
+        )
+        definitions = Definitions.new(
+          responses: {
+            'error' => {
+              content_type: 'application/problem+json'
+            }
+          }
+        )
+        each_openapi_version do |version|
+          openapi_operation_object = operation.to_openapi(version, definitions).as_json
+
+          assert_equal(%w[404], openapi_operation_object['responses'].keys)
         end
       end
     end

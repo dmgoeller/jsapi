@@ -58,12 +58,22 @@ module Jsapi
               credentials.api_key == 'foo'
             end
 
+            api_after_authentication :register_authenticated
+
             api_operation do
               response type: 'string'
             end
 
             api_security_scheme 'api_key', type: 'api_key', in: 'header', name: 'X-API-KEY'
             api_security_requirement { scheme 'api_key' }
+
+            def authenticated?
+              @authenticated == true
+            end
+
+            def register_authenticated
+              @authenticated = true
+            end
           end
 
           # Request with valid credentials
@@ -71,8 +81,8 @@ module Jsapi
             controller_class.new.instance_eval do
               request.headers['X-API-KEY'] = 'foo'
               send(method, status: :ok)
-              self.response.status
-            end == 200,
+              authenticated?
+            end,
             'Expected request with valid credentials to be authenticated.'
           )
           # Request with invalid credentials

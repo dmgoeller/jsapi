@@ -132,8 +132,11 @@ module Jsapi
 
           result = begin
             # Authenticate request first if Authentication is included
-            raise Unauthorized if respond_to?(:_api_authenticated?, true) &&
-                                  !_api_authenticated?(operation)
+            if respond_to?(:_api_authenticated?, true)
+              raise Unauthorized unless _api_authenticated?(operation)
+
+              _api_callback(:after_authentication, operation_name)
+            end
 
             status = Status::Code.from(status)
             response_model = _api_response_model(operation, status)
@@ -141,7 +144,7 @@ module Jsapi
             api_params = _api_params(operation, strong: strong)
             raise ParametersInvalid.new(api_params) if bang && api_params.invalid?
 
-            _api_before_processing(operation, api_params)
+            _api_callback(:before_processing, operation_name, api_params)
             block&.call(api_params)
           rescue StandardError => e
             definitions = api_definitions

@@ -13,10 +13,10 @@ module Jsapi
 
         private
 
-        def _api_before_processing(operation_name, ...)
+        def _api_callback(name, operation_name, ...)
           operation_name = operation_name.to_s
 
-          self.class._api_callbacks(:before_processing).each do |callback|
+          self.class._api_callbacks(name).each do |callback|
             next if callback.skip_on?(operation_name)
 
             if (method_or_proc = callback.method_or_proc).respond_to?(:call)

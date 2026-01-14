@@ -5,8 +5,6 @@ module Jsapi
     module Methods
       module Callbacks
         module ClassMethods
-          ##
-          # :method: api_before_processing
           # :call-seq:
           #   api_before_processing(method, except: nil, only: nil)
           #   api_before_processing(except: nil, only: nil, &block)
@@ -14,16 +12,16 @@ module Jsapi
           # Registers a callback that is triggered by +api_operation+ and
           # +api_operation!+ before the operation is processed.
           #
-          #   api_before_processing do |api_params|
+          #   api_before_processing do |operation_name, api_params|
           #     # ...
           #   end
           #
-          # An +api_before_processing+ callback must be able to accept one
-          # positional argument to receive the request parameters. The
-          # returned value is not used in further processing.
+          # When calling an +api_before_processing+ callback, the operation
+          # name and parameters are passed.
+          def api_before_processing(method = nil, **options, &block)
+            _api_add_callback(:before_processing, method, **options, &block)
+          end
 
-          ##
-          # :method: api_before_rendering
           # :call-seq:
           #   api_before_rendering(method, except: nil, only: nil)
           #   api_before_rendering(except: nil, only: nil, &block)
@@ -31,25 +29,24 @@ module Jsapi
           # Registers a callback that is triggered by +api_operation+ and
           # +api_operation!+ before the response body is rendered.
           #
-          #   api_before_rendering do |result, api_params|
+          #   api_before_rendering do |operation_name, result, api_params|
           #     { request_id: api_params.request_id, payload: result }
           #   end
           #
-          # An +api_before_rendering+ callback must be able to accept two
-          # positional arguments to receive the result to be rendered as the
-          # first argument and the request parameters as the second argument.
-          # The value returned by the callback replaces the result to be
-          # rendered.
+          # When calling an +api_before_rendering+ callback, the operation
+          # name, result and parameters are passed. The value returned by the
+          # callback replaces the result to be rendered.
+          def api_before_rendering(method = nil, **options, &block)
+            _api_add_callback(:before_rendering, method, **options, &block)
+          end
 
-          %i[before_processing before_rendering].each do |kind|
-            define_method(:"api_#{kind}") do |method = nil, **options, &block|
-              method_or_block = method || block
-              raise ArgumentError, 'either a method or a block must be ' \
-                                   'specified' unless method_or_block
+          def _api_add_callback(kind, method = nil, **options, &block) # :nodoc:
+            method_or_block = method || block
+            raise ArgumentError, 'either a method or a block must be ' \
+                                  'specified' unless method_or_block
 
-              ((@_api_callbacks ||= {})[kind] ||= []) <<
-                Callback.new(method_or_block, **options)
-            end
+            ((@_api_callbacks ||= {})[kind] ||= []) <<
+              Callback.new(method_or_block, **options)
           end
 
           def _api_callbacks(kind) # :nodoc:

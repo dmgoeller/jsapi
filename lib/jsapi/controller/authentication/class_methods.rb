@@ -10,13 +10,6 @@ module Jsapi
         #
         # Registers a callback triggered after a request has been authenticated
         # successfully.
-        #
-        #   api_after_authentication do |operation_name|
-        #     # ...
-        #   end
-        #
-        # When calling an +api_after_authentication+ callback, the operation
-        # name is passed.
         def api_after_authentication(method = nil, **options, &block)
           _api_add_callback(:after_authentication, method, **options, &block)
         end

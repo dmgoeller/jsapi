@@ -1438,15 +1438,13 @@ The default pattern is `{name} isn't allowed`.
 
 ### Callbacks
 
-The `api_operation` and `api_operation!` methods support the following callbacks:
-
-- [api_before_processing](#api-before-processing-callbacks)
+- [api_after_validation](#api-after-validation-callbacks)
 - [api_before_rendering](#api-before-rendering-callbacks)
 
 A callback can be implemented as below.
 
 ```ruby
-api_before_processing :foo
+api_after_validation :foo
 
 def foo(api_params)
   # Implement callback here
@@ -1454,7 +1452,7 @@ end
 ```
 
 ```ruby
-api_before_processing do |api_params|
+api_after_validation do |api_params|
   # Implement callback here
 end
 ```
@@ -1465,22 +1463,18 @@ callback is triggered can be restricted by the `:only` and `:except` keyword arg
 Callbacks are triggered in the same order as they are defined. Callbacks inherited from
 superclasses are triggered before callbacks that are defined in the actual class.
 
-#### `api_before_processing` callbacks
+#### `api_after_validation` callbacks
 
-`api_before_processing` callbacks are triggered before the block passed to an
-`api_operation` or `api_operation!` method is called.
+An `api_after_validation` callback is triggered after the parameters have been validated
+successfully.
 
 ```ruby
-api_before_processing do |api_params|
+api_after_validation do |api_params|
   # ...
 end
 ```
 
-An `api_before_processing` callback must be able to accept one positional argument to
-receive the request parameters. The returned value is not used in further processing.
-
-When an `api_before_processing` callback raises an exception, an appropriate error
-response is produced.
+When calling an `api_after_validation` callback, the parameters are passed.
 
 #### `api_before_rendering` callbacks
 
@@ -1493,10 +1487,8 @@ api_before_rendering do |result, api_params|
 end
 ```
 
-An `api_before_rendering` callback must be able to accept two positional arguments to
-receive the result to be rendered as the first argument and the request parameters as
-the second argument. The value returned by the callback replaces the result to be
-rendered.
+When calling an `api_before_rendering` callback, the result and parameters are passed. The
+value returned by the callback replaces the result to be rendered.
 
 ### API actions
 
@@ -1602,6 +1594,12 @@ If the handler returns a truthy value, the request is assumed to be authenticate
 
 #### Authenticating requests
 
+Requests can authenticated by the `api_authenticated?` method, for example:
+
+```ruby
+head :unauthorized && return unless api_authenticated?('foo')
+```
+
 If a controller class includes the `Jsapi::Controller:Authentication` module the `api_operation`
 and `api_operation!` methods implicitly authenticate requests before performing the operation.
 When the current request could not be authenticated, a `Jsapi::Controller::Unauthorized`
@@ -1611,11 +1609,8 @@ exception is raised. Such exceptions can be rescued as below to produce an error
 api_rescue_from Jsapi::Controller::Unauthorized, with: 401
 ```
 
-Alternatively, requests can be authenticated by the `api_authenticated?` method.
-
-```ruby
-head :unauthorized && return unless api_authenticated?('foo')
-```
+After a request has been authenticated, all of the `api_after_authentication` callbacks are
+triggered.
 
 ## API models
 

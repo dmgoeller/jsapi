@@ -142,9 +142,13 @@ module Jsapi
             response_model = _api_response_model(operation, status)
 
             api_params = _api_params(operation, strong: strong)
-            raise ParametersInvalid.new(api_params) if bang && api_params.invalid?
 
-            _api_callback(:before_processing, operation_name, api_params)
+            if bang
+              raise ParametersInvalid.new(api_params) if api_params.invalid?
+
+              _api_callback(:after_validation, operation_name, api_params)
+            end
+
             block&.call(api_params)
           rescue StandardError => e
             definitions = api_definitions

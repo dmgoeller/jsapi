@@ -19,6 +19,10 @@ module Jsapi
           include Actions
           include DSL
           include Methods
+
+          def checks
+            @checks ||= []
+          end
         end
         klass.class_eval(&block) if block
         klass

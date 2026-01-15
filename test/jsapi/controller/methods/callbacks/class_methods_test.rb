@@ -7,7 +7,7 @@ module Jsapi
     module Methods
       module Callbacks
         class ClassMethodsTest < Minitest::Test
-          %i[before_processing before_rendering].each do |kind|
+          %i[after_validation before_rendering].each do |kind|
             method = :"api_#{kind}"
 
             define_method(:"test_api_#{kind}") do

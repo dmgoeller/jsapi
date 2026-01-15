@@ -45,11 +45,10 @@ end
 
 #### API Callbacks
 
-The `api_operation` and `api_operation!` methods now trigger `api_before_processing` and
-`api_before_rendering` callbacks.
+The `api_operation` and `api_operation!` methods now trigger callbacks.
 
 ```ruby
-api_before_processing :foo
+api_before_rendering :foo
 
 def foo(api_params)
   # Implement callback here

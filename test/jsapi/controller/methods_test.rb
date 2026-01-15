@@ -58,7 +58,9 @@ module Jsapi
               credentials.api_key == 'foo'
             end
 
-            api_after_authentication :register_authenticated
+            api_after_authentication :after_authentication
+
+            api_rescue_from Unauthorized, with: 401
 
             api_operation do
               response type: 'string'
@@ -67,31 +69,43 @@ module Jsapi
             api_security_scheme 'api_key', type: 'api_key', in: 'header', name: 'X-API-KEY'
             api_security_requirement { scheme 'api_key' }
 
-            def authenticated?
-              @authenticated == true
-            end
-
-            def register_authenticated
-              @authenticated = true
+            def after_authentication
+              checks << 'after_authentication'
             end
           end
 
           # Request with valid credentials
+          controller = controller_class.new
+
+          controller.instance_eval do
+            request.headers['X-API-KEY'] = 'foo'
+            send(method, status: :ok)
+          end
           assert(
-            controller_class.new.instance_eval do
-              request.headers['X-API-KEY'] = 'foo'
-              send(method, status: :ok)
-              authenticated?
-            end,
+            controller.response.status == 200,
             'Expected request with valid credentials to be authenticated.'
           )
+          assert(
+            controller.checks.include?('after_authentication'),
+            'Expected api_after_authentication callback to be triggered ' \
+            'when request has been authenticated.'
+          )
           # Request with invalid credentials
-          assert_raises(Unauthorized) do
-            controller_class.new.instance_eval do
-              request.headers['X-API-KEY'] = 'bar'
-              send(method, status: :ok)
-            end
+          controller = controller_class.new
+
+          controller.instance_eval do
+            request.headers['X-API-KEY'] = 'bar'
+            send(method, status: :ok)
           end
+          assert(
+            controller.response.status == 401,
+            'Expected request with invalid credentials not to be authenticated.'
+          )
+          assert(
+            controller.checks.exclude?('after_authentication'),
+            'Expected api_after_authentication callback not to triggered ' \
+            'when request has not been authenticated.'
+          )
         end
 
         define_method("test_#{name}_raises_an_error_when_the_" \
@@ -113,30 +127,7 @@ module Jsapi
           end
         end
 
-        # Callbacks
-
-        define_method("test_#{name}_triggers_a_before_processing_callback") do
-          controller = controller do
-            api_rescue_from StandardError, with: 422
-
-            api_operation do
-              parameter 'foo', type: 'string'
-              response 200, type: 'string', content_type: 'text/plain'
-              response 422, type: 'string', content_type: 'text/plain'
-            end
-
-            api_before_processing do |api_params|
-              raise "foo can't be bar" if api_params.foo == 'bar'
-            end
-          end
-          response = controller.instance_eval do
-            params['foo'] = 'bar'
-            send(method, status: 200) { 'foo' }
-            self.response
-          end
-          assert_equal(422, response.status)
-          assert_equal("foo can't be bar", response.body)
-        end
+        # Rendering
 
         define_method("test_#{name}_triggers_a_before_rendering_callback") do
           controller = controller do
@@ -456,6 +447,41 @@ module Jsapi
           end
         end
         assert_equal("'bar' isn't allowed.", error.message)
+      end
+
+      def test_api_operation_bang_triggers_after_validation_callbacks
+        controller_class = controller_class do
+          api_after_validation :after_validation
+
+          api_rescue_from ParametersInvalid, with: 400
+
+          api_operation do
+            parameter 'foo', type: 'string', enum: %w[foo bar]
+            response type: 'string'
+          end
+
+          def after_validation(_api_params)
+            checks << 'after_validation'
+          end
+        end
+        assert(
+          controller_class.new.instance_eval do
+            params['foo'] = 'bar'
+            api_operation!(status: 200) {}
+            checks
+          end.include?('after_validation'),
+          'Expected api_after_validation callback to be triggered ' \
+          'when parameters are valid.'
+        )
+        assert(
+          controller_class.new.instance_eval do
+            params['foo'] = 'baz'
+            api_operation!(status: 200) {}
+            checks
+          end.exclude?('after_validation'),
+          'Expected api_after_validation callback not to be triggered ' \
+          'when parameters are invalid.'
+        )
       end
 
       # #api_params

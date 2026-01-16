@@ -17,7 +17,7 @@ module Jsapi
           operation_name = operation_name.to_s
 
           self.class._api_callbacks(name).each do |callback|
-            next if callback.skip_on?(operation_name)
+            next if callback.skip_on?(self, operation_name)
 
             if (method_or_proc = callback.method_or_proc).respond_to?(:call)
               method_or_proc.call(...)
@@ -32,7 +32,7 @@ module Jsapi
           operation_name = operation_name.to_s
 
           self.class._api_callbacks(:before_rendering).reduce(result) do |memo, callback|
-            next memo if callback.skip_on?(operation_name)
+            next memo if callback.skip_on?(self, operation_name)
 
             if (method_or_proc = callback.method_or_proc).respond_to?(:call)
               method_or_proc.call(memo, ...)

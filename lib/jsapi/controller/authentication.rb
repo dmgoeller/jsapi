@@ -57,8 +57,8 @@ module Jsapi
             next false unless credentials&.well_formed?
 
             # Call authentication handler
-            if authentication_handler.respond_to?(:call)
-              authentication_handler.call(credentials)
+            if authentication_handler.is_a?(Proc)
+              instance_exec(credentials, &authentication_handler)
             else
               send(authentication_handler, credentials)
             end

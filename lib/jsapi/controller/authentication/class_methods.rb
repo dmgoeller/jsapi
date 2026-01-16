@@ -5,13 +5,13 @@ module Jsapi
     module Authentication
       module ClassMethods
         # :call-seq:
-        #   api_after_authentication(method, except: nil, only: nil)
-        #   api_after_authentication(except: nil, only: nil, &block)
+        #   api_after_authentication(method_or_proc, **options)
+        #   api_after_authentication(**options, &block)
         #
         # Registers a callback triggered after a request has been authenticated
         # successfully.
-        def api_after_authentication(method = nil, **options, &block)
-          _api_add_callback(:after_authentication, method, **options, &block)
+        def api_after_authentication(method_or_proc = nil, **options, &block)
+          _api_add_callback(:after_authentication, method_or_proc, **options, &block)
         end
 
         # :call-seq:

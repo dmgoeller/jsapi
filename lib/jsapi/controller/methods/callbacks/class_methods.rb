@@ -6,8 +6,8 @@ module Jsapi
       module Callbacks
         module ClassMethods
           # :call-seq:
-          #   api_after_validation(method, except: nil, only: nil)
-          #   api_after_validation(except: nil, only: nil, &block)
+          #   api_after_validation(method_or_proc, **options)
+          #   api_after_validation(**options, &block)
           #
           # Registers a callback that is triggered by +api_operation!+ after the
           # parameters have been validated successfully.
@@ -18,13 +18,13 @@ module Jsapi
           #
           # When calling an +api_after_validation+ callback, the parameters are
           # passed.
-          def api_after_validation(method = nil, **options, &block)
-            _api_add_callback(:after_validation, method, **options, &block)
+          def api_after_validation(method_or_proc = nil, **options, &block)
+            _api_add_callback(:after_validation, method_or_proc, **options, &block)
           end
 
           # :call-seq:
-          #   api_before_rendering(method, except: nil, only: nil)
-          #   api_before_rendering(except: nil, only: nil, &block)
+          #   api_before_rendering(method_or_proc, **options)
+          #   api_before_rendering(**options, &block)
           #
           # Registers a callback that is triggered by +api_operation+ and
           # +api_operation!+ before the response body is rendered.
@@ -36,17 +36,17 @@ module Jsapi
           # When calling an +api_before_rendering+ callback, the result and
           # parameters are passed. The value returned by the callback replaces
           # the result to be rendered.
-          def api_before_rendering(method = nil, **options, &block)
-            _api_add_callback(:before_rendering, method, **options, &block)
+          def api_before_rendering(method_or_proc = nil, **options, &block)
+            _api_add_callback(:before_rendering, method_or_proc, **options, &block)
           end
 
-          def _api_add_callback(kind, method = nil, **options, &block) # :nodoc:
-            method_or_block = method || block
+          def _api_add_callback(kind, method_or_proc = nil, **options, &block) # :nodoc:
+            method_or_proc ||= block
             raise ArgumentError, 'either a method or a block must be ' \
-                                  'specified' unless method_or_block
+                                  'specified' unless method_or_proc
 
             ((@_api_callbacks ||= {})[kind] ||= []) <<
-              Callback.new(method_or_block, **options)
+              Callback.new(method_or_proc, **options)
           end
 
           def _api_callbacks(kind) # :nodoc:

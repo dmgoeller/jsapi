@@ -62,15 +62,15 @@ module Jsapi
 
             api_rescue_from Unauthorized, with: 401
 
-            api_operation do
+            api_operation 'foo' do
               response type: 'string'
             end
 
             api_security_scheme 'api_key', type: 'api_key', in: 'header', name: 'X-API-KEY'
             api_security_requirement { scheme 'api_key' }
 
-            def after_authentication
-              checks << 'after_authentication'
+            def after_authentication(operation_name)
+              checks << "after_authentication:#{operation_name}"
             end
           end
 
@@ -79,14 +79,14 @@ module Jsapi
 
           controller.instance_eval do
             request.headers['X-API-KEY'] = 'foo'
-            send(method, status: :ok)
+            send(method, 'foo', status: :ok)
           end
           assert(
             controller.response.status == 200,
             'Expected request with valid credentials to be authenticated.'
           )
           assert(
-            controller.checks.include?('after_authentication'),
+            controller.checks.include?('after_authentication:foo'),
             'Expected api_after_authentication callback to be triggered ' \
             'when request has been authenticated.'
           )
@@ -139,7 +139,7 @@ module Jsapi
               end
             end
 
-            api_before_rendering do |result, api_params|
+            api_before_rendering do |result, _operation_name, api_params|
               { request_id: api_params.request_id, foo: result }
             end
           end

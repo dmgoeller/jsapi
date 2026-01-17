@@ -1515,8 +1515,8 @@ When registering a callback, the following keyword arguments can be specifed:
 
 `:if` and `:unless` can be a symbol, a `Proc` or an array of symbols and `Proc`s.
 
-Callbacks are triggered in the same order as they are defined. Callbacks inherited from
-superclasses are triggered before callbacks that are defined in the actual class.
+Callbacks are triggered in the same order as they are registered. Callbacks inherited from
+superclasses are triggered before callbacks that are registered in the actual class.
 
 #### `api_after_authentication` callbacks
 
@@ -1524,38 +1524,58 @@ If a controller class includes the `Jsapi::Controller:Authentication` module, al
 registered `api_after_authentication` callbacks are triggered after a request has been
 authenticated.
 
+An `api_after_authentication` callback can be used to check whether or not a request is
+authorized to perform an API operation, for example:
+
 ```ruby
-api_after_authentication do
-  # ...
+api_after_authentication do |operation_name|
+  head :forbidden unless authorized?(operation_name)
+end
+
+def authorized?(operation_name)
+  # Implement authorization here
 end
 ```
+
+Note that in real-word scenarios it is more common to raise an exception instead of using
+`head`.
+
+When calling an `api_after_authentication`, the name of the API operation is passed if the
+callback takes one positional argument.
 
 #### `api_after_validation` callbacks
 
-An `api_after_validation` callback is triggered after the parameters have been validated
-successfully.
+An `api_after_validation` callback is triggered by `api_operation!` after the parameters have
+been validated successfully.
 
 ```ruby
-api_after_validation do |api_params|
+api_after_validation do |operation_name, api_params|
   # ...
 end
 ```
 
-When calling an `api_after_validation` callback, the parameters are passed.
+When calling an `api_after_validation` callback, the name of the API operation is passed if
+the callback takes one positional argument. Additionally, the parameters are passed if the
+callback takes two positional arguments.
 
 #### `api_before_rendering` callbacks
 
-`api_before_rendering` callbacks are triggered before the response body is rendered.
-They are typically used to enrich responses, for example:
+`api_before_rendering` callbacks are triggered by `api_operation` and `api_operation!` before
+the response body is rendered. They are typically used to enrich responses, for example:
 
 ```ruby
-api_before_rendering do |result, api_params|
+api_before_rendering do |result, _api_operation, api_params|
   { request_id: api_params.request_id, payload: result }
 end
 ```
 
-When calling an `api_before_rendering` callback, the result and parameters are passed. The
-value returned by the callback replaces the result to be rendered.
+When calling an `api_before_rendering` callback, the object to render the response body from
+is passed as the first positional argument. This object is replaced by the object returned
+by the callback.
+
+If the callback takes at least two positional arguments, the name of API operation is passed
+as the second positional argument. If the callback takes three positional arguments, the
+parameters are passed as the third positional argument.
 
 ### API actions
 

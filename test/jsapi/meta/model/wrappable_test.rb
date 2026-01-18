@@ -2,17 +2,14 @@
 
 require 'test_helper'
 
+require_relative 'dummy'
+
 module Jsapi
   module Meta
     module Model
       class WrappableTest < Minitest::Test
-        class Dummy < Base
-          include Wrappable
-          class Wrapper < Model::Wrapper; end
-        end
-
         def test_wrap
-          model = Dummy.new
+          model = Dummy::Base.new
           wrapper = Dummy.wrap(model, Definitions.new)
 
           assert_kind_of(Dummy::Wrapper, wrapper)
@@ -24,7 +21,7 @@ module Jsapi
         end
 
         def test_wrap_prevents_double_wrapping
-          wrapper = Dummy.wrap(Dummy.new, Definitions.new)
+          wrapper = Dummy.wrap(Dummy::Base.new, Definitions.new)
           assert(wrapper.equal?(Dummy.wrap(wrapper, nil)))
         end
       end

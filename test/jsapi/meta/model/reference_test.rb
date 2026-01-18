@@ -3,6 +3,7 @@
 require 'test_helper'
 
 require_relative '../test_helper'
+require_relative 'dummy'
 
 module Jsapi
   module Meta
@@ -10,99 +11,73 @@ module Jsapi
       class ReferenceTest < Minitest::Test
         include TestHelper
 
-        class Dummy < Base
-          attribute :foo, String
-        end
-
-        class DummyReference < Reference
-          def self.name
-            'Jsapi::Meta::FooBar::Reference'
-          end
-
-          attribute :foo, String
-        end
-
-        class DummyDefinitions
-          def initialize(dummies:)
-            @dummies = dummies
-          end
-
-          def find_foo_bar(name)
-            @dummies[name]
-          end
-        end
-
-        # #reference?
-
         def test_reference_predicate
-          assert_predicate(DummyReference.new, :reference?)
+          assert_predicate(Dummy::Reference.new, :reference?)
         end
-
-        # #resolve
 
         def test_resolve
-          definitions = DummyDefinitions.new(
+          definitions = Dummy::Definitions.new(
             dummies: {
-              'base' => base = Dummy.new,
-              'base_ref' => base_ref = DummyReference.new(ref: 'base')
+              'base' => base = Dummy::Base.new,
+              'base_ref' => base_ref = Dummy::Reference.new(ref: 'base')
             }
           )
-          reference = DummyReference.new(ref: 'base')
+          reference = Dummy::Reference.new(ref: 'base')
           assert_equal(base, reference.resolve(definitions))
 
-          reference = DummyReference.new(ref: 'base_ref')
+          reference = Dummy::Reference.new(ref: 'base_ref')
           assert_equal(base_ref, reference.resolve(definitions, deep: false))
 
-          reference = DummyReference.new(ref: 'foo')
+          reference = Dummy::Reference.new(ref: 'foo')
           error = assert_raises(ReferenceError) { reference.resolve(definitions) }
           assert_equal("reference can't be resolved: 'foo'", error.message)
         end
 
-        # #resolve_lazily
-
         def test_resolve_lazily
-          definitions = DummyDefinitions.new(
+          definitions = Dummy::Definitions.new(
             dummies: {
-              'base' => Dummy.new(foo: 'bar'),
-              'base_ref' => DummyReference.new(ref: 'base')
+              'base' => Dummy::Base.new(foo: 'bar'),
+              'base_ref' => Dummy::Reference.new(ref: 'base')
             }
           )
-          reference = DummyReference.new(ref: 'base')
+          reference = Dummy::Reference.new(ref: 'base')
           assert_equal('bar', reference.resolve_lazily(definitions).foo)
 
-          reference = DummyReference.new(ref: 'base_ref')
+          reference = Dummy::Reference.new(ref: 'base_ref')
           assert_equal('bar', reference.resolve_lazily(definitions).foo)
 
-          reference = DummyReference.new(ref: 'base', foo: 'baz')
+          reference = Dummy::Reference.new(ref: 'base', foo: 'baz')
           assert_equal('baz', reference.resolve_lazily(definitions).foo)
 
-          reference = DummyReference.new(ref: 'foo')
+          reference = Dummy::Reference.new(ref: 'foo')
           error = assert_raises(ReferenceError) { reference.resolve(definitions) }
           assert_equal("reference can't be resolved: 'foo'", error.message)
         end
 
         def test_resolve_lazily_respond_to
-          definitions = DummyDefinitions.new(
+          definitions = Dummy::Definitions.new(
             dummies: {
-              'foo' => Dummy.new
+              'foo' => Dummy::Base.new
             }
           )
-          reference = DummyReference.new(ref: 'foo').resolve_lazily(definitions)
-          assert(reference.respond_to?(:foo))
-          assert_not(reference.respond_to?(:bar))
+          reference = Dummy::Reference.new(ref: 'foo')
+          resolved = reference.resolve_lazily(definitions)
+
+          assert(resolved.respond_to?(:foo))
+          assert_not(resolved.respond_to?(:bar))
         end
 
         # OpenAPI reference objects
 
         def test_minimal_openapi_reference_object
-          reference = DummyReference.new(ref: 'foo')
+          reference = Dummy::Reference.new(ref: 'foo')
 
           each_openapi_version do |version|
             assert_openapi_equal(
               if version == OpenAPI::V2_0
-                { '$ref': '#/fooBars/foo' }
+                { '$ref': '#/dummies/foo' }
               else
-                { '$ref': '#/components/fooBars/foo' }
+                { '$ref': '#/components/dummies/foo' }
               end,
               reference,
               version,
@@ -112,7 +87,7 @@ module Jsapi
         end
 
         def test_full_openapi_reference_object
-          reference = DummyReference.new(
+          reference = Dummy::Reference.new(
             ref: 'foo',
             summary: 'Lorem ipsum',
             description: 'Dolor sit amet'
@@ -121,12 +96,12 @@ module Jsapi
             assert_openapi_equal(
               case version
               when OpenAPI::V2_0
-                { '$ref': '#/fooBars/foo' }
+                { '$ref': '#/dummies/foo' }
               when OpenAPI::V3_0
-                { '$ref': '#/components/fooBars/foo' }
+                { '$ref': '#/components/dummies/foo' }
               else
                 {
-                  '$ref': '#/components/fooBars/foo',
+                  '$ref': '#/components/dummies/foo',
                   summary: 'Lorem ipsum',
                   description: 'Dolor sit amet'
                 }

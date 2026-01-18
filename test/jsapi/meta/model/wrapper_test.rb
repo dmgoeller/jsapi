@@ -8,10 +8,10 @@ module Jsapi
       class WrapperTest < Minitest::Test
         def test_initialize_resolves_references
           wrapper = Wrapper.new(
-            Dummy::Reference.new(ref: 'foo'),
+            Dummy::Reference.new(ref: 'Foo'),
             Dummy::Definitions.new(
               dummies: {
-                'foo' => model = Base.new
+                'Foo' => model = Base.new
               }
             )
           )

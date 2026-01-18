@@ -3,7 +3,6 @@
 require_relative 'schema/additional_properties'
 require_relative 'schema/conversion'
 require_relative 'schema/boundary'
-require_relative 'schema/delegator'
 require_relative 'schema/discriminator'
 require_relative 'schema/reference'
 require_relative 'schema/validation'

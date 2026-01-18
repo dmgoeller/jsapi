@@ -29,6 +29,34 @@ module Jsapi
           assert_equal('foo', wrapper.default_value(context: :request))
           assert_equal('bar', wrapper.default_value(context: :response))
         end
+
+        def test_existence
+          definitions = Definitions.new(
+            schemas: {
+              'Base' => {},
+              'BaseRef' => {
+                ref: 'Base',
+                existence: :allow_empty
+              }
+            }
+          )
+          {
+            ['Base', false] => Existence::ALLOW_OMITTED,
+            ['Base', true] => Existence::PRESENT,
+            ['BaseRef', false] => Existence::ALLOW_EMPTY,
+            ['BaseRef', true] => Existence::PRESENT,
+          }.each do |(ref, existence), expected|
+            wrapper = Wrapper.new(
+              Reference.new(ref: ref, existence: existence),
+              definitions
+            )
+            assert(
+              expected == actual = wrapper.existence,
+              "Expected level of existence of #{wrapper.inspect} " \
+              "to be #{expected.inspect}, is: #{actual.inspect}."
+            )
+          end
+        end
       end
     end
   end

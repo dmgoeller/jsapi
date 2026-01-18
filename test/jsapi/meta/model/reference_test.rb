@@ -18,49 +18,49 @@ module Jsapi
         def test_resolve
           definitions = Dummy::Definitions.new(
             dummies: {
-              'base' => base = Dummy::Base.new,
-              'base_ref' => base_ref = Dummy::Reference.new(ref: 'base')
+              'Base' => base = Dummy::Base.new,
+              'BaseRef' => base_ref = Dummy::Reference.new(ref: 'base')
             }
           )
-          reference = Dummy::Reference.new(ref: 'base')
+          reference = Dummy::Reference.new(ref: 'Base')
           assert_equal(base, reference.resolve(definitions))
 
-          reference = Dummy::Reference.new(ref: 'base_ref')
+          reference = Dummy::Reference.new(ref: 'BaseRef')
           assert_equal(base_ref, reference.resolve(definitions, deep: false))
 
-          reference = Dummy::Reference.new(ref: 'foo')
+          reference = Dummy::Reference.new(ref: 'Foo')
           error = assert_raises(ReferenceError) { reference.resolve(definitions) }
-          assert_equal("reference can't be resolved: 'foo'", error.message)
+          assert_equal("reference can't be resolved: 'Foo'", error.message)
         end
 
         def test_resolve_lazily
           definitions = Dummy::Definitions.new(
             dummies: {
-              'base' => Dummy::Base.new(foo: 'bar'),
-              'base_ref' => Dummy::Reference.new(ref: 'base')
+              'Base' => Dummy::Base.new(foo: 'bar'),
+              'BaseRef' => Dummy::Reference.new(ref: 'Base')
             }
           )
-          reference = Dummy::Reference.new(ref: 'base')
+          reference = Dummy::Reference.new(ref: 'Base')
           assert_equal('bar', reference.resolve_lazily(definitions).foo)
 
-          reference = Dummy::Reference.new(ref: 'base_ref')
+          reference = Dummy::Reference.new(ref: 'BaseRef')
           assert_equal('bar', reference.resolve_lazily(definitions).foo)
 
-          reference = Dummy::Reference.new(ref: 'base', foo: 'baz')
+          reference = Dummy::Reference.new(ref: 'Base', foo: 'baz')
           assert_equal('baz', reference.resolve_lazily(definitions).foo)
 
-          reference = Dummy::Reference.new(ref: 'foo')
+          reference = Dummy::Reference.new(ref: 'Foo')
           error = assert_raises(ReferenceError) { reference.resolve(definitions) }
-          assert_equal("reference can't be resolved: 'foo'", error.message)
+          assert_equal("reference can't be resolved: 'Foo'", error.message)
         end
 
         def test_resolve_lazily_respond_to
           definitions = Dummy::Definitions.new(
             dummies: {
-              'foo' => Dummy::Base.new
+              'Foo' => Dummy::Base.new
             }
           )
-          reference = Dummy::Reference.new(ref: 'foo')
+          reference = Dummy::Reference.new(ref: 'Foo')
           resolved = reference.resolve_lazily(definitions)
 
           assert(resolved.respond_to?(:foo))
@@ -70,14 +70,14 @@ module Jsapi
         # OpenAPI reference objects
 
         def test_minimal_openapi_reference_object
-          reference = Dummy::Reference.new(ref: 'foo')
+          reference = Dummy::Reference.new(ref: 'Foo')
 
           each_openapi_version do |version|
             assert_openapi_equal(
               if version == OpenAPI::V2_0
-                { '$ref': '#/dummies/foo' }
+                { '$ref': '#/dummies/Foo' }
               else
-                { '$ref': '#/components/dummies/foo' }
+                { '$ref': '#/components/dummies/Foo' }
               end,
               reference,
               version,
@@ -88,7 +88,7 @@ module Jsapi
 
         def test_full_openapi_reference_object
           reference = Dummy::Reference.new(
-            ref: 'foo',
+            ref: 'Foo',
             summary: 'Lorem ipsum',
             description: 'Dolor sit amet'
           )
@@ -96,12 +96,12 @@ module Jsapi
             assert_openapi_equal(
               case version
               when OpenAPI::V2_0
-                { '$ref': '#/dummies/foo' }
+                { '$ref': '#/dummies/Foo' }
               when OpenAPI::V3_0
-                { '$ref': '#/components/dummies/foo' }
+                { '$ref': '#/components/dummies/Foo' }
               else
                 {
-                  '$ref': '#/components/dummies/foo',
+                  '$ref': '#/components/dummies/Foo',
                   summary: 'Lorem ipsum',
                   description: 'Dolor sit amet'
                 }

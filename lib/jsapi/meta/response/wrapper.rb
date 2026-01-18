@@ -7,8 +7,8 @@ module Jsapi
         # The locale of the wrapped response or reference.
         attr_reader :locale
 
-        def initialize(model, definitions)
-          @locale = model.resolve_lazily(definitions).locale
+        def initialize(response, definitions)
+          @locale = response.resolve_lazily(definitions).locale
           super
         end
 

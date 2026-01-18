@@ -10,46 +10,6 @@ module Jsapi
       class ReferenceTest < Minitest::Test
         include TestHelper
 
-        # #resolve
-
-        def test_resolve
-          definitions = Definitions.new(
-            schemas: {
-              'foo' => { existence: :allow_empty }
-            }
-          )
-          assert_equal(
-            definitions.find_schema('foo'),
-            Reference.new(ref: 'foo').resolve(definitions)
-          )
-        end
-
-        def test_resolve_on_higher_existence_level
-          definitions = Definitions.new(
-            schemas: {
-              'foo' => { existence: :allow_empty }
-            }
-          )
-          reference = Reference.new(ref: 'foo', existence: true)
-
-          schema = reference.resolve(definitions)
-          assert_kind_of(Delegator, schema)
-          assert_equal(Existence::PRESENT, schema.existence)
-        end
-
-        def test_resolve_on_lower_existence_level
-          definitions = Definitions.new(
-            schemas: {
-              'foo' => { existence: true }
-            }
-          )
-          reference = Reference.new(ref: 'foo', existence: :allow_empty)
-
-          schema = reference.resolve(definitions)
-          assert_kind_of(Delegator, schema)
-          assert_equal(Existence::PRESENT, schema.existence)
-        end
-
         # JSON Schema objects
 
         def test_json_schema_reference_object

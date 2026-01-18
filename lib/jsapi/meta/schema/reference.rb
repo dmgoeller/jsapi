@@ -7,15 +7,8 @@ module Jsapi
       class Reference < Model::Reference
         ##
         # :attr: existence
-        # The level of existence. The default is +ALLOW_OMITTED+.
+        # Overrides the level of existence of the referred schema.
         attribute :existence, Existence, default: Existence::ALLOW_OMITTED
-
-        def resolve(definitions) # :nodoc:
-          schema = super
-          return schema if existence < Existence::ALLOW_EMPTY
-
-          Delegator.new(schema, [existence, schema.existence].max)
-        end
 
         # Returns a hash representing the \JSON \Schema reference object.
         def to_json_schema

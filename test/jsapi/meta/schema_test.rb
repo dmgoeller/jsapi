@@ -77,17 +77,30 @@ module Jsapi
         assert_kind_of(Schema::Object::Wrapper, wrapper)
       end
 
-      def test_wrap_resolves_references
-        wrapper = Schema.wrap(
-          Schema.new(ref: 'Foo'),
-          definitions = Definitions.new(
-            schemas: { 'Foo' => {} }
-          )
+      def test_wrap_schema_reference
+        definitions = Definitions.new(
+          schemas: {
+            'base' => {}
+          }
         )
-        assert_equal(definitions.schema('Foo'), wrapper.__getobj__)
+        base = definitions.schema('base')
+
+        wrapper = Schema.wrap(
+          Schema.new(ref: 'base'),
+          definitions
+        )
+        assert_equal(base, wrapper.__getobj__)
+        assert_equal(Existence::ALLOW_OMITTED, wrapper.existence)
+
+        wrapper = Schema.wrap(
+          Schema.new(ref: 'base', existence: true),
+          definitions
+        )
+        assert_equal(base, wrapper.__getobj__)
+        assert_equal(Existence::PRESENT, wrapper.existence)
       end
 
-      def test_wrap_returns_nil_when_schema_is_nil
+      def test_wrap_returns_nil_if_schema_is_nil
         assert_nil(Schema.wrap(nil, nil))
       end
 

@@ -61,13 +61,12 @@ module Jsapi
           end.new(keywords.except(:type))
         end
 
-        # Resolves and wraps +schema+.
+        # Wraps +schema+.
         def wrap(schema, definitions)
           return if schema.nil?
           return schema if schema.is_a?(Wrapper)
 
-          schema = schema.resolve(definitions)
-          case schema.type
+          case schema.resolve(definitions).type
           when 'array'
             Array::Wrapper
           when 'object'

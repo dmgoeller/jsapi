@@ -4,6 +4,12 @@ module Jsapi
   module Meta
     module Schema
       class Array < Base
+        class Wrapper < Schema::Wrapper
+          def items
+            @items ||= Schema.wrap(super, definitions)
+          end
+        end
+
         ##
         # :attr: items
         # The Schema defining the kind of items.
@@ -49,12 +55,6 @@ module Jsapi
 
         def to_openapi(version, *) # :nodoc:
           super.merge(items: items&.to_openapi(version) || {})
-        end
-
-        class Wrapper < Schema::Wrapper
-          def items
-            @items ||= Schema.wrap(super, definitions)
-          end
         end
       end
     end

@@ -55,7 +55,7 @@ module Jsapi
       end
 
       def <=>(other) # :nodoc:
-        level <=> other.level
+        level <=> other.level if other.is_a?(Existence)
       end
 
       def inspect # :nodoc:

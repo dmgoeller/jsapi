@@ -4,6 +4,62 @@ module Jsapi
   module Meta
     module Schema
       class Object < Base
+        class Wrapper < Schema::Wrapper
+          def additional_properties
+            AdditionalProperties.wrap(super, definitions)
+          end
+
+          def resolve_properties(context: nil)
+            super(definitions, context: context).transform_values do |property|
+              Property.wrap(property, definitions)
+            end
+          end
+
+          # Resolves the schema within +context+.
+          #
+          # Raises a +RuntimeError+ when the schema couldn't be resolved.
+          def resolve_schema(object, context: nil)
+            return self if discriminator.nil?
+
+            properties = resolve_properties(context: context)
+
+            discriminating_property = properties[discriminator.property_name]
+            if discriminating_property.nil?
+              raise Messages.invalid_value(
+                name: 'discriminator property',
+                value: discriminator.property_name,
+                valid_values: properties.keys
+              )
+            end
+
+            discriminating_value = discriminating_property.reader.call(object)
+            if discriminating_value.nil?
+              discriminating_value = discriminating_property.default_value(context: context)
+
+              if discriminating_value.nil? && discriminator.default_mapping.nil?
+                raise "discriminating value can't be nil"
+              end
+            end
+
+            schema_name = discriminator.mapping(discriminating_value) || discriminating_value
+
+            schema = definitions.find_schema(schema_name)
+            if schema.nil?
+              default_mapping = discriminator.default_mapping
+              schema = definitions.find_schema(default_mapping) unless default_mapping.nil?
+
+              if schema.nil?
+                raise "inheriting schema couldn't be found: " \
+                      "#{[schema_name, default_mapping].compact.map(&:inspect).join(' or ')}"
+              end
+            end
+
+            Wrapper
+              .new(schema.resolve(definitions), definitions)
+              .resolve_schema(object, context: context)
+          end
+        end
+
         ##
         # :attr: additional_properties
         # The AdditionalProperties.
@@ -72,62 +128,6 @@ module Jsapi
             additionalProperties: additional_properties&.to_openapi(version),
             required: properties.values.select(&:required?).map(&:name)
           ).compact
-        end
-
-        class Wrapper < Schema::Wrapper
-          def additional_properties
-            AdditionalProperties.wrap(super, definitions)
-          end
-
-          def resolve_properties(context: nil)
-            super(definitions, context: context).transform_values do |property|
-              Property.wrap(property, definitions)
-            end
-          end
-
-          # Resolves the schema within +context+.
-          #
-          # Raises a +RuntimeError+ when the schema couldn't be resolved.
-          def resolve_schema(object, context: nil)
-            return self if discriminator.nil?
-
-            properties = resolve_properties(context: context)
-
-            discriminating_property = properties[discriminator.property_name]
-            if discriminating_property.nil?
-              raise Messages.invalid_value(
-                name: 'discriminator property',
-                value: discriminator.property_name,
-                valid_values: properties.keys
-              )
-            end
-
-            discriminating_value = discriminating_property.reader.call(object)
-            if discriminating_value.nil?
-              discriminating_value = discriminating_property.default_value(context: context)
-
-              if discriminating_value.nil? && discriminator.default_mapping.nil?
-                raise "discriminating value can't be nil"
-              end
-            end
-
-            schema_name = discriminator.mapping(discriminating_value) || discriminating_value
-
-            schema = definitions.find_schema(schema_name)
-            if schema.nil?
-              default_mapping = discriminator.default_mapping
-              schema = definitions.find_schema(default_mapping) unless default_mapping.nil?
-
-              if schema.nil?
-                raise "inheriting schema couldn't be found: " \
-                      "#{[schema_name, default_mapping].compact.map(&:inspect).join(' or ')}"
-              end
-            end
-
-            Wrapper
-              .new(schema.resolve(definitions), definitions)
-              .resolve_schema(object, context: context)
-          end
         end
 
         protected

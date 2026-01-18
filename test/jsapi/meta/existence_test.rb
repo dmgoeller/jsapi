@@ -3,15 +3,7 @@
 module Jsapi
   module Meta
     class ExistenceTest < Minitest::Test
-      Dummy = Struct.new(:null, :empty, keyword_init: true) do
-        def null?
-          null
-        end
-
-        def empty?
-          empty
-        end
-      end
+      # ::from
 
       def test_allow_omitted
         assert_equal(Existence::ALLOW_OMITTED, Existence.from(:allow_omitted))
@@ -50,6 +42,8 @@ module Jsapi
         assert_equal('invalid existence: foo', error.message)
       end
 
+      # Comparison operator
+
       def test_present_is_greater_than_allow_empty
         assert(Existence::PRESENT > Existence::ALLOW_EMPTY)
       end
@@ -62,16 +56,32 @@ module Jsapi
         assert(Existence::PRESENT > Existence::ALLOW_EMPTY)
       end
 
+      def test_comparison_operator_returns_nil_on_incomparable_object
+        assert_nil(Existence::PRESENT <=> nil)
+      end
+
+      # #reach?
+
       def test_reach
-        dummy = Dummy.new(null: true)
+        struct = Struct.new(:null, :empty, keyword_init: true) do
+          def null?
+            null
+          end
+
+          def empty?
+            empty
+          end
+        end
+
+        dummy = struct.new(null: true)
         assert(Existence::ALLOW_NIL.reach?(dummy))
         assert_not(Existence::ALLOW_EMPTY.reach?(dummy))
 
-        dummy = Dummy.new(empty: true)
+        dummy = struct.new(empty: true)
         assert(Existence::ALLOW_EMPTY.reach?(dummy))
         assert_not(Existence::PRESENT.reach?(dummy))
 
-        dummy = Dummy.new
+        dummy = struct.new
         assert(Existence::PRESENT.reach?(dummy))
       end
 

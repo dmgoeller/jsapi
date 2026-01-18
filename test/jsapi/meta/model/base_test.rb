@@ -38,7 +38,7 @@ module Jsapi
         end
 
         def test_reference_predicate
-          assert(!Base.new.reference?)
+          assert_not(Base.new.reference?)
         end
 
         def test_resolve

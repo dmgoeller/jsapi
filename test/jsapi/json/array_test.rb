@@ -60,7 +60,7 @@ module Jsapi
         assert_predicate(errors, :empty?)
 
         errors = Model::Errors.new
-        assert(!Array.new(%w[foo bar foo], schema).validate(errors))
+        assert_not(Array.new(%w[foo bar foo], schema).validate(errors))
         assert(errors.added?(:base, 'is invalid'))
       end
 
@@ -78,7 +78,7 @@ module Jsapi
         assert_predicate(errors, :empty?)
 
         errors = Model::Errors.new
-        assert(!Array.new(['foo', nil], schema).validate(errors))
+        assert_not(Array.new(['foo', nil], schema).validate(errors))
         assert(errors.added?(:base, "can't be blank"))
       end
 

@@ -10,11 +10,11 @@ module Jsapi
       include TestHelper
 
       def test_empty_predicate
-        assert(!Value.new(nil).empty?)
+        assert_not(Value.new(nil).empty?)
       end
 
       def test_null_predicate
-        assert(!Value.new(nil).null?)
+        assert_not(Value.new(nil).null?)
       end
 
       # Serialization
@@ -36,7 +36,7 @@ module Jsapi
         assert_predicate(errors, :empty?)
 
         errors = Model::Errors.new
-        assert(!JSON.wrap('', schema).validate(errors))
+        assert_not(JSON.wrap('', schema).validate(errors))
         assert(errors.added?(:base, "can't be blank"))
       end
 
@@ -48,7 +48,7 @@ module Jsapi
         assert_predicate(errors, :empty?)
 
         errors = Model::Errors.new
-        assert(!JSON.wrap(nil, schema).validate(errors))
+        assert_not(JSON.wrap(nil, schema).validate(errors))
         assert(errors.added?(:base, "can't be blank"))
       end
 
@@ -64,7 +64,7 @@ module Jsapi
         assert_predicate(errors, :empty?)
 
         errors = Model::Errors.new
-        assert(!JSON.wrap('bar', schema).validate(errors))
+        assert_not(JSON.wrap('bar', schema).validate(errors))
         assert(errors.added?(:base, 'is invalid'))
       end
 

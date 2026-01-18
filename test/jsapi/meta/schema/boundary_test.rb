@@ -14,7 +14,7 @@ module Jsapi
         def test_from_integer
           boundary = Boundary.from(1)
           assert_equal(1, boundary.value)
-          assert(!boundary.exclusive?)
+          assert_not(boundary.exclusive?)
         end
 
         def test_from_hash
@@ -24,7 +24,7 @@ module Jsapi
 
           boundary = Boundary.from({ value: 2 })
           assert_equal(2, boundary.value)
-          assert(!boundary.exclusive?)
+          assert_not(boundary.exclusive?)
         end
 
         # Inspection

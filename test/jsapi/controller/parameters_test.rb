@@ -103,8 +103,8 @@ module Jsapi
         params = parameters(foo: nil)
 
         assert(params.attribute?(:foo))
-        assert(!params.attribute?(:bar))
-        assert(!params.attribute?(nil))
+        assert_not(params.attribute?(:bar))
+        assert_not(params.attribute?(nil))
       end
 
       def test_attributes

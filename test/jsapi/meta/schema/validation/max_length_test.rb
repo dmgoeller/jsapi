@@ -24,7 +24,7 @@ module Jsapi
             assert_predicate(errors, :empty?)
 
             errors = Jsapi::Model::Errors.new
-            assert(!max_length.validate('foo bar', errors))
+            assert_not(max_length.validate('foo bar', errors))
             assert(errors.added?(:base, 'is too long (maximum is 3 characters)'))
           end
 

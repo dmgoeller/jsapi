@@ -37,7 +37,7 @@ module Jsapi
           }
         )
         assert_predicate(Object.new({}, schema), :empty?)
-        assert(!Object.new({ 'foo' => 'bar' }, schema).empty?)
+        assert_not(Object.new({ 'foo' => 'bar' }, schema).empty?)
       end
 
       # Attributes
@@ -67,8 +67,8 @@ module Jsapi
           )
         )
         assert(object.attribute?(:foo))
-        assert(!object.attribute?(:bar))
-        assert(!object.attribute?(nil))
+        assert_not(object.attribute?(:bar))
+        assert_not(object.attribute?(nil))
       end
 
       def test_attributes
@@ -163,7 +163,7 @@ module Jsapi
 
         object = Object.new({}, schema)
         errors = Model::Errors.new
-        assert(!object.validate(errors))
+        assert_not(object.validate(errors))
         assert(errors.added?(:base, "can't be blank"))
       end
 
@@ -181,7 +181,7 @@ module Jsapi
 
         object = Object.new({ 'foo' => '' }, schema)
         errors = Model::Errors.new
-        assert(!object.validate(errors))
+        assert_not(object.validate(errors))
         assert(errors.added?(:foo, "can't be blank"))
       end
 
@@ -204,7 +204,7 @@ module Jsapi
 
         object = Object.new({ 'foo' => { 'bar' => nil } }, schema)
         errors = Model::Errors.new
-        assert(!object.validate(errors))
+        assert_not(object.validate(errors))
         assert(errors.added?(:foo, "'bar' can't be blank"))
       end
     end

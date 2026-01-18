@@ -213,7 +213,7 @@ module Jsapi
 
         base = Base.new(meta_model)
         assert(base.respond_to?(:foo))
-        assert(!base.respond_to?(:bar))
+        assert_not(base.respond_to?(:bar))
       end
 
       private

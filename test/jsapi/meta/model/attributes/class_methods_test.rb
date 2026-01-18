@@ -102,7 +102,7 @@ module Jsapi
             assert(model.foo?)
 
             model.foo = false
-            assert(!model.foo?)
+            assert_not(model.foo?)
           end
 
           def test_predicate_method_on_true_by_default
@@ -189,8 +189,8 @@ module Jsapi
             model = model do
               attribute :foos, [String], accessors: %i[reader]
             end
-            assert(!model.respond_to?(:foos=))
-            assert(!model.respond_to?(:add_foo))
+            assert_not(model.respond_to?(:foos=))
+            assert_not(model.respond_to?(:add_foo))
           end
 
           # Hash attributes
@@ -308,8 +308,8 @@ module Jsapi
             model = model do
               attribute :foos, {}, accessors: %i[reader]
             end
-            assert(!model.respond_to?(:foo=))
-            assert(!model.respond_to?(:add_foo))
+            assert_not(model.respond_to?(:foo=))
+            assert_not(model.respond_to?(:add_foo))
           end
 
           private

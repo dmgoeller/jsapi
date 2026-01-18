@@ -65,11 +65,11 @@ module Jsapi
       def test_reach
         dummy = Dummy.new(null: true)
         assert(Existence::ALLOW_NIL.reach?(dummy))
-        assert(!Existence::ALLOW_EMPTY.reach?(dummy))
+        assert_not(Existence::ALLOW_EMPTY.reach?(dummy))
 
         dummy = Dummy.new(empty: true)
         assert(Existence::ALLOW_EMPTY.reach?(dummy))
-        assert(!Existence::PRESENT.reach?(dummy))
+        assert_not(Existence::PRESENT.reach?(dummy))
 
         dummy = Dummy.new
         assert(Existence::PRESENT.reach?(dummy))

@@ -35,22 +35,22 @@ module Jsapi
         error = NestedError.new(:foo, Error.new(nil, :base))
         assert(error.match?(:foo))
         assert(error.match?(:foo, :invalid))
-        assert(!error.match?(:bar))
+        assert_not(error.match?(:bar))
 
         error = NestedError.new(:foo, Error.new(nil, :bar))
         assert(error.match?(:foo))
-        assert(!error.match?(:foo, :invalid))
-        assert(!error.match?(:bar))
+        assert_not(error.match?(:foo, :invalid))
+        assert_not(error.match?(:bar))
       end
 
       def test_strict_match
         error = NestedError.new(:foo, Error.new(nil, :base))
         assert(error.strict_match?(:foo))
         assert(error.strict_match?(:foo, :invalid))
-        assert(!error.strict_match?(:bar))
+        assert_not(error.strict_match?(:bar))
 
         error = NestedError.new(:foo, Error.new(nil, :bar))
-        assert(!error.strict_match?(:foo))
+        assert_not(error.strict_match?(:foo))
       end
     end
   end

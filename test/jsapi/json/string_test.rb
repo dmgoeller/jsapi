@@ -32,7 +32,7 @@ module Jsapi
         # invalid value
         string = String.new('foo', schema)
         assert_equal('foo', string.value)
-        assert(!string.validate(errors))
+        assert_not(string.validate(errors))
         assert(errors.added?(:base, :invalid))
       end
 
@@ -49,7 +49,7 @@ module Jsapi
         # invalid value
         string = String.new('foo', schema)
         assert_equal('foo', string.value)
-        assert(!string.validate(errors))
+        assert_not(string.validate(errors))
         assert(errors.added?(:base, :invalid))
       end
 
@@ -66,14 +66,14 @@ module Jsapi
         # invalid value
         string = String.new('foo', schema)
         assert_equal('foo', string.value)
-        assert(!string.validate(errors))
+        assert_not(string.validate(errors))
         assert(errors.added?(:base, :invalid))
       end
 
       def test_empty_predicate
         schema = schema(type: 'string')
         assert_predicate(String.new('', schema), :empty?)
-        assert(!String.new('foo', schema).empty?)
+        assert_not(String.new('foo', schema).empty?)
       end
     end
   end

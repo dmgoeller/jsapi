@@ -51,8 +51,8 @@ module Jsapi
         assert(model.attribute?('foo'))
         assert(model.attribute?(:foo))
 
-        assert(!model.attribute?('bar'))
-        assert(!model.attribute?(:bar))
+        assert_not(model.attribute?('bar'))
+        assert_not(model.attribute?(:bar))
       end
 
       def test_attributes
@@ -103,7 +103,7 @@ module Jsapi
         model = Base.new(JSON.wrap({}, schema))
 
         assert(model.respond_to?(:foo))
-        assert(!model.respond_to?(:bar))
+        assert_not(model.respond_to?(:bar))
       end
 
       def test_raises_an_error_on_missing_attribute

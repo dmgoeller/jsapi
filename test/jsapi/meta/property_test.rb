@@ -44,7 +44,7 @@ module Jsapi
         assert(property.required?)
 
         property = Property.new('foo', existence: false)
-        assert(!property.required?)
+        assert_not(property.required?)
       end
 
       # OpenAPI objects

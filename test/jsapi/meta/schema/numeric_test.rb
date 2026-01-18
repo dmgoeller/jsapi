@@ -16,7 +16,7 @@ module Jsapi
 
           assert_predicate(maximum, :present?)
           assert_equal(0, maximum.value)
-          assert(!maximum.exclusive)
+          assert_not(maximum.exclusive)
         end
 
         def test_exclusive_maximum
@@ -43,7 +43,7 @@ module Jsapi
 
           assert_predicate(minimum, :present?)
           assert_equal(0, minimum.value)
-          assert(!minimum.exclusive)
+          assert_not(minimum.exclusive)
         end
 
         def test_exclusive_minimum

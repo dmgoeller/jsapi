@@ -41,7 +41,7 @@ module Jsapi
           assert(parameter.required?)
 
           parameter = Base.new('foo', existence: false)
-          assert(!parameter.required?)
+          assert_not(parameter.required?)
         end
 
         # OpenAPI objects

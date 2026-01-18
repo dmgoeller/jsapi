@@ -39,7 +39,7 @@ module Jsapi
         )
         foo = definitions.find_schema('foo')
         assert_predicate(foo, :present?)
-        assert(!foo.equal?(parent.find_schema('foo')))
+        assert_not(foo.equal?(parent.find_schema('foo')))
 
         bar = definitions.find_schema('bar')
         assert_predicate(bar, :present?)

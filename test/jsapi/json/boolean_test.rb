@@ -15,8 +15,8 @@ module Jsapi
       end
 
       def test_empty_predicate
-        assert(!Boolean.new('true', schema).empty?)
-        assert(!Boolean.new('false', schema).empty?)
+        assert_not(Boolean.new('true', schema).empty?)
+        assert_not(Boolean.new('false', schema).empty?)
       end
     end
   end

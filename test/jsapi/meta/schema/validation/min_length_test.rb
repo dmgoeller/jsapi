@@ -24,7 +24,7 @@ module Jsapi
             assert_predicate(errors, :empty?)
 
             errors = Jsapi::Model::Errors.new
-            assert(!min_length.validate('fo', errors))
+            assert_not(min_length.validate('fo', errors))
             assert(errors.added?(:base, 'is too short (minimum is 3 characters)'))
           end
 

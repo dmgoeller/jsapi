@@ -29,7 +29,7 @@ module Jsapi
             assert_predicate(errors, :empty?)
 
             errors = Jsapi::Model::Errors.new
-            assert(!minimum.validate(-1, errors))
+            assert_not(minimum.validate(-1, errors))
             assert(errors.added?(:base, 'must be greater than or equal to 0'))
           end
 
@@ -41,7 +41,7 @@ module Jsapi
             assert_predicate(errors, :empty?)
 
             errors = Jsapi::Model::Errors.new
-            assert(!minimum.validate(0, errors))
+            assert_not(minimum.validate(0, errors))
             assert(errors.added?(:base, 'must be greater than 0'))
           end
 

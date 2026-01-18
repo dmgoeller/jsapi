@@ -18,7 +18,7 @@ module Jsapi
       end
 
       def test_empty_predicate
-        assert(!Integer.new('0', schema(type: 'integer')).empty?)
+        assert_not(Integer.new('0', schema(type: 'integer')).empty?)
       end
     end
   end

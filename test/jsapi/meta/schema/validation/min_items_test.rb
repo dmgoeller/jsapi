@@ -24,7 +24,7 @@ module Jsapi
             assert_predicate(errors, :empty?)
 
             errors = Jsapi::Model::Errors.new
-            assert(!min_items.validate(%w[foo], errors))
+            assert_not(min_items.validate(%w[foo], errors))
             assert(errors.added?(:base, 'is invalid'))
           end
 

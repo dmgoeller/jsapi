@@ -25,7 +25,7 @@ module Jsapi
         assert(rescue_handler.match?(StandardError.new))
         assert(rescue_handler.match?(RuntimeError.new))
 
-        assert(!rescue_handler.match?(Exception.new))
+        assert_not(rescue_handler.match?(Exception.new))
       end
     end
   end

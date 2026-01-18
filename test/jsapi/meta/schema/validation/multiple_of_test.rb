@@ -24,7 +24,7 @@ module Jsapi
             assert_predicate(errors, :empty?)
 
             errors = Jsapi::Model::Errors.new
-            assert(!multiple_of.validate(3, errors))
+            assert_not(multiple_of.validate(3, errors))
             assert(errors.added?(:base, 'is invalid'))
           end
 

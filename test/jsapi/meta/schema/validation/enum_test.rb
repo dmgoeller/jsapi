@@ -24,7 +24,7 @@ module Jsapi
             assert_predicate(errors, :empty?)
 
             errors = Jsapi::Model::Errors.new
-            assert(!enum.validate('D', errors))
+            assert_not(enum.validate('D', errors))
             assert(errors.added?(:base, 'is not included in the list'))
           end
 

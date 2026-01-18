@@ -24,7 +24,7 @@ module Jsapi
             assert_predicate(errors, :none?)
 
             errors = Jsapi::Model::Errors.new
-            assert(!max_items.validate(%w[foo bar foo], errors))
+            assert_not(max_items.validate(%w[foo bar foo], errors))
             assert(errors.added?(:base, 'is invalid'))
           end
 

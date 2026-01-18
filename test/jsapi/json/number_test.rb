@@ -20,7 +20,7 @@ module Jsapi
       end
 
       def test_empty_predicate
-        assert(!Number.new('0.0', schema(type: 'number')).empty?)
+        assert_not(Number.new('0.0', schema(type: 'number')).empty?)
       end
     end
   end

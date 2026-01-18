@@ -86,7 +86,7 @@ module Jsapi
         "#{attributes.map { |k, v| "#{k}: #{v.inspect}" }.join(', ')}>"
       end
 
-      def respond_to_missing?(param1, _param2) # :nodoc:
+      def respond_to_missing?(param1, *) # :nodoc:
         _attr_readers.key?(param1.to_s) ? true : super
       end
 

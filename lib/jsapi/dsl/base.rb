@@ -79,8 +79,8 @@ module Jsapi
         self.class.new(@meta_model, pathname, parent: self)
       end
 
-      def respond_to_missing?(*args) # :nodoc:
-        keyword?(args.first)
+      def respond_to_missing?(param1, *) # :nodoc:
+        keyword?(param1)
       end
 
       protected

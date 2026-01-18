@@ -13,7 +13,7 @@ module Jsapi
               wrapper_class = "#{name}::Wrapper".constantize
               return model if model.is_a?(wrapper_class)
 
-              wrapper_class.new(model.resolve(definitions), definitions)
+              wrapper_class.new(model, definitions)
             end
           end
         end

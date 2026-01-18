@@ -47,6 +47,8 @@ module Jsapi
         def resolve(*)
           self
         end
+
+        alias resolve_lazily resolve
       end
     end
   end

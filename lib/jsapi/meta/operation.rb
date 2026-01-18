@@ -228,7 +228,7 @@ module Jsapi
           definitions.common_responses(full_path)&.merge(self.responses) ||
           self.responses
         ).reject do |status, response|
-          response.hidden?(definitions) ||
+          response.resolve_lazily(definitions).nodoc ||
             version == OpenAPI::V2_0 && status.is_a?(Status::Range)
         end
 

@@ -6,6 +6,35 @@ module Jsapi
   module Meta
     module Response
       class WrapperTest < Minitest::Test
+        def test_locale
+          definitions = Definitions.new(
+            responses: {
+              'base' => {},
+              'en' => { ref: 'base', locale: :en }
+            }
+          )
+          assert_equal(
+            :es,
+            Wrapper.new(
+              Reference.new(ref: 'en', locale: :es),
+              definitions
+            ).locale
+          )
+          assert_equal(
+            :en,
+            Wrapper.new(
+              Reference.new(ref: 'en'),
+              definitions
+            ).locale
+          )
+          assert_nil(
+            Wrapper.new(
+              Reference.new(ref: 'base'),
+              definitions
+            ).locale
+          )
+        end
+
         def test_media_type_and_content_for
           media_type, content = Wrapper.new(
             response = Response.new(

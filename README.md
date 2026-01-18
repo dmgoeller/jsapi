@@ -593,7 +593,8 @@ A reusable response can be referred as below.
 
 ```ruby
 api_operation do
-  response 400, ref: 'error'
+  response '4xx', ref: 'error', locale: :en
+  response '5xx', ref: 'error', locale: :en, nodoc: true
 end
 ```
 

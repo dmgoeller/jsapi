@@ -8,7 +8,7 @@ module Jsapi
         attr_reader :definitions
 
         def initialize(model, definitions)
-          super(model)
+          super(model.resolve(definitions))
           @definitions = definitions
         end
 

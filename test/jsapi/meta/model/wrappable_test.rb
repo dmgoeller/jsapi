@@ -19,24 +19,6 @@ module Jsapi
           assert_equal(model, wrapper.__getobj__)
         end
 
-        def test_wrap_resolves_references
-          model = Dummy.new
-          wrapper = Dummy.wrap(
-            Class.new do
-              def initialize(model)
-                @model = model
-              end
-
-              def resolve(*)
-                @model
-              end
-            end.new(model),
-            Definitions.new
-          )
-          assert_kind_of(Dummy::Wrapper, wrapper)
-          assert_equal(model, wrapper.__getobj__)
-        end
-
         def test_wrap_returns_nil_when_no_model_is_given
           assert_nil(Dummy.wrap(nil, Definitions.new))
         end

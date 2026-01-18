@@ -88,13 +88,6 @@ module Jsapi
           assert_nil(Base.new.media_type_and_content_for('*/*'))
         end
 
-        # #hidden?
-
-        def test_hidden
-          assert(Base.new(nodoc: true).hidden?)
-          assert_not(Base.new.hidden?)
-        end
-
         # OpenAPI objects
 
         def test_minimal_openapi_response_object

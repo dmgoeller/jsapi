@@ -6,6 +6,34 @@ module Jsapi
   module Meta
     module Model
       class WrapperTest < Minitest::Test
+        class DummyReference < Reference
+          def self.name
+            'Dummy::Reference'
+          end
+        end
+
+        class DummyDefinitions
+          def initialize(dummies:)
+            @dummies = dummies
+          end
+
+          def find_dummy(name)
+            @dummies[name]
+          end
+        end
+
+        def test_initialize_resolves_references
+          wrapper = Wrapper.new(
+            DummyReference.new(ref: 'foo'),
+            DummyDefinitions.new(
+              dummies: {
+                'foo' => model = Base.new
+              }
+            )
+          )
+          assert_equal(model, wrapper.__getobj__)
+        end
+
         def test_equality_operator
           wrapper = Wrapper.new(
             model = Base.new,

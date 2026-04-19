@@ -278,7 +278,7 @@ module Jsapi
                   parameters.values.flat_map do |parameter|
                     parameter.to_openapi_parameters(version, definitions)
                   end,
-                request_body: request_body&.to_openapi(version)
+                requestBody: request_body&.to_openapi(version)
               }
             end,
           responses:

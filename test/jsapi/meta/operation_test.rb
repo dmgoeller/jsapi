@@ -184,7 +184,7 @@ module Jsapi
                     allowEmptyValue: true
                   }
                 ],
-                request_body: {
+                requestBody: {
                   content: {
                     'application/json' => {
                       schema: {
@@ -254,7 +254,7 @@ module Jsapi
                     allowEmptyValue: true
                   }
                 ],
-                request_body: {
+                requestBody: {
                   content: {
                     'application/json' => {
                       schema: {

@@ -1,5 +1,9 @@
 # Change log
 
+## 2.0.1 (2026-04-20)
+
+The field name for request bodies in OpenAPI 3.x documents has been corrected.
+
 ## 2.0 (2026-01-18)
 
 ### New features

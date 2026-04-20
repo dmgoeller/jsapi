@@ -1024,7 +1024,7 @@ module Jsapi
                       parameters: [
                         { '$ref': '#/components/parameters/parameter' }
                       ],
-                      request_body: {
+                      requestBody: {
                         '$ref': '#/components/requestBodies/request_body'
                       },
                       responses: {
@@ -1170,7 +1170,7 @@ module Jsapi
                           '$ref': '#/components/parameters/parameter'
                         }
                       ],
-                      request_body: {
+                      requestBody: {
                         '$ref': '#/components/requestBodies/request_body'
                       },
                       responses: {
@@ -1308,7 +1308,7 @@ module Jsapi
                       parameters: [
                         { '$ref': '#/components/parameters/parameter' }
                       ],
-                      request_body: {
+                      requestBody: {
                         '$ref': '#/components/requestBodies/request_body'
                       },
                       responses: {

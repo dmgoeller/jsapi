@@ -115,7 +115,7 @@ module Jsapi
           when 'array'
             jsonify_array(object, schema)
           when 'boolean'
-            object
+            object ? true : false
           when 'integer'
             schema.convert(object.to_i)
           when 'number'

@@ -22,6 +22,9 @@ module Jsapi
         response = Response.new(true, content_model)
         assert_equal('true', response.to_json)
 
+        response = Response.new('truthy', content_model)
+        assert_equal('true', response.to_json)
+
         response = Response.new(false, content_model)
         assert_equal('false', response.to_json)
 

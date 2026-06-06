@@ -5,16 +5,24 @@ require 'test_helper'
 module Jsapi
   module Meta
     class SchemaTest < Minitest::Test
+      module_name = "#{name.deconstantize}::Schema"
+
       # ::new
+
+      %w[array integer number object string].each do |type|
+        define_method(:"test_new_#{type}_schema") do
+          schema = Schema.new(type: type)
+
+          assert_kind_of(
+            "#{module_name}::#{type.camelize}".constantize,
+            schema
+          )
+        end
+      end
 
       def test_new_schema
         schema = Schema.new
         assert_kind_of(Schema::Object, schema)
-      end
-
-      def test_new_array_schema
-        schema = Schema.new(type: 'array')
-        assert_kind_of(Schema::Array, schema)
       end
 
       def test_new_boolean_schema
@@ -22,29 +30,9 @@ module Jsapi
         assert_kind_of(Schema::Base, schema)
       end
 
-      def test_new_integer_schema
-        schema = Schema.new(type: 'integer')
-        assert_kind_of(Schema::Numeric, schema)
-      end
-
-      def test_new_number_schema
-        schema = Schema.new(type: 'number')
-        assert_kind_of(Schema::Numeric, schema)
-      end
-
-      def test_new_object_schema
-        schema = Schema.new(type: 'object')
-        assert_kind_of(Schema::Object, schema)
-      end
-
       def test_new_reference
         schema = Schema.new(ref: 'foo')
         assert_kind_of(Schema::Reference, schema)
-      end
-
-      def test_new_string_schema
-        schema = Schema.new(type: 'string')
-        assert_kind_of(Schema::String, schema)
       end
 
       def test_new_raises_an_error_on_invalid_type
@@ -100,11 +88,11 @@ module Jsapi
         assert_equal(Existence::PRESENT, wrapper.existence)
       end
 
-      def test_wrap_returns_nil_if_schema_is_nil
+      def test_wrap_nil
         assert_nil(Schema.wrap(nil, nil))
       end
 
-      def test_wrap_prevents_double_wrapping
+      def test_prevention_of_double_wrapping
         wrapper = Schema.wrap(Schema.new(type: 'string'), nil)
         assert(wrapper.equal?(Schema.wrap(wrapper, nil)))
       end

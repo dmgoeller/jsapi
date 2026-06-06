@@ -38,7 +38,7 @@ module Jsapi
 
       # Returns a hash representing the \OpenAPI media type object describing
       # the content. Applies to \OpenAPI 3.0 and higher.
-      def to_openapi(version, media_type = nil)
+      def to_openapi(version, media_type: nil)
         version = OpenAPI::Version.from(version)
 
         with_openapi_extensions(

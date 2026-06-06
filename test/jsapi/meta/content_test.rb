@@ -95,7 +95,7 @@ module Jsapi
             end,
             content,
             version,
-            Media::Type.new('application', 'json-seq')
+            media_type: Media::Type.new('application', 'json-seq')
           )
         end
       end

@@ -31,9 +31,12 @@ module Jsapi
         )
       end
 
-      def assert_openapi_equal(expected, object, version, *args, method: :to_openapi)
+      def assert_openapi_equal(expected, object, version, *args, **kwargs)
+        kwargs = kwargs.dup
+        method = kwargs.delete(:method) || :to_openapi
+
         expected = expected&.as_json
-        actual = object.send(method, version, *args)&.as_json
+        actual = object.send(method, version, *args, **kwargs)&.as_json
 
         assert(
           expected == actual,

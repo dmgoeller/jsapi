@@ -20,6 +20,18 @@ module Jsapi
           )
         end
 
+        # value
+
+        def test_value
+          example = Base.new(value: 'foo')
+          assert_equal('foo', example.value)
+        end
+
+        def test_value_as_proc
+          example = Base.new(value: -> { 'foo' })
+          assert_equal('foo', example.value)
+        end
+
         # external value
 
         def test_external_value
@@ -29,7 +41,7 @@ module Jsapi
           assert_equal('/foo/bar', example.external_value)
         end
 
-        def test_setting_external_value_raises_an_error_when_serialized_value_is_present
+        def test_external_value_can_not_be_set_when_serialized_value_is_present
           example = Base.new(serialized_value: '{"foo":"bar"}')
 
           error = assert_raises(RuntimeError) do
@@ -50,7 +62,7 @@ module Jsapi
           assert_equal('{"foo":"bar"}', example.serialized_value)
         end
 
-        def test_setting_serialized_value_raises_an_error_when_external_value_is_present
+        def test_serialized_value_can_not_be_set_when_external_value_is_present
           example = Base.new(external_value: '/foo/bar')
 
           error = assert_raises(RuntimeError) do

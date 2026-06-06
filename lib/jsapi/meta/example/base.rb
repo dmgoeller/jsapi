@@ -30,7 +30,7 @@ module Jsapi
         ##
         # :attr: value
         # The sample value.
-        attribute :value
+        attribute :value, accessors: %i[writer]
 
         def external_value=(value) # :nodoc:
           try_modify_attribute!(:external_value) do
@@ -41,13 +41,17 @@ module Jsapi
           end
         end
 
-        def serialized_value=(value)  # :nodoc:
+        def serialized_value=(value) # :nodoc:
           try_modify_attribute!(:serialized_value) do
             raise 'external value and serialized value are mutually exclusive' \
             unless external_value.nil?
 
             @serialized_value = value
           end
+        end
+
+        def value # :nodoc:
+          @value.is_a?(Proc) ? @value.call : @value
         end
 
         # Returns a hash representing the \OpenAPI example object.

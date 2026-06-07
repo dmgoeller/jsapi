@@ -35,6 +35,25 @@ module Jsapi
           )
         end
 
+        def test_contents
+          contents = Wrapper.new(
+            response = Response.new(
+              contents: {
+                'application/json' => {}
+              }
+            ),
+            Definitions.new
+          ).contents
+
+          assert_equal(1, contents.count)
+
+          media_type, content = contents.first
+          assert_equal(Media::Type.new('application', 'json'), media_type)
+
+          assert_kind_of(Content::Wrapper, content)
+          assert_equal(response.contents.values.first, content.__getobj__)
+        end
+
         def test_media_type_and_content_for
           media_type, content = Wrapper.new(
             response = Response.new(

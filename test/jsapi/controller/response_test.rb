@@ -462,8 +462,11 @@ module Jsapi
       # I18n
 
       def test_i18n
-        object = Object.new
-        object.define_singleton_method(:foo) { I18n.t(:hello_world) }
+        object = Class.new do
+          def foo
+            I18n.t(:hello_world)
+          end
+        end.new
 
         content_model = content_model(
           type: 'object',

@@ -20,18 +20,6 @@ module Jsapi
           )
         end
 
-        # value
-
-        def test_value
-          example = Base.new(value: 'foo')
-          assert_equal('foo', example.value)
-        end
-
-        def test_value_as_proc
-          example = Base.new(value: -> { 'foo' })
-          assert_equal('foo', example.value)
-        end
-
         # external value
 
         def test_external_value
@@ -72,6 +60,27 @@ module Jsapi
             'external value and serialized value are mutually exclusive',
             error.message
           )
+        end
+
+        # data value
+
+        def test_data_value
+          example = Base.new(value: 'foo')
+          assert_equal('foo', example.data_value)
+        end
+
+        def test_data_value_on_proc
+          example_builder = Class.new do
+            def foo
+              'bar'
+            end
+          end.new
+
+          example = Base.new(value: -> { 'foo' })
+          assert_equal('foo', example.data_value(builder: example_builder))
+
+          example = Base.new(value: ->(builder) { builder.foo })
+          assert_equal('bar', example.data_value(builder: example_builder))
         end
 
         # OpenAPI objects
@@ -117,7 +126,30 @@ module Jsapi
           end
         end
 
-        def test_openapi_example_object_on_external
+        def test_openapi_example_object_on_proc
+          example_builder = Class.new do
+            def foo
+              'bar'
+            end
+          end.new
+
+          example = Base.new(value: ->(builder) { builder.foo })
+
+          each_openapi_version do |version|
+            assert_openapi_equal(
+              if version < OpenAPI::V3_2
+                { value: 'bar' }
+              else
+                { dataValue: 'bar' }
+              end,
+              example,
+              version,
+              builder: example_builder
+            )
+          end
+        end
+
+        def test_openapi_example_object_on_external_value
           example = Base.new(external_value: '/foo/bar')
 
           each_openapi_version do |version|

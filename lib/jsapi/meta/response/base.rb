@@ -104,7 +104,7 @@ module Jsapi
           with_openapi_extensions(
             if version == OpenAPI::V2_0
               media_type, content = contents.first
-              example = content&.examples&.values&.first
+              example = content&.example_data_value(definitions, locale: locale)
               {
                 description: description,
                 schema: content&.schema&.to_openapi(version),
@@ -114,7 +114,7 @@ module Jsapi
                   end.compact.presence,
                 examples:
                   if media_type.present? && example.present?
-                    { media_type => example.resolve(definitions).value }
+                    { media_type => example }
                   end
               }
             else
@@ -129,7 +129,12 @@ module Jsapi
                   contents.to_h do |nth_media_type, nth_content|
                     [
                       nth_media_type,
-                      nth_content.to_openapi(version, media_type: nth_media_type)
+                      nth_content.to_openapi(
+                        version,
+                        definitions,
+                        locale: locale,
+                        media_type: nth_media_type
+                      )
                     ]
                   end.presence,
                 links:

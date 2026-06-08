@@ -74,30 +74,40 @@ module Jsapi
         @locale = locale
       end
 
+      # Returns the \JSON representation of the response.
+      def as_json(*)
+        with_locale { jsonify(@object, @content_model.schema) }
+      end
+
       def inspect # :nodoc:
         "#<#{self.class.name} #{@object.inspect}>"
       end
 
       # Returns the \JSON representation of the response as a string.
       def to_json(*)
-        with_locale { jsonify(@object, @content_model.schema) }.to_json
+        as_json.to_json
       end
 
       # Writes the response in \JSON sequence text format to +stream+.
       def write_json_seq_to(stream)
         schema = @content_model.schema
+        object = @object
+        object = schema.default_value(context: :response) if object.nil?
+
         with_locale do
           items, item_schema =
-            if schema.array? && @object.respond_to?(:each)
-              [@object, schema.items]
+            if schema.array? && object.respond_to?(:each)
+              [object, schema.items]
             else
-              [[@object], schema]
+              [[object], schema]
             end
 
-          items.each do |item|
+          items.each_with_index do |item, index|
             stream.write("\u001E") # Record separator (see RFC 7464)
             stream.write(jsonify(item, item_schema).to_json)
             stream.write("\n")
+          rescue JsonifyError => e
+            raise e.prepend("[#{index}]")
           end
         end
         nil
@@ -126,9 +136,9 @@ module Jsapi
             schema.convert(
               case schema.format
               when 'date'
-                object.to_date
+                object.to_date.as_json
               when 'date-time'
-                object.to_datetime
+                object.to_datetime.as_json
               when 'duration'
                 object.iso8601
               else

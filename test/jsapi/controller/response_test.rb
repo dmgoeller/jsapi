@@ -14,135 +14,172 @@ module Jsapi
         assert_equal('omit must be one of :empty or :nil, is :foo', error.message)
       end
 
-      # #to_json
+      # JSON serialization
 
-      def test_to_json_on_boolean
+      def test_serializes_boolean_response
         content_model = content_model(type: 'boolean')
 
+        # Truthy values
         response = Response.new(true, content_model)
-        assert_equal('true', response.to_json)
+        assert_json_equal(true, response)
+        assert_json_seq_equal(json_seq('true'), response)
 
-        response = Response.new('truthy', content_model)
-        assert_equal('true', response.to_json)
+        response = Response.new('', content_model)
+        assert_json_equal(true, response)
+        assert_json_seq_equal(json_seq('true'), response)
 
+        # Falsely values
         response = Response.new(false, content_model)
-        assert_equal('false', response.to_json)
+        assert_json_equal(false, response)
+        assert_json_seq_equal(json_seq('false'), response)
 
         response = Response.new(nil, content_model)
-        assert_equal('null', response.to_json)
+        assert_json_equal(nil, response)
+        assert_json_seq_equal(json_seq('null'), response)
+
+        definitions.add_default('boolean', within_responses: false)
+        assert_json_equal(false, response)
+        assert_json_seq_equal(json_seq('false'), response)
       end
 
-      def test_to_json_on_integer
+      def test_serializes_integer_response
         content_model = content_model(type: 'integer')
 
         response = Response.new(1, content_model)
-        assert_equal('1', response.to_json)
+        assert_json_equal(1, response)
+        assert_json_seq_equal(json_seq('1'), response)
 
         response = Response.new(1.0, content_model)
-        assert_equal('1', response.to_json)
+        assert_json_equal(1, response)
+        assert_json_seq_equal(json_seq('1'), response)
 
+        # nil
         response = Response.new(nil, content_model)
-        assert_equal('null', response.to_json)
+        assert_json_equal(nil, response)
+        assert_json_seq_equal(json_seq('null'), response)
+
+        definitions.add_default('integer', within_responses: 0)
+        assert_json_equal(0, response)
+        assert_json_seq_equal(json_seq('0'), response)
       end
 
-      def test_to_json_on_integer_with_conversion
+      def test_serializes_integer_response_with_conversion
         content_model = content_model(type: 'integer', conversion: :abs)
 
         response = Response.new(-1, content_model)
-        assert_equal('1', response.to_json)
+        assert_json_equal(1, response)
+        assert_json_seq_equal(json_seq('1'), response)
       end
 
-      def test_to_json_on_number
+      def test_serializes_number_response
         content_model = content_model(type: 'number')
 
         response = Response.new(1.0, content_model)
-        assert_equal('1.0', response.to_json)
+        assert_json_equal(1.0, response)
+        assert_json_seq_equal(json_seq('1.0'), response)
 
         response = Response.new(1, content_model)
-        assert_equal('1.0', response.to_json)
+        assert_json_equal(1.0, response)
+        assert_json_seq_equal(json_seq('1.0'), response)
 
+        # nil
         response = Response.new(nil, content_model)
-        assert_equal('null', response.to_json)
+        assert_json_equal(nil, response)
+        assert_json_seq_equal(json_seq('null'), response)
+
+        definitions.add_default('number', within_responses: 0.0)
+        assert_json_equal(0.0, response)
+        assert_json_seq_equal(json_seq('0.0'), response)
       end
 
-      def test_to_json_on_numbers_with_conversion
+      def test_serializes_number_response_with_conversion
         content_model = content_model(type: 'number', conversion: :abs)
 
         response = Response.new(-1.0, content_model)
-        assert_equal('1.0', response.to_json)
+        assert_json_equal(1.0, response)
+        assert_json_seq_equal(json_seq('1.0'), response)
       end
 
       # Strings
 
-      def test_to_json_on_string
+      def test_serializes_string_response
         content_model = content_model(type: 'string')
 
         response = Response.new('foo', content_model)
-        assert_equal('"foo"', response.to_json)
+        assert_json_equal('foo', response)
+        assert_json_seq_equal(json_seq('"foo"'), response)
 
         response = Response.new('', content_model)
-        assert_equal('""', response.to_json)
+        assert_json_equal('', response)
+        assert_json_seq_equal(json_seq('""'), response)
 
+        # nil
         response = Response.new(nil, content_model)
-        assert_equal('null', response.to_json)
+        assert_json_equal(nil, response)
+        assert_json_seq_equal(json_seq('null'), response)
+
+        definitions.add_default('string', within_responses: '')
+        assert_json_equal('', response)
+        assert_json_seq_equal(json_seq('""'), response)
       end
 
-      def test_to_json_on_string_with_date_format
+      def test_serializes_string_response_with_date_format
         content_model = content_model(type: 'string', format: 'date')
 
         response = Response.new('2099-12-31T23:59:59+00:00', content_model)
-        assert_equal('"2099-12-31"', response.to_json)
+        assert_json_equal('2099-12-31', response)
+        assert_json_seq_equal(json_seq('"2099-12-31"'), response)
       end
 
-      def test_to_json_on_string_with_datetime_format
+      def test_serializes_string_response_with_datetime_format
         content_model = content_model(type: 'string', format: 'date-time')
 
         response = Response.new('2099-12-31', content_model)
-        assert_equal('"2099-12-31T00:00:00.000+00:00"', response.to_json)
+        assert_json_equal('2099-12-31T00:00:00.000+00:00', response)
+        assert_json_seq_equal(json_seq('"2099-12-31T00:00:00.000+00:00"'), response)
       end
 
-      def test_to_json_on_string_with_duration_format
+      def test_serializes_string_response_with_duration_format
         content_model = content_model(type: 'string', format: 'duration')
 
         duration = ActiveSupport::Duration.build(86_400)
         response = Response.new(duration, content_model)
-        assert_equal('"P1D"', response.to_json)
+        assert_json_equal('P1D', response)
+        assert_json_seq_equal(json_seq('"P1D"'), response)
       end
 
-      def test_to_json_on_string_with_conversion
+      def test_serializes_string_with_conversion
         content_model = content_model(type: 'string', conversion: :upcase)
 
         response = Response.new('Foo', content_model)
-        assert_equal('"FOO"', response.to_json)
-      end
-
-      def test_to_json_on_string_with_default_value
-        content_model = content_model(type: 'string')
-        definitions.add_default('string', within_responses: '')
-
-        response = Response.new(nil, content_model)
-        assert_equal('""', response.to_json)
+        assert_json_equal('FOO', response)
+        assert_json_seq_equal(json_seq('"FOO"'), response)
       end
 
       # Arrays
 
-      def test_to_json_on_array
+      def test_serializes_array_response
         content_model = content_model(type: 'array', items: { type: 'string' })
 
         response = Response.new(%w[foo bar], content_model)
-        assert_equal('["foo","bar"]', response.to_json)
+        assert_json_equal(%w[foo bar], response)
+        assert_json_seq_equal(json_seq('"foo"', '"bar"'), response)
 
         response = Response.new([], content_model)
-        assert_equal('[]', response.to_json)
+        assert_json_equal([], response)
+        assert_json_seq_equal('', response)
 
+        # nil
         response = Response.new(nil, content_model)
-        assert_equal('null', response.to_json)
+        assert_json_equal(nil, response)
+        assert_json_seq_equal(json_seq('null'), response)
 
         definitions.add_default('array', within_responses: [])
-        assert_equal('[]', response.to_json)
+        assert_json_equal([], response)
+        assert_json_seq_equal('', response)
       end
 
-      def test_to_json_raises_an_error_on_invalid_array
+      def test_raises_an_error_on_invalid_array
         content_model = content_model(
           type: 'array',
           items: {
@@ -152,13 +189,16 @@ module Jsapi
         )
         response = Response.new([nil], content_model)
 
-        error = assert_raises(RuntimeError) { response.to_json }
+        error = assert_raises(RuntimeError) { response.as_json }
+        assert_equal("[0] can't be nil", error.message)
+
+        error = assert_raises(RuntimeError) { response.write_json_seq_to(StringIO.new) }
         assert_equal("[0] can't be nil", error.message)
       end
 
       # Objects
 
-      def test_to_json_on_object
+      def test_serializes_object_response
         content_model = content_model(
           type: 'object',
           properties: {
@@ -166,19 +206,24 @@ module Jsapi
           }
         )
         response = Response.new({ foo: 'bar' }, content_model)
-        assert_equal('{"foo":"bar"}', response.to_json)
+        assert_json_equal({ 'foo' => 'bar' }, response)
+        assert_json_seq_equal(json_seq('{"foo":"bar"}'), response)
 
         response = Response.new({}, content_model)
-        assert_equal('{"foo":null}', response.to_json)
+        assert_json_equal({ 'foo' => nil }, response)
+        assert_json_seq_equal(json_seq('{"foo":null}'), response)
 
+        # nil
         response = Response.new(nil, content_model)
-        assert_equal('null', response.to_json)
+        assert_json_equal(nil, response)
+        assert_json_seq_equal(json_seq('null'), response)
 
         definitions.add_default('object', within_responses: {})
-        assert_equal('{"foo":null}', response.to_json)
+        assert_json_equal({ 'foo' => nil }, response)
+        assert_json_seq_equal(json_seq('{"foo":null}'), response)
       end
 
-      def test_to_json_on_object_with_additional_properties
+      def test_serializes_object_response_with_additional_properties
         content_model = content_model(
           type: 'object',
           properties: {
@@ -193,14 +238,16 @@ module Jsapi
           struct.new(foo: 1, additional_properties: { bar: 2 }),
           content_model
         )
-        assert_equal('{"foo":1,"bar":"2"}', response.to_json)
+        assert_json_equal({ 'foo' => 1, 'bar' => '2' }, response)
+        assert_json_seq_equal(json_seq('{"foo":1,"bar":"2"}'), response)
 
         # Object without additional properties
         response = Response.new(
           struct.new(foo: 1),
           content_model
         )
-        assert_equal('{"foo":1}', response.to_json)
+        assert_json_equal({ 'foo' => 1 }, response)
+        assert_json_seq_equal(json_seq('{"foo":1}'), response)
 
         # Hash
         response = Response.new(
@@ -210,7 +257,8 @@ module Jsapi
           },
           content_model
         )
-        assert_equal('{"foo":1,"bar":"2"}', response.to_json)
+        assert_json_equal({ 'foo' => 1, 'bar' => '2' }, response)
+        assert_json_seq_equal(json_seq('{"foo":1,"bar":"2"}'), response)
 
         # Hash with explicit additional properties
         response = Response.new(
@@ -223,14 +271,16 @@ module Jsapi
           },
           content_model
         )
-        assert_equal('{"foo":1,"bar":"3"}', response.to_json)
+        assert_json_equal({ 'foo' => 1, 'bar' => '3' }, response)
+        assert_json_seq_equal(json_seq('{"foo":1,"bar":"3"}'), response)
 
         # Hash without additional properties
         response = Response.new({ foo: 1 }, content_model)
-        assert_equal('{"foo":1}', response.to_json)
+        assert_json_equal({ 'foo' => 1 }, response)
+        assert_json_seq_equal(json_seq('{"foo":1}'), response)
       end
 
-      def test_to_json_on_object_with_additional_properties_only
+      def test_serializes_object_response_with_additional_properties_only
         content_model = content_model(
           type: 'object',
           additional_properties: { type: 'string' }
@@ -242,13 +292,15 @@ module Jsapi
           },
           content_model
         )
-        assert_equal('{"foo":"bar","bar":"foo"}', response.to_json)
+        assert_json_equal({ 'foo' => 'bar', 'bar' => 'foo' }, response)
+        assert_json_seq_equal(json_seq('{"foo":"bar","bar":"foo"}'), response)
 
         response = Response.new({}, content_model)
         assert_equal('null', response.to_json)
+        assert_json_seq_equal(json_seq('null'), response)
       end
 
-      def test_to_json_on_object_with_polymorphism
+      def test_serializes_object_response_with_polymorphism
         definitions
           .add_schema('base', discriminator: { property_name: 'type' })
           .add_property('type', type: 'string', default: 'foo')
@@ -264,13 +316,15 @@ module Jsapi
         content_model = content_model(schema: 'base')
 
         response = Response.new({ foo: 'bar' }, content_model)
-        assert_equal('{"type":"foo","foo":"bar"}', response.to_json)
+        assert_json_equal({ 'type' => 'foo', 'foo' => 'bar' }, response)
+        assert_json_seq_equal(json_seq('{"type":"foo","foo":"bar"}'), response)
 
         response = Response.new({ type: 'bar', bar: 'foo' }, content_model)
-        assert_equal('{"type":"bar","bar":"foo"}', response.to_json)
+        assert_json_equal({ 'type' => 'bar', 'bar' => 'foo' }, response)
+        assert_json_seq_equal(json_seq('{"type":"bar","bar":"foo"}'), response)
       end
 
-      def test_to_json_on_object_and_omit_nil
+      def test_serializes_object_response_on_omit_nil
         content_model = content_model(
           type: 'object',
           properties: {
@@ -279,13 +333,15 @@ module Jsapi
           }
         )
         response = Response.new({}, content_model, omit: :nil)
-        assert_equal('{"foo":null}', response.to_json)
+        assert_json_equal({ 'foo' => nil }, response)
+        assert_json_seq_equal(json_seq('{"foo":null}'), response)
 
         response = Response.new({}, content_model)
-        assert_equal('{"foo":null,"bar":null}', response.to_json)
+        assert_json_equal({ 'foo' => nil, 'bar' => nil }, response)
+        assert_json_seq_equal(json_seq('{"foo":null,"bar":null}'), response)
       end
 
-      def test_to_json_on_object_and_omit_empty
+      def test_serializes_object_response_on_omit_empty
         content_model = content_model(
           type: 'object',
           properties: {
@@ -296,13 +352,15 @@ module Jsapi
         object = { foo: '', bar: '' }
 
         response = Response.new(object, content_model, omit: :empty)
-        assert_equal('{"foo":""}', response.to_json)
+        assert_json_equal({ 'foo' => '' }, response)
+        assert_json_seq_equal(json_seq('{"foo":""}'), response)
 
         response = Response.new(object, content_model)
-        assert_equal('{"foo":"","bar":""}', response.to_json)
+        assert_json_equal({ 'foo' => '', 'bar' => '' }, response)
+        assert_json_seq_equal(json_seq('{"foo":"","bar":""}'), response)
       end
 
-      def test_to_json_raises_an_error_on_invalid_object
+      def test_raises_an_error_on_invalid_object
         content_model = content_model(
           type: 'object',
           properties: {
@@ -311,11 +369,14 @@ module Jsapi
         )
         response = Response.new({ foo: nil }, content_model)
 
-        error = assert_raises(RuntimeError) { response.to_json }
+        error = assert_raises(RuntimeError) { response.as_json }
         assert_equal("foo can't be nil", error.message)
+
+        error = assert_raises(RuntimeError) { response.write_json_seq_to(StringIO.new) }
+        assert_equal("[0].foo can't be nil", error.message)
       end
 
-      def test_to_json_raises_an_error_on_invalid_nested_object
+      def test_raises_an_error_on_invalid_nested_object
         content_model = content_model(
           type: 'object',
           properties: {
@@ -329,11 +390,14 @@ module Jsapi
         )
         response = Response.new({ foo: { bar: nil } }, content_model)
 
-        error = assert_raises(RuntimeError) { response.to_json }
+        error = assert_raises(RuntimeError) { response.as_json }
         assert_equal("foo.bar can't be nil", error.message)
+
+        error = assert_raises(RuntimeError) { response.write_json_seq_to(StringIO.new) }
+        assert_equal("[0].foo.bar can't be nil", error.message)
       end
 
-      def test_to_json_raises_an_error_on_invalid_additional_property
+      def test_raises_an_error_on_invalid_additional_property
         content_model = content_model(
           type: 'object',
           additional_properties: { type: 'string', existence: true }
@@ -342,11 +406,14 @@ module Jsapi
           { additional_properties: { foo: nil } },
           content_model
         )
-        error = assert_raises(RuntimeError) { response.to_json }
+        error = assert_raises(RuntimeError) { response.as_json }
         assert_equal("foo can't be nil", error.message)
+
+        error = assert_raises(RuntimeError) { response.write_json_seq_to(StringIO.new) }
+        assert_equal("[0].foo can't be nil", error.message)
       end
 
-      def test_to_json_raises_an_error_on_invalid_nested_additional_property
+      def test_raises_an_error_on_invalid_nested_additional_property
         content_model = content_model(type: 'object')
         content_model.add_property(
           'foo',
@@ -357,54 +424,39 @@ module Jsapi
           { foo: { additional_properties: { bar: nil } } },
           content_model
         )
-        error = assert_raises(RuntimeError) { response.to_json }
+        error = assert_raises(RuntimeError) { response.as_json }
         assert_equal("foo.bar can't be nil", error.message)
+
+        error = assert_raises(RuntimeError) { response.write_json_seq_to(StringIO.new) }
+        assert_equal("[0].foo.bar can't be nil", error.message)
       end
 
       # Errors
 
-      def test_to_json_raises_an_error_on_invalid_response
+      def test_raises_an_error_on_invalid_response
         content_model = content_model(type: 'string', existence: true)
         response = Response.new(nil, content_model)
 
-        error = assert_raises(RuntimeError) { response.to_json }
+        error = assert_raises(RuntimeError) { response.as_json }
         assert_equal("response body can't be nil", error.message)
+
+        error = assert_raises(RuntimeError) { response.write_json_seq_to(StringIO.new) }
+        assert_equal("[0] can't be nil", error.message)
       end
 
-      def test_to_json_raises_an_error_on_invalid_type
+      def test_raises_an_error_on_invalid_type
         content_model = content_model(type: 'object')
         response = Response.new({}, content_model)
 
         error = Meta::Schema::Base.stub_any_instance(:type, 'foo') do
-          assert_raises(RuntimeError) { response.to_json }
+          assert_raises(RuntimeError) { response.as_json }
         end
         assert_equal('response body has an invalid type: "foo"', error.message)
-      end
 
-      # #write_json_seq_to
-
-      def test_write_json_seq_to
-        content_model = content_model(type: 'string')
-        response = Response.new('foo', content_model)
-
-        assert_equal(
-          "\u001E\"foo\"\n",
-          StringIO.new.tap do |stream|
-            response.write_json_seq_to(stream)
-          end.string
-        )
-      end
-
-      def test_write_json_seq_to_on_array
-        content_model = content_model(type: 'array', items: { type: 'string' })
-        response = Response.new(%w[foo bar], content_model)
-
-        assert_equal(
-          "\u001E\"foo\"\n\u001E\"bar\"\n",
-          StringIO.new.tap do |stream|
-            response.write_json_seq_to(stream)
-          end.string
-        )
+        error = Meta::Schema::Base.stub_any_instance(:type, 'foo') do
+          assert_raises(RuntimeError) { response.write_json_seq_to(StringIO.new) }
+        end
+        assert_equal('[0] has an invalid type: "foo"', error.message)
       end
 
       # I18n
@@ -420,21 +472,12 @@ module Jsapi
           }
         )
         response = Response.new(object, content_model, locale: :en)
-        assert_equal('{"foo":"Hello world"}', response.to_json)
-        assert_equal(
-          "\u001E{\"foo\":\"Hello world\"}\n",
-          StringIO.new.tap do |stream|
-            response.write_json_seq_to(stream)
-          end.string
-        )
+        assert_json_equal({ 'foo' => 'Hello world' }, response)
+        assert_json_seq_equal(json_seq('{"foo":"Hello world"}'), response)
+
         response = Response.new(object, content_model, locale: :de)
-        assert_equal('{"foo":"Hallo Welt"}', response.to_json)
-        assert_equal(
-          "\u001E{\"foo\":\"Hallo Welt\"}\n",
-          StringIO.new.tap do |stream|
-            response.write_json_seq_to(stream)
-          end.string
-        )
+        assert_json_equal({ 'foo' => 'Hallo Welt' }, response)
+        assert_json_seq_equal(json_seq('{"foo":"Hallo Welt"}'), response)
       end
 
       # Inspection
@@ -446,6 +489,33 @@ module Jsapi
 
       private
 
+      def assert_json_equal(expected, response)
+        human_response = response.inspect
+        assert(
+          (actual = response.as_json) == expected,
+          "Expected #as_json to return #{expected.inspect} " \
+          "for #{human_response}, is: #{actual.inspect}"
+        )
+        assert(
+          (actual = response.to_json) == (expected = expected.to_json),
+          "Expected #to_json to return #{expected.inspect} " \
+          "for #{human_response}, is: #{actual.inspect}"
+        )
+      end
+
+      def assert_json_seq_equal(expected, response)
+        actual =
+          StringIO.new.tap do |stream|
+            response.write_json_seq_to(stream)
+          end.string
+
+        assert(
+          actual == expected,
+          "Expected #write_json_seq_to to produce #{expected.inspect} " \
+          "for #{response.inspect}, is: #{actual.inspect}"
+        )
+      end
+
       def content_model(**keywords)
         Meta::Content::Wrapper.new(
           Meta::Content.new(**keywords),
@@ -455,6 +525,10 @@ module Jsapi
 
       def definitions
         @definitions ||= Meta::Definitions.new
+      end
+
+      def json_seq(*objects)
+        objects.map { |object| "\u001E#{object}\n" }.join
       end
     end
   end

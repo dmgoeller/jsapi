@@ -309,7 +309,7 @@ module Jsapi
           end
         end
 
-        def test_openapi_response_object_with_example_value_as_proc
+        def test_openapi_response_object_with_lazily_created_example
           definitions = Definitions.new
 
           response = Base.new(
@@ -325,12 +325,9 @@ module Jsapi
                 },
                 examples: {
                   'default' => {
-                    value:
-                      lambda do |builder|
-                        builder.generate_response(
-                          { foo: 'bar' }
-                        )
-                      end
+                    value: lambda do |builder|
+                      builder.generate_response({ foo: 'bar' })
+                    end
                   }
                 }
               }

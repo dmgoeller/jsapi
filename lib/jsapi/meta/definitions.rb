@@ -314,6 +314,10 @@ module Jsapi
       end
 
       ##
+      # :method: find_example
+      # Returns the reusable example with the specified name.
+
+      ##
       # :method: find_parameter
       # Returns the reusable parameter with the specified name.
 
@@ -333,7 +337,8 @@ module Jsapi
       # :method: find_security_scheme
       # Returns the security scheme with the specified name.
 
-      %i[parameters request_bodies responses schemas security_schemes].each do |attribute_name|
+      %i[examples parameters request_bodies responses
+         schemas security_schemes].each do |attribute_name|
         define_method(:"find_#{attribute_name.to_s.singularize}") do |name|
           cached_attributes.dig(attribute_name, name&.to_s)
         end

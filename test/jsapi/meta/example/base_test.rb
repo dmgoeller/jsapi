@@ -69,18 +69,20 @@ module Jsapi
           assert_equal('foo', example.data_value)
         end
 
-        def test_data_value_on_proc
-          example_builder = Class.new do
+        def test_lazily_created_data_value
+          builder = Class.new do
             def foo
               'bar'
             end
           end.new
 
+          # Argument-less proc
           example = Base.new(value: -> { 'foo' })
-          assert_equal('foo', example.data_value(builder: example_builder))
+          assert_equal('foo', example.data_value(builder: builder))
 
-          example = Base.new(value: ->(builder) { builder.foo })
-          assert_equal('bar', example.data_value(builder: example_builder))
+          # Single-argument proc
+          example = Base.new(value: ->(b) { b.foo })
+          assert_equal('bar', example.data_value(builder: builder))
         end
 
         # OpenAPI objects

@@ -21,7 +21,7 @@ module Jsapi
 
       # Example values
 
-      def test_example_data_value
+      def test_example_value
         content = Content.new(
           type: 'object',
           properties: {
@@ -29,12 +29,9 @@ module Jsapi
           },
           examples: {
             'default' => {
-              value:
-                lambda do |builder|
-                  builder.generate_response(
-                    { foo: 'bar' }
-                  )
-                end
+              value: lambda do |builder|
+                builder.generate_response({ foo: 'bar' })
+              end
             }
           }
         )
@@ -44,7 +41,7 @@ module Jsapi
         )
       end
 
-      def test_example_data_value_with_i18n
+      def test_localized_example_value
         definitions = Definitions.new
 
         content = Content.new(
@@ -54,16 +51,15 @@ module Jsapi
           },
           examples: {
             'default' => {
-              value:
-                lambda do |builder|
-                  builder.generate_response(
-                    Class.new do
-                      def foo
-                        I18n.t(:hello_world)
-                      end
-                    end.new
-                  )
-                end
+              value: lambda do |builder|
+                builder.generate_response(
+                  Class.new do
+                    def foo
+                      I18n.t(:hello_world)
+                    end
+                  end.new
+                )
+              end
             }
           }
         )
@@ -74,6 +70,31 @@ module Jsapi
         assert_equal(
           { 'foo' => 'Hallo Welt' },
           content.example_data_value(definitions, locale: :de).as_json
+        )
+      end
+
+      def test_example_value_on_reference
+        definitions = Definitions.new(
+          examples: {
+            'response' => {
+              value: lambda do |builder|
+                builder.generate_response({ foo: 'bar' })
+              end
+            }
+          }
+        )
+        content = Content.new(
+          type: 'object',
+          properties: {
+            'foo' => { type: 'string' }
+          },
+          examples: {
+            'default' => { ref: 'response' }
+          }
+        )
+        assert_equal(
+          { 'foo' => 'bar' },
+          content.example_data_value(definitions).as_json
         )
       end
 
@@ -158,7 +179,7 @@ module Jsapi
         end
       end
 
-      def test_openapi_media_type_object_with_example_value_as_proc
+      def test_openapi_media_type_object_with_lazily_created_example
         definitions = Definitions.new
 
         content = Content.new(
@@ -172,12 +193,9 @@ module Jsapi
           },
           examples: {
             'default' => {
-              value:
-                lambda do |builder|
-                  builder.generate_response(
-                    { foo: 'bar' }
-                  )
-                end
+              value: lambda do |builder|
+                builder.generate_response({ foo: 'bar' })
+              end
             }
           }
         )

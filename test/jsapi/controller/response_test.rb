@@ -461,7 +461,7 @@ module Jsapi
 
       # I18n
 
-      def test_i18n
+      def test_localized_response
         object = Class.new do
           def foo
             I18n.t(:hello_world)

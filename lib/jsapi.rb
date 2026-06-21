@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'jsapi/messages'
+require 'jsapi/jsonify_error'
 require 'jsapi/configuration'
 require 'jsapi/media'
 require 'jsapi/status'

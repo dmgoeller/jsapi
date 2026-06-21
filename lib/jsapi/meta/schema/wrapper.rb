@@ -25,6 +25,20 @@ module Jsapi
 
           definitions.default_value(type, context: context)
         end
+
+        # Generates a JSON value representing +value+.
+        def jsonify(value, context: nil, omit: nil)
+          value = default_value(context: context) if value.nil?
+          raise JsonifyError, "can't be nil" if value.nil? && !nullable?
+
+          jsonify_value(value, context: context, omit: omit) unless value.nil?
+        end
+
+        private
+
+        def jsonify_value(value, **)
+          value
+        end
       end
     end
   end

@@ -10,13 +10,13 @@ module Jsapi
           base.attr_accessor :conversion
         end
 
-        def convert(object)
-          return object if conversion.nil?
+        def convert(value)
+          return value if conversion.nil?
 
           if conversion.respond_to?(:call)
-            conversion.call(object)
+            conversion.call(value)
           else
-            object.send(conversion)
+            value.send(conversion)
           end
         end
       end

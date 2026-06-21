@@ -108,6 +108,13 @@ module Jsapi
           )
         end
 
+        define_method("test_#{name}_raises_an_error_if_omit_is_invalid") do
+          error = assert_raises(ArgumentError) do
+            controller.instance_eval { send(method, :foo, omit: :foo) }
+          end
+          assert_equal('omit must be one of :empty or :nil, is :foo', error.message)
+        end
+
         define_method("test_#{name}_raises_an_error_when_the_" \
                       'operation_could_not_be_found') do
           assert_raises(OperationNotFound) do
@@ -576,6 +583,13 @@ module Jsapi
             "body for #{media_type.inspect}, is: #{response.inspect}."
           )
         end
+      end
+
+      def test_api_response_raises_an_error_if_omit_is_invalid
+        error = assert_raises(ArgumentError) do
+          controller.api_response('foo', omit: :foo)
+        end
+        assert_equal('omit must be one of :empty or :nil, is :foo', error.message)
       end
 
       def test_api_response_raises_an_error_when_the_operation_could_not_be_found

@@ -30,7 +30,7 @@ module Jsapi
           examples: {
             'default' => {
               value: lambda do |builder|
-                builder.generate_response({ foo: 'bar' })
+                builder.generate_json({ foo: 'bar' })
               end
             }
           }
@@ -52,7 +52,7 @@ module Jsapi
           examples: {
             'default' => {
               value: lambda do |builder|
-                builder.generate_response(
+                builder.generate_json(
                   Class.new do
                     def foo
                       I18n.t(:hello_world)
@@ -78,7 +78,7 @@ module Jsapi
           examples: {
             'response' => {
               value: lambda do |builder|
-                builder.generate_response({ foo: 'bar' })
+                builder.generate_json({ foo: 'bar' })
               end
             }
           }
@@ -194,7 +194,7 @@ module Jsapi
           examples: {
             'default' => {
               value: lambda do |builder|
-                builder.generate_response({ foo: 'bar' })
+                builder.generate_json({ foo: 'bar' })
               end
             }
           }

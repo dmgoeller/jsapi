@@ -2,10 +2,14 @@
 
 require 'test_helper'
 
+require_relative 'wrapper_test_helper'
+
 module Jsapi
   module Meta
     module Schema
       class WrapperTest < Minitest::Test
+        include WrapperTestHelper
+
         def test_default_value
           wrapper = Wrapper.new(
             String.new(default: 'foo'),
@@ -44,7 +48,7 @@ module Jsapi
             ['Base', false] => Existence::ALLOW_OMITTED,
             ['Base', true] => Existence::PRESENT,
             ['BaseRef', false] => Existence::ALLOW_EMPTY,
-            ['BaseRef', true] => Existence::PRESENT,
+            ['BaseRef', true] => Existence::PRESENT
           }.each do |(ref, existence), expected|
             wrapper = Wrapper.new(
               Reference.new(ref: ref, existence: existence),
@@ -56,6 +60,34 @@ module Jsapi
               "to be #{expected.inspect}, is: #{actual.inspect}."
             )
           end
+        end
+
+        def test_jsonify
+          wrapper = Wrapper.new(
+            String.new,
+            Definitions.new(
+              defaults: {
+                'string' => { within_responses: '' }
+              }
+            )
+          )
+
+          ['foo', '', nil].each do |value|
+            assert_json_equal(value, wrapper, value)
+          end
+
+          assert_json_equal('', wrapper, nil, context: :response)
+        end
+
+        def test_jsonify_on_non_nullable_schema
+          wrapper = Wrapper.new(String.new(existence: :allow_empty), Definitions.new)
+
+          ['foo', ''].each do |value|
+            assert_json_equal(value, wrapper, value)
+          end
+
+          error = assert_raises(JsonifyError) { wrapper.jsonify(nil) }
+          assert_equal("can't be nil", error.message)
         end
       end
     end

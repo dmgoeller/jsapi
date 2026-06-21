@@ -127,6 +127,12 @@ module Jsapi
       [true, false].each do |bang|
         define_method(bang ? :api_operation! : :api_operation) \
         do |operation_name = nil, omit: nil, status: nil, strong: false, &block|
+          raise ArgumentError, Messages.invalid_value(
+            name: 'omit',
+            value: omit,
+            valid_values: %i[empty nil]
+          ) if [nil, :empty, :nil].exclude?(omit)
+
           operation = _api_operation(operation_name)
           response_model = nil
 
@@ -247,6 +253,12 @@ module Jsapi
       # - +:empty+ - All of the  properties whose value is empty are omitted.
       # - +:nil+ - All of the properties whose value is +nil+ are omitted.
       def api_response(result, operation_name = nil, omit: nil, status: nil)
+        raise ArgumentError, Messages.invalid_value(
+          name: 'omit',
+          value: omit,
+          valid_values: %i[empty nil]
+        ) if [nil, :empty, :nil].exclude?(omit)
+
         status = Status::Code.from(status)
         operation = _api_operation(operation_name)
         response_model = _api_response_model(operation, status)

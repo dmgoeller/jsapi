@@ -6,18 +6,6 @@ module Jsapi
     class Content < Model::Base
       include OpenAPI::Extensions
 
-      class ExampleBuilder # :nodoc:
-        def initialize(content, definitions, locale)
-          @content = Content.wrap(content, definitions)
-          @locale = locale
-          super()
-        end
-
-        def generate_response(object, omit: nil)
-          Controller::Response.new(object, @content, locale: @locale, omit: omit)
-        end
-      end
-
       class Wrapper < Model::Wrapper
         def schema
           @schema ||= Schema.wrap(super, definitions)
@@ -80,7 +68,7 @@ module Jsapi
       private
 
       def example_builder(definitions, locale)
-        ExampleBuilder.new(self, definitions, locale) if definitions.present?
+        Example::Builder.new(schema, definitions, locale: locale) if definitions.present?
       end
     end
   end

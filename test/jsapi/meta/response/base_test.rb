@@ -326,7 +326,7 @@ module Jsapi
                 examples: {
                   'default' => {
                     value: lambda do |builder|
-                      builder.generate_response({ foo: 'bar' })
+                      builder.generate_json({ foo: 'bar' })
                     end
                   }
                 }

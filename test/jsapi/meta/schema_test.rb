@@ -9,7 +9,7 @@ module Jsapi
 
       # ::new
 
-      %w[array integer number object string].each do |type|
+      Schema::TYPES.each do |type|
         define_method(:"test_new_#{type}_schema") do
           schema = Schema.new(type: type)
 
@@ -23,11 +23,6 @@ module Jsapi
       def test_new_schema
         schema = Schema.new
         assert_kind_of(Schema::Object, schema)
-      end
-
-      def test_new_boolean_schema
-        schema = Schema.new(type: 'boolean')
-        assert_kind_of(Schema::Base, schema)
       end
 
       def test_new_reference
@@ -48,21 +43,19 @@ module Jsapi
 
       # ::wrap
 
-      %w[boolean integer number string].each do |type|
+      Schema::TYPES.each do |type|
         define_method(:"test_wrap_#{type}_schema") do
           wrapper = Schema.wrap(Schema.new(type: type), nil)
-          assert_kind_of(Schema::Wrapper, wrapper)
+
+          assert_kind_of(
+            "Jsapi::Meta::Schema::#{type.camelize}::Wrapper".constantize,
+            wrapper
+          )
         end
       end
 
-      def test_wrap_array_schema
-        wrapper = Schema.wrap(Schema.new(type: 'array'), nil)
-        assert_kind_of(Schema::Array::Wrapper, wrapper)
-      end
-
-      def test_wrap_object_schema
-        wrapper = Schema.wrap(Schema.new(type: 'object'), nil)
-        assert_kind_of(Schema::Object::Wrapper, wrapper)
+      def test_wrap_nil
+        assert_nil(Schema.wrap(nil, nil))
       end
 
       def test_wrap_schema_reference
@@ -86,10 +79,6 @@ module Jsapi
         )
         assert_equal(base, wrapper.__getobj__)
         assert_equal(Existence::PRESENT, wrapper.existence)
-      end
-
-      def test_wrap_nil
-        assert_nil(Schema.wrap(nil, nil))
       end
 
       def test_prevention_of_double_wrapping

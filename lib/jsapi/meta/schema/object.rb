@@ -5,6 +5,33 @@ module Jsapi
     module Schema
       class Object < Base
         class Wrapper < Schema::Wrapper
+          class HashReader # :nodoc:
+            delegate_missing_to :@hash
+
+            def initialize(hash)
+              @hash = hash
+            end
+
+            def [](key)
+              return unless @hash.key?(key)
+
+              (@read_keys ||= []) << key
+              @hash[key]
+            end
+
+            def additional_properties
+              if @hash.key?('additional_properties')
+                @hash['additional_properties']
+              elsif @hash.key?(:additional_properties)
+                @hash[:additional_properties]
+              elsif @read_keys
+                @hash.except(*@read_keys)
+              else
+                @hash
+              end
+            end
+          end
+
           def additional_properties
             AdditionalProperties.wrap(super, definitions)
           end
@@ -57,6 +84,52 @@ module Jsapi
             Wrapper
               .new(schema.resolve(definitions), definitions)
               .resolve_schema(object, context: context)
+          end
+
+          private
+
+          def jsonify_value(value, context:, omit:)
+            schema = resolve_schema(value, context: context)
+            additional_properties = schema.additional_properties
+            value = HashReader.new(value) if additional_properties && value.is_a?(Hash)
+
+            {}.tap do |properties|
+              # Add properties
+              schema.resolve_properties(context: context).each_value do |property|
+                property_schema = property.schema
+                property_value = property.reader.call(value)
+                property_value = property_schema.default if property_value.nil?
+
+                if property_schema.omittable?
+                  next if omit == :nil && property_value.nil?
+                  next if omit == :empty && (property_value.nil? || property_value.try(:empty?))
+                end
+
+                properties[property.name] = property_schema.jsonify(
+                  property_value,
+                  context: context
+                )
+              rescue JsonifyError => e
+                raise e.prepend(".#{property.name}")
+              end
+              # Add additional properties
+              if additional_properties
+                additional_properties_schema = additional_properties.schema
+
+                additional_properties.source.call(value)&.each \
+                do |property_name, property_value|
+                  property_name = property_name.to_s
+                  next if properties.key?(property_name)
+
+                  properties[property_name] = additional_properties_schema.jsonify(
+                    property_value,
+                    context: context
+                  )
+                rescue JsonifyError => e
+                  raise e.prepend(".#{property_name}")
+                end
+              end
+            end.presence
           end
         end
 

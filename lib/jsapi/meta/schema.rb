@@ -65,14 +65,9 @@ module Jsapi
           return if schema.nil?
           return schema if schema.is_a?(Wrapper)
 
-          case schema.resolve(definitions).type
-          when 'array'
-            Array::Wrapper
-          when 'object'
-            Object::Wrapper
-          else
-            Wrapper
-          end.new(schema, definitions)
+          "#{schema.resolve(definitions).class.name}::Wrapper"
+            .constantize
+            .new(schema, definitions)
         end
       end
     end

@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative 'example/base'
+require_relative 'example/builder'
 require_relative 'example/reference'
 
 module Jsapi

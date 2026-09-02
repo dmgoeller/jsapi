@@ -19,6 +19,85 @@ module Jsapi
         assert_equal('bar', content.schema.ref)
       end
 
+      # Example values
+
+      def test_example_value
+        content = Content.new(
+          type: 'object',
+          properties: {
+            'foo' => { type: 'string' }
+          },
+          examples: {
+            'default' => {
+              value: lambda do |builder|
+                builder.generate_json({ foo: 'bar' })
+              end
+            }
+          }
+        )
+        assert_equal(
+          { 'foo' => 'bar' },
+          content.example_data_value(Definitions.new).as_json
+        )
+      end
+
+      def test_localized_example_value
+        definitions = Definitions.new
+
+        content = Content.new(
+          type: 'object',
+          properties: {
+            'foo' => { type: 'string' }
+          },
+          examples: {
+            'default' => {
+              value: lambda do |builder|
+                builder.generate_json(
+                  Class.new do
+                    def foo
+                      I18n.t(:hello_world)
+                    end
+                  end.new
+                )
+              end
+            }
+          }
+        )
+        assert_equal(
+          { 'foo' => 'Hello world' },
+          content.example_data_value(definitions, locale: :en).as_json
+        )
+        assert_equal(
+          { 'foo' => 'Hallo Welt' },
+          content.example_data_value(definitions, locale: :de).as_json
+        )
+      end
+
+      def test_example_value_on_reference
+        definitions = Definitions.new(
+          examples: {
+            'response' => {
+              value: lambda do |builder|
+                builder.generate_json({ foo: 'bar' })
+              end
+            }
+          }
+        )
+        content = Content.new(
+          type: 'object',
+          properties: {
+            'foo' => { type: 'string' }
+          },
+          examples: {
+            'default' => { ref: 'response' }
+          }
+        )
+        assert_equal(
+          { 'foo' => 'bar' },
+          content.example_data_value(definitions).as_json
+        )
+      end
+
       # OpenAPI objects
 
       def test_minimal_openapi_media_type_object
@@ -95,7 +174,53 @@ module Jsapi
             end,
             content,
             version,
-            Media::Type.new('application', 'json-seq')
+            media_type: Media::Type.new('application', 'json-seq')
+          )
+        end
+      end
+
+      def test_openapi_media_type_object_with_lazily_created_example
+        definitions = Definitions.new
+
+        content = Content.new(
+          type: 'object',
+          existence: true,
+          properties: {
+            'foo' => {
+              type: 'string',
+              existence: true
+            }
+          },
+          examples: {
+            'default' => {
+              value: lambda do |builder|
+                builder.generate_json({ foo: 'bar' })
+              end
+            }
+          }
+        )
+        each_openapi_version(from: OpenAPI::V3_0) do |version|
+          assert_openapi_equal(
+            {
+              schema: {
+                type: 'object',
+                properties: {
+                  'foo' => { type: 'string' }
+                },
+                required: %w[foo]
+              },
+              examples: {
+                'default':
+                  if version < OpenAPI::V3_2
+                    { value: { foo: 'bar' } }
+                  else
+                    { dataValue: { foo: 'bar' } }
+                  end
+              }
+            },
+            content,
+            version,
+            definitions
           )
         end
       end

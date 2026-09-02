@@ -29,7 +29,7 @@ module Jsapi
 
         ##
         # :attr: value
-        # The sample value.
+        # The sample value. Can be a +Proc+.
         attribute :value
 
         def external_value=(value) # :nodoc:
@@ -41,7 +41,7 @@ module Jsapi
           end
         end
 
-        def serialized_value=(value)  # :nodoc:
+        def serialized_value=(value) # :nodoc:
           try_modify_attribute!(:serialized_value) do
             raise 'external value and serialized value are mutually exclusive' \
             unless external_value.nil?
@@ -50,18 +50,27 @@ module Jsapi
           end
         end
 
+        # Returns the data structure of the sample value.
+        def data_value(builder: nil)
+          value = self.value
+          return value unless value.is_a?(Proc)
+
+          value.arity.zero? ? value.call : value.call(builder)
+        end
+
         # Returns a hash representing the \OpenAPI example object.
-        def to_openapi(version, *)
+        def to_openapi(version, *, builder: nil)
           version = OpenAPI::Version.from(version)
+          data_value = data_value(builder: builder)
 
           with_openapi_extensions(
             summary: summary,
             description: description,
             **if version < OpenAPI::V3_2
-                { value: value }
+                { value: data_value }
               else
                 {
-                  dataValue: value,
+                  dataValue: data_value,
                   serializedValue: serialized_value
                 }
               end,

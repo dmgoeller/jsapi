@@ -6,6 +6,28 @@ module Jsapi
       class String < Base
         include Conversion
 
+        class Wrapper < Schema::Wrapper # :nodoc:
+          private
+
+          def jsonify_value(value, **)
+            convert(
+              case format
+              when 'date'
+                value.to_date.as_json
+              when 'date-time'
+                value.to_datetime.as_json
+              when 'duration'
+                value = ActiveSupport::Duration.parse(value) \
+                unless value.is_a?(ActiveSupport::Duration)
+
+                value.iso8601
+              else
+                value.to_s
+              end
+            )
+          end
+        end
+
         ##
         # :attr: format
         # The format of a string.

@@ -4,8 +4,7 @@ source 'https://rubygems.org'
 
 gemspec
 
-gem 'activesupport', '6.1.7.3'
-# gem 'railties', '6.1.7.3'
+gem 'activesupport', '7.2.3.2'
 
 group :test do
   gem 'minitest'

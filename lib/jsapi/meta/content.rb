@@ -36,10 +36,19 @@ module Jsapi
         @schema = Schema.new(keywords)
       end
 
+      # Returns the data value of the first example.
+      def example_data_value(definitions, locale: nil)
+        examples
+          .values.first
+          &.resolve(definitions)
+          &.data_value(builder: example_builder(definitions, locale))
+      end
+
       # Returns a hash representing the \OpenAPI media type object describing
       # the content. Applies to \OpenAPI 3.0 and higher.
-      def to_openapi(version, media_type = nil)
+      def to_openapi(version, definitions = nil, locale: nil, media_type: nil)
         version = OpenAPI::Version.from(version)
+        example_builder = nil
 
         with_openapi_extensions(
           **if media_type == Media::Type::APPLICATION_JSON_SEQ &&
@@ -50,9 +59,16 @@ module Jsapi
             end,
           examples:
             examples.transform_values do |example|
-              example.to_openapi(version)
+              example_builder ||= example_builder(definitions, locale)
+              example.to_openapi(version, builder: example_builder)
             end.presence
         )
+      end
+
+      private
+
+      def example_builder(definitions, locale)
+        Example::Builder.new(schema, definitions, locale: locale) if definitions.present?
       end
     end
   end

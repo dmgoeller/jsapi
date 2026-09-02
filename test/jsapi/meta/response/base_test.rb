@@ -308,6 +308,75 @@ module Jsapi
             )
           end
         end
+
+        def test_openapi_response_object_with_lazily_created_example
+          definitions = Definitions.new
+
+          response = Base.new(
+            contents: {
+              'application/json' => {
+                type: 'object',
+                existence: true,
+                properties: {
+                  'foo' => {
+                    type: 'string',
+                    existence: true
+                  }
+                },
+                examples: {
+                  'default' => {
+                    value: lambda do |builder|
+                      builder.generate_json({ foo: 'bar' })
+                    end
+                  }
+                }
+              }
+            }
+          )
+          each_openapi_version do |version|
+            assert_openapi_equal(
+              if version == OpenAPI::V2_0
+                {
+                  schema: {
+                    type: 'object',
+                    properties: {
+                      'foo' => { type: 'string' }
+                    },
+                    required: %w[foo]
+                  },
+                  examples: {
+                    'application/json' => { foo: 'bar' }
+                  }
+                }
+              else
+                {
+                  content: {
+                    'application/json' => {
+                      schema: {
+                        type: 'object',
+                        properties: {
+                          'foo' => { type: 'string' }
+                        },
+                        required: %w[foo]
+                      },
+                      examples: {
+                        'default' =>
+                          if version < OpenAPI::V3_2
+                            { value: { foo: 'bar' } }
+                          else
+                            { dataValue: { foo: 'bar' } }
+                          end
+                      }
+                    }
+                  }
+                }
+              end,
+              response,
+              version,
+              definitions
+            )
+          end
+        end
       end
     end
   end

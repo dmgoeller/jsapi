@@ -4,44 +4,6 @@ module Jsapi
   module Controller
     # Used to jsonify a response.
     class Response
-      class JsonifyError < RuntimeError # :nodoc:
-        def message
-          [@path&.delete_prefix('.') || 'response body', super].join(' ')
-        end
-
-        def prepend(origin)
-          @path = "#{origin}#{@path}"
-          self
-        end
-      end
-
-      class HashReader # :nodoc:
-        delegate_missing_to :@hash
-
-        def initialize(hash)
-          @hash = hash
-        end
-
-        def [](key)
-          return unless @hash.key?(key)
-
-          (@read_keys ||= []) << key
-          @hash[key]
-        end
-
-        def additional_properties
-          if @hash.key?('additional_properties')
-            @hash['additional_properties']
-          elsif @hash.key?(:additional_properties)
-            @hash[:additional_properties]
-          elsif @read_keys
-            @hash.except(*@read_keys)
-          else
-            @hash
-          end
-        end
-      end
-
       # Creates a new instance to jsonify +object+ according to +content_model+.
       #
       # The +:omit+ option specifies on which conditions properties are omitted.
@@ -49,29 +11,25 @@ module Jsapi
       #
       # - +:empty+ - All of the  properties whose value is empty are omitted.
       # - +:nil+ - All of the properties whose value is +nil+ are omitted.
-      #
-      # Raises an +ArgumentError+ when +:omit+ is other than +:empty+, +:nil+ or +nil+.
-      def initialize(object, content_model, omit: nil, locale: nil)
+      def initialize(object, content_model, locale: nil, omit: nil)
         @object = object
         @content_model = content_model
-
-        @omittable_check =
-          case omit
-          when nil
-            nil
-          when :nil
-            ->(value, schema) { schema.omittable? && value.nil? }
-          when :empty
-            ->(value, schema) { schema.omittable? && value.try(:empty?) }
-          else
-            raise ArgumentError, Messages.invalid_value(
-              name: 'omit',
-              value: omit,
-              valid_values: %i[empty nil]
-            )
-          end
-
         @locale = locale
+        @omit = omit
+      end
+
+      # Returns the \JSON representation of the response.
+      def as_json(*)
+        with_locale do
+          @content_model.schema.jsonify(
+            @object,
+            context: :response,
+            omit: @omit
+          )
+        end
+      rescue JsonifyError => e
+        e.prepend('response body') if e.path.blank?
+        raise e
       end
 
       def inspect # :nodoc:
@@ -80,112 +38,41 @@ module Jsapi
 
       # Returns the \JSON representation of the response as a string.
       def to_json(*)
-        with_locale { jsonify(@object, @content_model.schema) }.to_json
+        as_json.to_json
       end
 
       # Writes the response in \JSON sequence text format to +stream+.
       def write_json_seq_to(stream)
         schema = @content_model.schema
+        object = @object
+        object = schema.default_value(context: :response) if object.nil?
+
         with_locale do
           items, item_schema =
-            if schema.array? && @object.respond_to?(:each)
-              [@object, schema.items]
+            if schema.array? && object.respond_to?(:each)
+              [object, schema.items]
             else
-              [[@object], schema]
+              [[object], schema]
             end
 
-          items.each do |item|
+          items.each_with_index do |item, index|
             stream.write("\u001E") # Record separator (see RFC 7464)
-            stream.write(jsonify(item, item_schema).to_json)
+            stream.write(
+              item_schema.jsonify(
+                item,
+                context: :response,
+                omit: @omit
+              ).to_json
+            )
             stream.write("\n")
+          rescue JsonifyError => e
+            raise e.prepend("[#{index}]")
           end
         end
         nil
       end
 
       private
-
-      def jsonify(object, schema)
-        object = schema.default_value(context: :response) if object.nil?
-
-        if object.nil?
-          raise JsonifyError, "can't be nil" unless schema.nullable?
-        else
-          case schema.type
-          when 'array'
-            jsonify_array(object, schema)
-          when 'boolean'
-            object
-          when 'integer'
-            schema.convert(object.to_i)
-          when 'number'
-            schema.convert(object.to_f)
-          when 'object'
-            jsonify_object(object, schema)
-          when 'string'
-            schema.convert(
-              case schema.format
-              when 'date'
-                object.to_date
-              when 'date-time'
-                object.to_datetime
-              when 'duration'
-                object.iso8601
-              else
-                object.to_s
-              end
-            )
-          else
-            raise JsonifyError, "has an invalid type: #{schema.type.inspect}"
-          end
-        end
-      end
-
-      def jsonify_array(array, schema)
-        item_schema = schema.items
-        index = 0
-
-        Array(array).map do |item|
-          item = jsonify(item, item_schema)
-          index += 1
-          item
-        rescue JsonifyError => e
-          raise e.prepend("[#{index}]")
-        end
-      end
-
-      def jsonify_object(object, schema)
-        schema = schema.resolve_schema(object, context: :response)
-        additional_properties = schema.additional_properties
-        object = HashReader.new(object) if additional_properties && object.is_a?(Hash)
-
-        {}.tap do |properties|
-          # Add properties
-          schema.resolve_properties(context: :response).each_value do |property|
-            property_schema = property.schema
-            property_value = property.reader.call(object)
-            property_value = property_schema.default if property_value.nil?
-            next if @omittable_check&.call(property_value, property_schema)
-
-            properties[property.name] = jsonify(property_value, property_schema)
-          rescue JsonifyError => e
-            raise e.prepend(".#{property.name}")
-          end
-          # Add additional properties
-          if additional_properties
-            additional_properties_schema = additional_properties.schema
-
-            additional_properties.source.call(object)&.each do |key, value|
-              key = key.to_s
-              next if properties.key?(key)
-
-              properties[key] = jsonify(value, additional_properties_schema)
-            rescue JsonifyError => e
-              raise e.prepend(".#{key}")
-            end
-          end
-        end.presence
-      end
 
       def with_locale(&block)
         if @locale

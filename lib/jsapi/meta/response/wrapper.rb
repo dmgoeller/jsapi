@@ -12,6 +12,10 @@ module Jsapi
           super
         end
 
+        def contents
+          super.transform_values { |content| Content.wrap(content, definitions) }
+        end
+
         def media_type_and_content_for(*media_ranges)
           super&.then do |media_type_and_content|
             [

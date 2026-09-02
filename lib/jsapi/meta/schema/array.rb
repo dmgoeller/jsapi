@@ -8,6 +8,16 @@ module Jsapi
           def items
             @items ||= Schema.wrap(super, definitions)
           end
+
+          private
+
+          def jsonify_value(value, context:, omit:)
+            Array(value).each_with_index.map do |item, index|
+              items.jsonify(item, context: context, omit: omit)
+            rescue JsonifyError => e
+              raise e.prepend("[#{index}]")
+            end
+          end
         end
 
         ##

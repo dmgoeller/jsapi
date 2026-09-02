@@ -29,7 +29,7 @@ module Jsapi
           assert_equal('/foo/bar', example.external_value)
         end
 
-        def test_setting_external_value_raises_an_error_when_serialized_value_is_present
+        def test_external_value_can_not_be_set_when_serialized_value_is_present
           example = Base.new(serialized_value: '{"foo":"bar"}')
 
           error = assert_raises(RuntimeError) do
@@ -50,7 +50,7 @@ module Jsapi
           assert_equal('{"foo":"bar"}', example.serialized_value)
         end
 
-        def test_setting_serialized_value_raises_an_error_when_external_value_is_present
+        def test_serialized_value_can_not_be_set_when_external_value_is_present
           example = Base.new(external_value: '/foo/bar')
 
           error = assert_raises(RuntimeError) do
@@ -60,6 +60,29 @@ module Jsapi
             'external value and serialized value are mutually exclusive',
             error.message
           )
+        end
+
+        # data value
+
+        def test_data_value
+          example = Base.new(value: 'foo')
+          assert_equal('foo', example.data_value)
+        end
+
+        def test_lazily_created_data_value
+          builder = Class.new do
+            def foo
+              'bar'
+            end
+          end.new
+
+          # Argument-less proc
+          example = Base.new(value: -> { 'foo' })
+          assert_equal('foo', example.data_value(builder: builder))
+
+          # Single-argument proc
+          example = Base.new(value: ->(b) { b.foo })
+          assert_equal('bar', example.data_value(builder: builder))
         end
 
         # OpenAPI objects
@@ -105,7 +128,30 @@ module Jsapi
           end
         end
 
-        def test_openapi_example_object_on_external
+        def test_openapi_example_object_on_proc
+          example_builder = Class.new do
+            def foo
+              'bar'
+            end
+          end.new
+
+          example = Base.new(value: ->(builder) { builder.foo })
+
+          each_openapi_version do |version|
+            assert_openapi_equal(
+              if version < OpenAPI::V3_2
+                { value: 'bar' }
+              else
+                { dataValue: 'bar' }
+              end,
+              example,
+              version,
+              builder: example_builder
+            )
+          end
+        end
+
+        def test_openapi_example_object_on_external_value
           example = Base.new(external_value: '/foo/bar')
 
           each_openapi_version do |version|

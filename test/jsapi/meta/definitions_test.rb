@@ -539,7 +539,7 @@ module Jsapi
 
       # Components
 
-      %i[parameter request_body response schema].each do |name|
+      %i[example parameter request_body response schema].each do |name|
         plural_name = name.to_s.pluralize.to_sym
 
         define_method("test_add_and_find_#{name}") do

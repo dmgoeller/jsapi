@@ -1,8 +1,8 @@
 # Change log
 
-## 2.1 (2026-06-21)
+## 2.1 (2026-09-02)
 
-Response examples can now be build by `Proc` instances.
+Response examples can now be build on the fly.
 
 ## 2.0.1 (2026-04-20)
 

@@ -1094,6 +1094,13 @@ property 'foo', type: 'string' do
 end
 ```
 
+If a sample value is a `Proc`, it is called to generate the sample on the fly.
+This is useful for reading real-time data to create realistic examples.
+
+```ruby
+example ->(builder) { builder.generate_json Foo.first }
+```
+
 The `example` directive takes the following keywords:
 
 - `description` - The description of the example.

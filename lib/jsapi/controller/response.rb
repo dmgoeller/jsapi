@@ -4,16 +4,16 @@ module Jsapi
   module Controller
     # Used to jsonify a response.
     class Response
-      # Creates a new instance to jsonify +object+ according to +content_model+.
+      # Creates a new instance to jsonify +object+ according to +content_definition+.
       #
       # The +:omit+ option specifies on which conditions properties are omitted.
       # Possible values are:
       #
       # - +:empty+ - All of the  properties whose value is empty are omitted.
       # - +:nil+ - All of the properties whose value is +nil+ are omitted.
-      def initialize(object, content_model, locale: nil, omit: nil)
+      def initialize(object, content_definition, locale: nil, omit: nil)
         @object = object
-        @content_model = content_model
+        @content_definition = content_definition
         @locale = locale
         @omit = omit
       end
@@ -21,13 +21,13 @@ module Jsapi
       # Returns the \JSON representation of the response.
       def as_json(*)
         with_locale do
-          @content_model.schema.jsonify(
+          @content_definition.schema.jsonify(
             @object,
             context: :response,
             omit: @omit
           )
         end
-      rescue JsonifyError => e
+      rescue Meta::Schema::JsonifyError => e
         e.prepend('response body') if e.path.blank?
         raise e
       end
@@ -43,7 +43,7 @@ module Jsapi
 
       # Writes the response in \JSON sequence text format to +stream+.
       def write_json_seq_to(stream)
-        schema = @content_model.schema
+        schema = @content_definition.schema
         object = @object
         object = schema.default_value(context: :response) if object.nil?
 
@@ -65,7 +65,7 @@ module Jsapi
               ).to_json
             )
             stream.write("\n")
-          rescue JsonifyError => e
+          rescue Meta::Schema::JsonifyError => e
             raise e.prepend("[#{index}]")
           end
         end

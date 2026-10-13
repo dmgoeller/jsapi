@@ -5,6 +5,65 @@ require 'test_helper'
 module Jsapi
   module Meta
     class OperationWrapperTest < Minitest::Test
+      # Finders
+
+      %i[find_response_for find_response_for!].each do |symbol|
+        define_method(:"test_#{symbol}") do
+          wrapper = Operation::Wrapper.new(
+            operation = Operation.new(
+              nil,
+              responses: {
+                'default' => {},
+                '4xx' => {},
+                404 => {}
+              }
+            ),
+            Definitions.new
+          )
+          {
+            200 => Status::DEFAULT,
+            400 => Status::Range::CLIENT_ERROR,
+            404 => Status::Code.from(:not_found)
+          }.each do |status_code, status|
+            assert(
+              expected = operation.response(status).equal?(
+                actual = wrapper.send(symbol, status_code).__getobj__
+              ),
+              "Expected ##{symbol} to return #{expected.inspect} on #{status}, " \
+              "is: #{actual.inspect}."
+            )
+          end
+        end
+      end
+
+      def test_find_response_for_returns_nil_if_no_response_matchtes
+        wrapper = Operation::Wrapper.new(
+          Operation.new(nil, responses: { 200 => {} }),
+          Definitions.new
+        )
+        assert_nil(wrapper.find_response_for(400))
+      end
+
+      def test_find_response_for_bang_raises_an_error_if_no_response_matches
+        wrapper = Operation::Wrapper.new(
+          Operation.new('foo'),
+          Definitions.new
+        )
+        error = assert_raises(ResponseNotFound) do
+          wrapper.find_response_for!(400)
+        end
+        assert_equal('"foo" has no responses', error.message)
+
+        wrapper = Operation::Wrapper.new(
+          Operation.new('foo', responses: { 200 => {} }),
+          Definitions.new
+        )
+        error = assert_raises(ResponseNotFound) do
+          wrapper.find_response_for!(400)
+        end
+        assert_equal('"foo" has no response for status 400', error.message)
+      end
+
       # Model
 
       def test_model
@@ -105,45 +164,6 @@ module Jsapi
       end
 
       # Responses
-
-      def test_find_response
-        wrapper = Operation::Wrapper.new(
-          operation = Operation.new(
-            nil,
-            responses: {
-              'default' => {},
-              '4xx' => {},
-              404 => {}
-            }
-          ),
-          Definitions.new
-        )
-        {
-          200 => Status::DEFAULT,
-          400 => Status::Range::CLIENT_ERROR,
-          404 => Status::Code.from(:not_found)
-        }.each do |status_code, status|
-          assert(
-            expected = operation.response(status).equal?(
-              actual = wrapper.find_response(status_code).__getobj__
-            ),
-            "Expected #{actual} to be #{expected}."
-          )
-        end
-      end
-
-      def test_find_response_returns_nil_if_no_matching_response_exists
-        wrapper = Operation::Wrapper.new(
-          Operation.new(
-            nil,
-            responses: {
-              200 => {}
-            }
-          ),
-          Definitions.new
-        )
-        assert_nil(wrapper.find_response(400))
-      end
 
       def test_responses
         wrapper = Operation::Wrapper.new(

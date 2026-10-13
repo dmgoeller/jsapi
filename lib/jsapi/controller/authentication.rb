@@ -31,9 +31,9 @@ module Jsapi
       # security schemes are satisfied.
       #
       # +operation_name+ can be omitted if the controller handles one operation only.
-      # If the operation isn't defined, an OperationNotDefined exception is raised.
+      # If the operation does not exist, an OperationNotFound exception is raised.
       def api_authenticated?(operation_name = nil)
-        _api_authenticated?(_api_operation(operation_name))
+        _api_authenticated?(api_definitions.find_operation!(operation_name))
       end
 
       private

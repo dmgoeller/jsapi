@@ -69,6 +69,7 @@ module Jsapi
       def test_initialize_on_query_parameter_and_request_body
         operation.add_parameter('foo', type: 'string')
         operation.request_body = {
+          type: 'object',
           additional_properties: { type: 'string' }
         }
         params = parameters(foo: 'Value of foo', bar: 'Value of bar')
@@ -83,6 +84,7 @@ module Jsapi
           additional_properties: { type: 'string' }
         )
         operation.request_body = {
+          type: 'object',
           additional_properties: { type: 'string' }
         }
         params = parameters(query_parameters: { foo: 'Value of foo' }, bar: 'Value of bar')
@@ -115,7 +117,10 @@ module Jsapi
 
       def test_additional_attributes
         operation.add_parameter('foo', type: 'string')
-        operation.request_body = { additional_properties: { type: 'string' } }
+        operation.request_body = {
+          type: 'object',
+          additional_properties: { type: 'string' }
+        }
 
         params = parameters(foo: 'Value of foo')
         assert_equal({}, params.additional_attributes)

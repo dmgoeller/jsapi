@@ -54,11 +54,13 @@ module Jsapi
       # :args: arg
       # Specifies the description of the operation.
 
-      # Specifies the HTTP verb of the operation.
+      # Specifies the HTTP method of the operation.
       #
       #   method 'post'
       #
       # See Meta::Operation#method for further information.
+      #
+      # Aliased as +http_method+.
       def method(arg)
         keyword(:method, arg)
       end

@@ -7,7 +7,7 @@ module Jsapi
     class ContentWrapperTest < Minitest::Test
       def test_schema
         schema = Content::Wrapper.new(
-          content = Content.new,
+          content = Content.new(type: 'object'),
           Definitions.new
         ).schema
 

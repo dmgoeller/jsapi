@@ -335,7 +335,7 @@ module Jsapi
       def test_request_body_raises_an_error_on_unsupported_keyword
         error = assert_raises(Error) do
           definitions do
-            request_body 'foo', bar: 'Lorem ipsum'
+            request_body 'foo', type: 'object', bar: 'Lorem ipsum'
           end
         end
         assert_equal('unsupported keyword: bar (at request_body "foo")', error.message)
@@ -379,7 +379,7 @@ module Jsapi
       def test_response_raises_an_error_on_unsupported_keyword
         error = assert_raises(Error) do
           definitions do
-            response 'foo', bar: 'Lorem ipsum'
+            response 'foo', type: 'object', bar: 'Lorem ipsum'
           end
         end
         assert_equal('unsupported keyword: bar (at response "foo")', error.message)

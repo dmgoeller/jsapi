@@ -1,11 +1,11 @@
 # frozen_string_literal: true
 
 module Jsapi
-  module Controller
+  module Meta
     class ResponseNotFoundTest < Minitest::Test
-      def test_message_on_no_responses
+      def test_message_on_multiple_responses
         error = ResponseNotFound.new(
-          Meta::Operation.new('foo'),
+          Operation.new('foo'),
           200
         )
         assert_equal(
@@ -16,7 +16,7 @@ module Jsapi
 
       def test_message_on_single_response
         error = ResponseNotFound.new(
-          Meta::Operation.new(
+          Operation.new(
             'foo',
             responses: {
               200 => {}

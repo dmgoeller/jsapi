@@ -111,17 +111,28 @@ module Jsapi
 
       def test_find_operation
         definitions = Definitions.new
-        assert_nil(definitions.find_operation(nil))
+        assert_nil(definitions.find_operation)
 
         definitions.add_operation('foo')
 
-        operation = definitions.find_operation
-        assert_kind_of(Operation::Wrapper, operation)
-        assert_equal('foo', operation.name)
+        [nil, 'foo'].each do |operation_name|
+          operation = definitions.find_operation(operation_name)
+          assert_kind_of(Operation::Wrapper, operation)
+          assert_equal('foo', operation.name)
+        end
+      end
 
-        operation = definitions.find_operation('foo')
-        assert_kind_of(Operation::Wrapper, operation)
-        assert_equal('foo', operation.name)
+      def test_find_operation!
+        definitions = Definitions.new
+        assert_raises(OperationNotFound) { definitions.find_operation! }
+
+        definitions.add_operation('foo')
+
+        [nil, 'foo'].each do |operation_name|
+          operation = definitions.find_operation!(operation_name)
+          assert_kind_of(Operation::Wrapper, operation)
+          assert_equal('foo', operation.name)
+        end
       end
 
       def test_operation_caching
@@ -1569,10 +1580,12 @@ module Jsapi
           },
           responses: {
             'Success' => {
-              content_type: 'application/json'
+              content_type: 'application/json',
+              type: 'object'
             },
             'Error' => {
               content_type: 'application/problem+json',
+              type: 'object',
               nodoc: true
             }
           }

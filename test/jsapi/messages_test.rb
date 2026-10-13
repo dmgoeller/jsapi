@@ -18,5 +18,24 @@ module Jsapi
         Messages.invalid_value(name: 'foo', value: nil, valid_values: %w[foo bar])
       )
     end
+
+    def test_join
+      assert_equal(
+        'Message.',
+        Messages.join('Message')
+      )
+      assert_equal(
+        'Message.',
+        Messages.join('Message.')
+      )
+      assert_equal(
+        'Message one. Message two.',
+        Messages.join('Message one', 'Message two')
+      )
+      assert_equal(
+        'Message one. Message two.',
+        Messages.join('Message one.', 'Message two.')
+      )
+    end
   end
 end

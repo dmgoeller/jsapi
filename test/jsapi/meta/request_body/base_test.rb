@@ -15,8 +15,12 @@ module Jsapi
             content_type: '*/*',
             type: 'string',
             contents: {
-              'application/json' => {},
-              'application/vnd.foo+json' => {}
+              'application/json' => {
+                type: 'object'
+              },
+              'application/vnd.foo+json' => {
+                type: 'object'
+              }
             }
           ).contents
 

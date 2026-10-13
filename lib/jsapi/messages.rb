@@ -14,6 +14,12 @@ module Jsapi
           "or #{valid_values.last.inspect}, is #{value.inspect}"
         end
       end
+
+      def join(*messages)
+        messages.map do |message|
+          message.end_with?('.') ? message : "#{message}."
+        end.join(' ')
+      end
     end
   end
 end

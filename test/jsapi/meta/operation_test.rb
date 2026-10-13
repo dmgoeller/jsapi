@@ -403,10 +403,12 @@ module Jsapi
           nil,
           responses: {
             'default' => {
-              content_type: 'application/json'
+              content_type: 'application/json',
+              type: 'object'
             },
             '5xx' => {
               content_type: 'application/problem+json',
+              type: 'object',
               nodoc: true
             }
           }

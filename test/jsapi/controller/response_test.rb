@@ -25,11 +25,15 @@ module Jsapi
 
         # Invalid responses
         response = Response.new(nil, content_model)
-        error = assert_raises(JsonifyError) { response.as_json }
+        error = assert_raises(Meta::Schema::JsonifyError) do
+          response.as_json
+        end
         assert_equal("response body can't be nil", error.message)
 
         response = Response.new({ foo: nil }, content_model)
-        error = assert_raises(JsonifyError) { response.as_json }
+        error = assert_raises(Meta::Schema::JsonifyError) do
+          response.as_json
+        end
         assert_equal("foo can't be nil", error.message)
       end
 
@@ -94,7 +98,7 @@ module Jsapi
         # Invalid response
         response = Response.new([nil], content_model)
 
-        error = assert_raises(JsonifyError) do
+        error = assert_raises(Meta::Schema::JsonifyError) do
           response.write_json_seq_to(StringIO.new)
         end
         assert_equal("[0] can't be nil", error.message)

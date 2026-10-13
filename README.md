@@ -250,7 +250,7 @@ keywords:
 - `:deprecated` - Specifies whether or not the operation is deprecated.
 - `:description` - The description of the operation.
 - `:external_docs` - See [Specifying external docs].
-- `:method` - The HTTP verb of the operation, `"GET"` by default.
+- `:method` (aliased as `:http_method`) - The HTTP method of the operation, `"GET"` by default.
 - `:model` - See [API models](#api-models).
 - `:openapi_extensions` - See [Specifying OpenAPI extensions].
 - `:parameters` - See [Specifying parameters].
@@ -451,6 +451,8 @@ schema of the request body. Additionally, the following keywords may be specifie
 The `:example`, `:examples` and `:openapi_extensions` keywords are only used to describe the
 request body in generated OpenAPI documents.
 
+The schema is omitted if `:type` is missing.
+
 #### Different types of content
 
 Different types of content can be specified by nested `content` directives, for example:
@@ -545,6 +547,8 @@ language of regular responses.
 
 The `:example`, `:examples`, `:headers`, `:links` `:openapi_extensions` and `summary` keywords
 are only used to describe a response in generated OpenAPI documents.
+
+The schema is omitted if `:type` is missing.
 
 #### Different types of content
 
@@ -1019,13 +1023,13 @@ The location of an API can either be specified by an `api_server` directive or t
 `api_host` and `api_base_path` directives, for example:
 
 ```ruby
-api_server 'https://foo.bar/foo'
+api_server 'https://foo.bar/api'
 ```
 
 ```ruby
 api_scheme 'https'
 api_host 'foo.bar'
-api_base_path '/foo'
+api_base_path '/api'
 ```
 
 The `api_server` directive corresponds to the `Server` object introduced with OpenAPI 3.0. The
@@ -1332,8 +1336,8 @@ params = api_params('foo')
 ```
 
 The one and only positional argument specifies the name of the API operation. It can be
-omitted if the controller handles one API operation only. If no operation could be found for
-this name, an `Jsapi::Controller::OperationNotFound` exception is raised.
+omitted if the controller handles one API operation only. If the operation does not exist,
+a `Jsapi::Meta::OperationNotFound` error is raised.
 
 Note that each call of `api_params` returns a newly created instance. Thus, the instance
 returned by `api_params` must be locally stored when validating request parameters,
@@ -1359,10 +1363,11 @@ render(json: api_response(foo, 'foo', status: 200))
 
 The object to be serialized is passed as the first positional argument. The second
 positional argument specifies the name of the API operation. It can be omitted if the
-controller handles one API operation only.  If no operation could be found for this name,
-an `Jsapi::Controller::OperationNotFound` exception is raised.
+controller handles one API operation only. If the operation does not exist, a
+`Jsapi::OperationNotFound` error is raised.
 
-`:status` specifies the HTTP status code of the response to be produced.
+`:status` specifies the HTTP status code of the response to be produced. If no suitable
+response exists, a `Jsapi::Meta::ResponseNotFound` error is raised.
 
 #### The `api_operation` method
 
@@ -1388,10 +1393,11 @@ end
 ```
 
 The one and only positional argument specifies the name of the API operation. It can be
-omitted if the controller handles one API operation only. If no operation could be found for
-this name, an `Jsapi::Controller::OperationNotFound` exception is raised.
+omitted if the controller exposes a single operation. If the operation does not exist,
+a `Jsapi::Meta::OperationNotFound` error is raised.
 
-`:status` specifies the HTTP status code of the response to be produced.
+`:status` specifies the HTTP status code of the response to be produced. If no suitable
+response exists, a `Jsapi::Meta::ResponseNotFound` error is raised.
 
 If an exception is raised while performing the operation, an error response according to the
 first matching rescue handler is rendered. If no rescue handler matches, the exception is
@@ -1399,8 +1405,8 @@ raised again.
 
 #### The `api_operation!` method
 
-Like `api_operation`, except that a `Jsapi::Controller::ParametersInvalid` exception is raised
-on invalid request parameters.
+Like `api_operation`, but raises a `Jsapi::Controller::ParametersInvalid` errors when the
+request parameters are invalid.
 
 ```ruby
 api_operation!('foo') do |api_params|
@@ -1728,4 +1734,80 @@ def update
     foo.update! api_params.foo.serializable_hash(only: params[:foo].keys)
   end
 end
+```
+
+## API Clients
+
+Jsapi provides a high-level API to call remote operations over HTTP. API clients are subclasses
+of `Jsapi::Client::Base`. Remote operations are defined with the [Jsapi DSL](#jsapi-dsl).
+
+```ruby
+class FooClient < Jsapi::Client::Base
+  api_operation 'foo' do
+    # Define API operation here
+  end
+end
+```
+
+The base URL of the API is supplied when instantiating a client.
+
+```ruby
+client = FooClient.new('https://foo.bar/api')
+```
+
+### Calling API operations
+
+Use `call` or `call!` to invoke a remote operation.
+
+```ruby
+response = client.call('foo', bar, baz: 'bat')
+```
+
+The first argument specifies the name of the operation. It can be omitted if the API exposes
+a single operation. If the operation is not defined a `Jsapi::Meta::OperationNotFound`
+error is raised. The optional second argument specifies the object to build the request body
+from. Parameters may be passed directly as keyword arguments.
+
+Alternatively, the request can be assembled in a block before it is sent.
+
+```ruby
+response = client.call('foo') do |request|
+  request[:baz] = 'bat'
+  request.body = bar
+end
+```
+
+`call` returns an object exposing `body` and `headers` to access the response body and headers.
+`body` returns a model-like object. For a JSON response body whose type is `object`, this
+object provides readers for all properties. The validity of a response body can be checked by
+`valid?` or `invalid?`.
+
+`call` returns `nil` if no response specification matches the HTTP status code returned.
+
+Unlike `call`, `call!` raises a `Jsapi::Client::ResponseError` when the response body
+is invalid.
+
+### Sessions
+
+Use `start_session` to reuse a single HTTP session across multiple operation calls. If a block
+is passed to `start_session` the session is closed automatically after the block has been
+executed.
+
+```ruby
+  client.start_session do
+    client.call('foo')
+    client.call('bar)
+  end
+```
+
+Otherwise, the session must be closed by `finish_session`.
+
+```ruby
+  client.start_session
+  begin
+    client.call('foo')
+    client.call('bar')
+  ensure
+    client.finish_session
+  end
 ```

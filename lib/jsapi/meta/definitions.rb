@@ -2,6 +2,13 @@
 
 module Jsapi
   module Meta
+    # Raised when no operation with the specified name is found.
+    class OperationNotFound < StandardError
+      def initialize(operation_name)
+        super("operation not found: #{operation_name}")
+      end
+    end
+
     class Definitions < Model::Base
       include OpenAPI::Extensions
 
@@ -298,7 +305,8 @@ module Jsapi
         cached_attributes[:security_requirements]
       end
 
-      # Returns the operation with the specified name.
+      # Returns the operation with the specified name or +nil+ if no such
+      # operation is found.
       def find_operation(name = nil)
         name = name&.to_s
 
@@ -311,6 +319,15 @@ module Jsapi
             operations.values.first
           end
         end
+      end
+
+      # Like +find_operation+, except that it raises an OperationNotFound error
+      # when no such operation is found.
+      def find_operation!(name = nil)
+        operation = find_operation(name)
+        return operation if operation
+
+        raise OperationNotFound.new(name)
       end
 
       ##

@@ -12,8 +12,20 @@ module Jsapi
           super
         end
 
+        def content?
+          contents.lazy.any?
+        end
+
         def contents
           super.transform_values { |content| Content.wrap(content, definitions) }
+        end
+
+        def content_for(*media_ranges)
+          media_type_and_content_for(*media_ranges)&.second
+        end
+
+        def header_for(name)
+          (@downcased_headers ||= headers.transform_keys(&:downcase))[name.to_s.downcase]
         end
 
         def media_type_and_content_for(*media_ranges)

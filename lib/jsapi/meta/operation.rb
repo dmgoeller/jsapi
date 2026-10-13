@@ -2,13 +2,53 @@
 
 module Jsapi
   module Meta
+    # Raised when no response matches +status+.
+    class ResponseNotFound < StandardError
+      def initialize(operation, status)
+        super(
+          if operation.responses.none?
+            "#{operation.name.inspect} has no responses"
+          else
+            "#{operation.name.inspect} has no response for status #{status}"
+          end
+        )
+      end
+    end
+
     # Specifies an API operation.
     class Operation < Model::Base
       include OpenAPI::Extensions
 
       class Wrapper < Model::Wrapper
-        # Returns the most appropriate response for +status_code+.
-        def find_response(status_code)
+        ##
+        # :attr_reader: model
+        # The model class of the wrapped operation or the default model class
+        # for the path.
+
+        ##
+        # :attr_reader: parameters
+        # The parameters of the wrapped operation in combination with the
+        # parameters applying to all operations in the path.
+
+        ##
+        # :attr_reader: request_body
+        # The request body of the wrapped operation or the default request
+        # body for the path.
+
+        ##
+        # :attr_reader: responses
+        # The responses of the wrapped operation in combination with the
+        # responses applying to all operations in the path.
+
+        ##
+        # :attr_reader: security_requirements
+        # The security requirements of the wrapped operation in combination
+        # with the security requirements applying to all operations in the
+        # path or the default security requirements.
+
+        # Returns the most appropriate response for +status_code+ or +nil+ if no
+        # response matches.
+        def find_response_for(status_code)
           status_code = Status::Code.from(status_code)
 
           responses.find do |status, _response|
@@ -16,41 +56,38 @@ module Jsapi
           end&.second
         end
 
+        # Like +find_response_for+, except that it raises a ResponseNotFound
+        # error when no response matches.
+        def find_response_for!(status_code)
+          response = find_response_for(status_code)
+          return response if response
+
+          raise ResponseNotFound.new(self, status_code)
+        end
+
         def full_path # :nodoc:
           @full_path ||= super
         end
 
-        ##
-        # :attr_reader: model
-        # The model class of the wrapped operation or the default model class
-        # for the path.
-
-        # -
-        def model
+        def model # :nodoc:
           return @model if defined? @model
 
           @model = super || definitions.common_model(full_path)
         end
 
-        ##
-        # :attr_reader: parameters
-        # The parameters of the wrapped operation in combination with the
-        # parameters applying to all operations in the path.
-
-        # -
-        def parameters
+        def parameters # :nodoc:
           @parameters ||=
             (definitions.common_parameters(full_path)&.merge(super) || super)
             .transform_values { |parameter| Parameter.wrap(parameter, definitions) }
         end
 
-        ##
-        # :attr_reader: request_body
-        # The request body of the wrapped operation or the default request
-        # body for the path.
+        def query_parameters
+          @query_parameters ||= parameters.select do |_name, parameter|
+            parameter.in == 'query'
+          end
+        end
 
-        # -
-        def request_body
+        def request_body # :nodoc:
           return @request_body if defined? @request_body
 
           @request_body = RequestBody.wrap(
@@ -59,13 +96,7 @@ module Jsapi
           )
         end
 
-        ##
-        # :attr_reader: responses
-        # The responses of the wrapped operation in combination with the
-        # responses applying to all operations in the path.
-
-        # -
-        def responses
+        def responses # :nodoc:
           @responses ||=
             (definitions.common_responses(full_path)&.merge(super) || super)
             .transform_values { |response| Response.wrap(response, definitions) }
@@ -73,14 +104,7 @@ module Jsapi
             .to_h
         end
 
-        ##
-        # :attr_reader: security_requirements
-        # The security requirements of the wrapped operation in combination
-        # with the security requirements applying to all operations in the
-        # path or the default security requirements.
-
-        # -
-        def security_requirements
+        def security_requirements # :nodoc:
           return @security_requirements if defined? @security_requirements
 
           @security_requirements =
@@ -118,7 +142,12 @@ module Jsapi
       ##
       # :attr: method
       # The HTTP method of the operation, <code>"get"</code> by default.
+      #
+      # Aliased as +http_method+.
       attribute :method, String, default: 'get'
+
+      alias http_method method # :nodoc:
+      alias http_method= method= # :nodoc:
 
       ##
       # :attr: model

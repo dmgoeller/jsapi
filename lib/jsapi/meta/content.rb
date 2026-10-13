@@ -14,7 +14,7 @@ module Jsapi
 
       include Model::Wrappable
 
-      delegate_missing_to :schema
+      delegate_missing_to :schema, allow_nil: true
 
       ##
       # :attr: examples
@@ -33,7 +33,7 @@ module Jsapi
         add_example(value: keywords.delete(:example)) if keywords.key?(:example)
         keywords[:ref] = keywords.delete(:schema) if keywords.key?(:schema)
 
-        @schema = Schema.new(keywords)
+        @schema = Schema.new(keywords) if keywords[:type] || keywords[:ref]
       end
 
       # Returns the data value of the first example.

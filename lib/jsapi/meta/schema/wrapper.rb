@@ -3,6 +3,20 @@
 module Jsapi
   module Meta
     module Schema
+      # Raised when jsonifying an object fails.
+      class JsonifyError < RuntimeError
+        attr_reader :path # :nodoc:
+
+        def message
+          [@path&.delete_prefix('.'), super].compact.join(' ')
+        end
+
+        def prepend(origin) # :nodoc:
+          @path = "#{origin}#{@path}"
+          self
+        end
+      end
+
       class Wrapper < Model::Wrapper
         # The level of existence.
         attr_reader :existence

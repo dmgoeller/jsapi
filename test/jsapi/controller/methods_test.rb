@@ -115,21 +115,19 @@ module Jsapi
           assert_equal('omit must be one of :empty or :nil, is :foo', error.message)
         end
 
-        define_method("test_#{name}_raises_an_error_when_the_" \
-                      'operation_could_not_be_found') do
-          assert_raises(OperationNotFound) do
+        define_method("test_#{name}_raises_an_error_if_the_operation_is_not_found") do
+          assert_raises(Meta::OperationNotFound) do
             controller.instance_eval { send(method, :foo) }
           end
         end
 
-        define_method("test_#{name}_raises_an_error_when_no_suitable_" \
-                      'response_could_be_found') do
+        define_method("test_#{name}_raises_an_error_if_no_response_matches") do
           controller = controller do
             api_operation do
               response 200, type: 'string'
             end
           end
-          assert_raises(ResponseNotFound) do
+          assert_raises(Meta::ResponseNotFound) do
             controller.instance_eval { send(method, status: 204) }
           end
         end
@@ -140,7 +138,7 @@ module Jsapi
           controller = controller do
             api_operation do
               parameter 'request_id', type: 'integer'
-              response do
+              response type: 'object' do
                 property 'request_id', type: 'integer'
                 property 'foo', type: 'string'
               end
@@ -539,7 +537,7 @@ module Jsapi
       end
 
       def test_api_params_raises_an_error_when_the_operation_could_not_be_found
-        assert_raises(OperationNotFound) do
+        assert_raises(Meta::OperationNotFound) do
           controller.instance_eval { api_params('foo') }
         end
       end
@@ -592,21 +590,21 @@ module Jsapi
         assert_equal('omit must be one of :empty or :nil, is :foo', error.message)
       end
 
-      def test_api_response_raises_an_error_when_the_operation_could_not_be_found
-        assert_raises(OperationNotFound) do
+      def test_api_response_raises_an_error_if_the_operation_is_not_found
+        assert_raises(Meta::OperationNotFound) do
           controller.instance_eval do
             api_response('foo', 'foo', status: 200)
           end
         end
       end
 
-      def test_api_response_raises_an_error_when_no_suitable_response_could_be_found
+      def test_api_response_raises_an_error_if_no_response_matches
         controller = controller do
           api_operation do
             response 200, type: 'string'
           end
         end
-        assert_raises(ResponseNotFound) do
+        assert_raises(Meta::ResponseNotFound) do
           controller.instance_eval do
             controller.api_response('foo', status: 204)
           end

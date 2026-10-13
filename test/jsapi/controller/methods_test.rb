@@ -215,7 +215,7 @@ module Jsapi
         end
 
         define_method("test_#{name}_produces_an_empty_response_" \
-                      'if_no_content_is_givem') do
+                      'if_no_content_is_given') do
           controller = controller do
             api_operation do
               response contents: {}

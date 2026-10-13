@@ -81,6 +81,14 @@ module Jsapi
           if name && (keywords.any? || block)
 
           keywords = { ref: name } if name
+
+          if (%i[type ref schema contents].none? { |key| keywords.key?(key) }) && !block
+            deprecation_warning(
+              'Starting with Jsapi 3.0, a `request_body` without :type will no longer ' \
+              'define an :object schema. Please specify `type: :object` explicitly.'
+            )
+          end
+
           @meta_model.request_body = keywords
 
           @meta_model.request_body.tap do |request_body|
@@ -121,6 +129,13 @@ module Jsapi
             keywords = { ref: name }
           elsif name
             raise Error, "name can't be specified together with keywords or a block"
+          end
+
+          if (%i[type ref schema contents].none? { |key| keywords.key?(key) }) && !block
+            deprecation_warning(
+              'Starting with Jsapi 3.0, a `response` without :type will no longer ' \
+              'define an :object schema. Please specify `type: :object` explicitly.'
+            )
           end
 
           @meta_model.add_response(status, keywords).tap do |response_model|

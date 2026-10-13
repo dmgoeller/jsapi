@@ -1,5 +1,9 @@
 # Change log
 
+## 2.1.1 (2026-10-13)
+
+Controller methods no longer crash on unexpected JSON values in request bodies.
+
 ## 2.1 (2026-09-02)
 
 Response examples can now be build on the fly.

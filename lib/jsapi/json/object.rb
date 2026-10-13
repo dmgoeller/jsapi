@@ -10,7 +10,15 @@ module Jsapi
 
       attr_reader :raw_additional_attributes, :raw_attributes
 
-      def initialize(hash, schema, context: nil)
+      def initialize(value, schema, context: nil)
+        hash =
+          begin
+            value.to_h
+          rescue StandardError => _e
+            self.malformed = true
+            {}
+          end
+
         schema = schema.resolve_schema(hash, context: context)
         properties = schema.resolve_properties(context: context)
 

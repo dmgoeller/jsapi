@@ -13,7 +13,7 @@ module Jsapi
         @schema = schema
       end
 
-      # Used by #validate to test whether or not it is empty.
+      # Called by #validate to test whether or not it is empty.
       # Returns false by default.
       def empty?
         false
@@ -23,7 +23,7 @@ module Jsapi
         "#<#{self.class} #{value.inspect}>"
       end
 
-      # Used by #validate to test whether or not it is null.
+      # Called by #validate to test whether or not it is null.
       # Returns false by default.
       def null?
         false
@@ -37,6 +37,10 @@ module Jsapi
       # Validates it against #schema. Returns true if it is valid, false otherwise.
       # Detected errors are added to +errors+.
       def validate(errors)
+        if malformed?
+          errors.add(:base, :invalid)
+          return false
+        end
         unless schema.existence.reach?(self)
           errors.add(:base, :blank)
           return false
@@ -46,6 +50,14 @@ module Jsapi
         schema.validations.each_value.map do |validation|
           validation.validate(value, errors)
         end.all?
+      end
+
+      protected
+
+      attr_writer :malformed
+
+      def malformed?
+        @malformed == true
       end
     end
   end

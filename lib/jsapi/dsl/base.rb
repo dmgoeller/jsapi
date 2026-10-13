@@ -89,6 +89,11 @@ module Jsapi
 
       private
 
+      def deprecation_warning(message)
+        caller_location = caller.find { |line| line.exclude?('lib/jsapi') }
+        warn("[DEPRECATION WARNING] #{message}\nDefined at: #{caller_location}")
+      end
+
       def define(*args, &block)
         result = block.call
         result.freeze_attributes if result.respond_to?(:freeze_attributes)

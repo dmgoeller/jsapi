@@ -21,22 +21,15 @@ module Jsapi
             else
               value.to_s
             end
-          rescue StandardError => e
-            @error = e
+          rescue StandardError => _e
+            self.malformed = true
             value
           end
-        @value = schema.convert(@value) unless defined? @error
+        @value = schema.convert(@value) unless malformed?
       end
 
       def empty? # :nodoc:
         value.blank?
-      end
-
-      def validate(errors) # :nodoc:
-        return super unless defined? @error
-
-        errors.add(:base, :invalid)
-        false
       end
     end
   end

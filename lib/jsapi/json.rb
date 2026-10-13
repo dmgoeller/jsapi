@@ -13,23 +13,23 @@ module Jsapi
   # Provides a DOM for JSON values.
   module JSON
     class << self
-      def wrap(object, schema, context: nil)
-        object = schema.default_value(context: context) if object.nil?
-        return Null.new(schema) if object.nil?
+      def wrap(value, schema, context: nil)
+        value = schema.default_value(context: context) if value.nil?
+        return Null.new(schema) if value.nil?
 
         case schema.type
         when 'array'
-          Array.new(object, schema, context: context)
+          Array.new(value, schema, context: context)
         when 'boolean'
-          Boolean.new(object, schema)
+          Boolean.new(value, schema)
         when 'integer'
-          Integer.new(object, schema)
+          Integer.new(value, schema)
         when 'number'
-          Number.new(object, schema)
+          Number.new(value, schema)
         when 'object'
-          Object.new(object, schema, context: context)
+          Object.new(value, schema, context: context)
         when 'string'
-          String.new(object, schema)
+          String.new(value, schema)
         else
           raise "invalid type: #{schema.type}"
         end

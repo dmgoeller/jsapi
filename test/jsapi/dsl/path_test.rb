@@ -222,7 +222,7 @@ module Jsapi
       def test_request_body
         request_body = definitions do
           path 'foo' do
-            request_body description: 'Lorem ipsum'
+            request_body type: nil, description: 'Lorem ipsum'
           end
         end.path('foo').request_body
 
@@ -259,7 +259,7 @@ module Jsapi
       def test_response
         response = definitions do
           path 'foo' do
-            response 200, description: 'Lorem ipsum'
+            response 200, type: nil, description: 'Lorem ipsum'
           end
         end.path('foo')&.response(200)
 
@@ -305,7 +305,7 @@ module Jsapi
       def test_default_response
         response = definitions do
           path 'foo' do
-            response description: 'Lorem ipsum'
+            response type: nil, description: 'Lorem ipsum'
           end
         end.path('foo')&.response('default')
 

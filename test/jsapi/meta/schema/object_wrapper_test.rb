@@ -230,11 +230,9 @@ module Jsapi
           wrapper = wrap_schema(
             additional_properties: { type: 'string' }
           )
-          [{ foo: 'bar' }, { foo: nil }, nil].each do |value|
+          [{ foo: 'bar' }, { foo: nil }, {}, nil].each do |value|
             assert_json_equal(value&.stringify_keys, wrapper, value)
           end
-
-          assert_json_equal(nil, wrapper, {})
         end
 
         def test_jsonify_on_schema_with_non_nullable_additional_properties
@@ -303,23 +301,36 @@ module Jsapi
         def test_jsonify_on_omit
           wrapper = wrap_schema(
             properties: {
-              'foo' => { type: 'string' }
+              'foo' => {
+                type: 'object',
+                properties: {
+                  'bar' => {
+                    type: 'string'
+                  }
+                }
+              }
             }
           )
-          # :empty
-          assert_json_equal({ 'foo' => 'bar' }, wrapper, { foo: 'bar' }, omit: :empty)
-
-          [{ foo: '' }, { foo: nil }, {}].each do |value|
-            assert_json_equal(nil, wrapper, value, omit: :empty)
+          # omit: :empty
+          {
+            { foo: { bar: 'baz' } } => { 'foo' => { 'bar' => 'baz' } },
+            { foo: { bar: '' } } => {},
+            { foo: { bar: nil } } => {},
+            { foo: {} } => {},
+            { foo: nil } => {}
+          }.each do |value, expected_json_value|
+            assert_json_equal(expected_json_value, wrapper, value, omit: :empty)
           end
 
-          # :nil
-          [{ foo: 'bar' }, { foo: '' }].each do |value|
-            assert_json_equal(value.stringify_keys, wrapper, value, omit: :nil)
-          end
-
-          [{ foo: nil }, {}].each do |value|
-            assert_json_equal(nil, wrapper, value, omit: :nil)
+          # omit: :nil
+          {
+            { foo: { bar: 'baz' } } => { 'foo' => { 'bar' => 'baz' } },
+            { foo: { bar: '' } } => { 'foo' => { 'bar' => '' } },
+            { foo: { bar: nil } } => { 'foo' => {} },
+            { foo: {} } => { 'foo' => {} },
+            { foo: nil } => {}
+          }.each do |value, expected_json_value|
+            assert_json_equal(expected_json_value, wrapper, value, omit: :nil)
           end
         end
       end

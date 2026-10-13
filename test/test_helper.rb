@@ -3,17 +3,19 @@
 require 'minitest'
 
 # SimpleCov
-require 'simplecov'
+if ENV['COVERAGE']
+  require 'simplecov'
 
-SimpleCov.start do
-  skip '/test/'
-  enable_coverage :branch
-end
+  SimpleCov.start do
+    skip '/test/'
+    enable_coverage :branch
+  end
 
-# Copied form SimpleCov's Minitest plug-in:
-SimpleCov.external_at_exit = true
-Minitest.after_run do
-  SimpleCov.at_exit_behavior
+  # Copied form SimpleCov's Minitest plug-in:
+  SimpleCov.external_at_exit = true
+  Minitest.after_run do
+    SimpleCov.at_exit_behavior
+  end
 end
 
 # Active Support

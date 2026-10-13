@@ -207,6 +207,35 @@ module Jsapi
         assert_not(object.validate(errors))
         assert(errors.added?(:foo, "'bar' can't be blank"))
       end
+
+      # Malformed values
+
+      def test_malformed_values
+        schema = schema(
+          type: 'object',
+          existence: true,
+          properties: {
+            'foo' => { type: 'string' }
+          }
+        )
+        [%w[foo], 'foo', 1, 1.0, true].each do |malformed_value|
+          object = Object.new(malformed_value, schema)
+          assert_nil(
+            object[:foo],
+            "Expected object[:foo] to return nil on #{malformed_value.inspect}"
+          )
+
+          errors = Model::Errors.new
+          assert_not(
+            object.validate(errors),
+            "Expected #validate to return false on #{malformed_value.inspect}"
+          )
+          assert(
+            errors.added?(:base, :invalid),
+            "Expected object to be invalid on #{malformed_value.inspect}"
+          )
+        end
+      end
     end
   end
 end

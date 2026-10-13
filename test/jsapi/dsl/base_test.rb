@@ -216,6 +216,22 @@ module Jsapi
         assert_not(base.respond_to?(:bar))
       end
 
+      # #deprecation_warning
+
+      def test_deprecation_warning
+        captured_message = nil
+
+        Warning.stub(:warn, ->(message, *) { captured_message = message }) do
+          Base.new(dummy_model) do
+            deprecation_warning('Lorem ipsum')
+          end
+        end
+        assert_match(
+          %r{\[DEPRECATION WARNING\] Lorem ipsum\nDefined at: .+/base_test.rb:},
+          captured_message
+        )
+      end
+
       private
 
       def dummy_model(&block)

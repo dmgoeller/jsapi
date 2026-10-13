@@ -8,7 +8,14 @@ module Jsapi
 
       def initialize(value, schema)
         super(schema)
-        @value = schema.convert(value.to_f)
+        @value = schema.convert(
+          begin
+            value.to_f
+          rescue StandardError => _e
+            self.malformed = true
+            0.0
+          end
+        )
       end
     end
   end

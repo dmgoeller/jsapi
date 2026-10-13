@@ -100,15 +100,16 @@ module Jsapi
                 property_value = property.reader.call(value)
                 property_value = property_schema.default if property_value.nil?
 
+                property_value = property_schema.jsonify(
+                  property_value,
+                  context: context,
+                  omit: omit
+                )
                 if property_schema.omittable?
                   next if omit == :nil && property_value.nil?
                   next if omit == :empty && (property_value.nil? || property_value.try(:empty?))
                 end
-
-                properties[property.name] = property_schema.jsonify(
-                  property_value,
-                  context: context
-                )
+                properties[property.name] = property_value
               rescue JsonifyError => e
                 raise e.prepend(".#{property.name}")
               end
@@ -116,20 +117,20 @@ module Jsapi
               if additional_properties
                 additional_properties_schema = additional_properties.schema
 
-                additional_properties.source.call(value)&.each \
-                do |property_name, property_value|
+                additional_properties.source.call(value)&.each do |property_name, property_value|
                   property_name = property_name.to_s
                   next if properties.key?(property_name)
 
                   properties[property_name] = additional_properties_schema.jsonify(
                     property_value,
-                    context: context
+                    context: context,
+                    omit: omit
                   )
                 rescue JsonifyError => e
                   raise e.prepend(".#{property_name}")
                 end
               end
-            end.presence
+            end
           end
         end
 

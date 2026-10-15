@@ -69,6 +69,12 @@ module Jsapi
           @full_path ||= super
         end
 
+        def header_parameters
+          @header_parameters ||= parameters.select do |_name, parameter|
+            parameter.in == 'header'
+          end
+        end
+
         def model # :nodoc:
           return @model if defined? @model
 

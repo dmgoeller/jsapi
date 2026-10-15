@@ -5,18 +5,31 @@ require 'test_helper'
 module Jsapi
   module Client
     class RequestHeadersTest < Minitest::Test
-      def test_bracket_operators
+      def test_set_and_reset_header
         headers = Request::Headers.new
 
         # Set header
-        headers['X-Foo'] = 'bar'
-        assert_equal('bar', headers['X-Foo'])
-        assert_equal([%w[X-Foo bar]], headers.each.to_a)
+        headers['x-foo'] = 'bar'
+        assert_equal(headers['x-foo'], 'bar')
+        assert_equal([%w[x-foo bar]], headers.each.to_a)
 
         # Reset header
-        headers['X-Foo'] = nil
-        assert_nil(headers['X-Foo'])
-        assert_empty(headers.each.to_a)
+        headers['x-foo'] = nil
+        assert_nil(headers['x-foo'])
+        assert_predicate(headers.each.to_a, :empty?)
+      end
+
+      def test_names_are_case_insensitive
+        names = %w[X-FOO X-Foo x-foo]
+
+        names.each do |name_on_write|
+          headers = Request::Headers.new
+          headers[name_on_write] = 'bar'
+
+          names.each do |name_on_read|
+            assert_equal('bar', headers[name_on_read])
+          end
+        end
       end
 
       def test_raises_an_error_if_name_is_nil
@@ -59,7 +72,7 @@ module Jsapi
         headers = Request::Headers.new
         headers.http_bearer('foo')
 
-        assert_equal('Bearer Zm9v', headers['Authorization'])
+        assert_equal('Bearer foo', headers['Authorization'])
       end
 
       def test_raises_an_error_if_bearer_token_is_empty
@@ -79,11 +92,11 @@ module Jsapi
 
         assert_equal("#<#{class_name}>", headers.inspect)
 
-        headers['X-Foo'] = ''
-        assert_equal("#<#{class_name} X-Foo: \"\">", headers.inspect)
+        headers['x-foo'] = ''
+        assert_equal("#<#{class_name} x-foo: \"\">", headers.inspect)
 
-        headers['X-Bar'] = 'baz'
-        assert_equal("#<#{class_name} X-Bar: \"baz\", X-Foo: \"\">", headers.inspect)
+        headers['x-bar'] = 'baz'
+        assert_equal("#<#{class_name} x-bar: \"baz\", x-foo: \"\">", headers.inspect)
       end
     end
   end

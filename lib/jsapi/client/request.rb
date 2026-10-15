@@ -15,55 +15,62 @@ module Jsapi
 
         # Returns the value for +name+.
         def [](name)
-          @headers[name.to_s]
+          @headers[name.to_s.downcase]
         end
 
         # Sets the value for +name+ to +value+.
+        #
+        # Raises an +ArgumentError+ if name is blank.
         def []=(name, value)
-          name = name.to_s
+          name = name.to_s.downcase
           raise ArgumentError, "name can't be blank" if name.blank?
 
           if value.nil?
             @headers.delete(name)
           else
-            @headers[name] = value.to_s
+            @headers[name] = value
           end
         end
 
+        # Sets the username and password for HTTP Basic Authentication.
         def http_basic_auth(username = nil, password = nil)
           auth_param = Base64.strict_encode64("#{username}:#{password}")
-          @headers['Authorization'] = "Basic #{auth_param}"
+          @headers['authorization'] = "Basic #{auth_param}"
         end
 
+        # Sets the token for HTTP Bearer Authentication.
+        #
+        # Raises an +ArgumentError+ if +token+ is blank.
         def http_bearer(token)
-          auth_param = Base64.strict_encode64(token.to_s)
-          raise ArgumentError, "token can't be blank" if auth_param.blank?
+          raise ArgumentError, "token can't be blank" if token.blank?
 
-          @headers['Authorization'] = "Bearer #{auth_param}"
+          @headers['authorization'] = "Bearer #{token}"
         end
 
         def inspect # :nodoc:
           "#<#{
             [
               self.class.name,
-              @headers.map do |name, value|
-                "#{name}: #{value.inspect}"
-              end.sort.join(', ')
+              @headers.map { |name, value| "#{name}: #{value.inspect}" }.sort.join(', ')
             ].compact_blank.join(' ')
           }>"
         end
       end
 
-      class Parameters # :nodoc:
+      class Parameters
         def initialize(params = nil)
           @params = {}
           params&.each { |name, value| self[name] = value }
         end
 
+        # Returns the value for +name+.
         def [](name)
           @params[name.to_s.underscore]
         end
 
+        # Sets the value for +name+ to +value+.
+        #
+        # Raises an +ArgumentError+ if name is blank.
         def []=(name, value)
           name = name.to_s
           raise ArgumentError, "name can't be blank" if name.blank?
@@ -75,9 +82,7 @@ module Jsapi
           "#<#{
             [
               self.class.name,
-              @params.map do |name, value|
-                "#{name}: #{value.inspect}"
-              end.sort.join(', ')
+              @params.map { |name, value| "#{name}: #{value.inspect}" }.sort.join(', ')
             ].compact_blank.join(' ')
           }>"
         end
@@ -111,9 +116,7 @@ module Jsapi
 
       def http_request # :nodoc:
         create_http_request.tap do |http_request|
-          headers.each do |key, value|
-            http_request[key] = value
-          end
+          http_headers.each { |name, value| http_request[name] = value }
 
           if (request_body_definition = @operation.request_body)
             media_type = Media::Type.from(content_type || 'application/json')
@@ -172,7 +175,7 @@ module Jsapi
           end
         end
 
-        # Merge base URI and path
+        # Merge base URI and path and add query parameters
         @base_uri.merge(path).tap do |uri|
           if (query_params = @operation.query_parameters).any?
             uri.query = query_params.transform_values do |parameter|
@@ -184,6 +187,21 @@ module Jsapi
             rescue Meta::Schema::JsonifyError => e
               raise e.prepend(parameter.name)
             end.compact.to_query
+          end
+        end
+      end
+
+      def http_headers
+        Headers.new.tap do |headers|
+          @operation.header_parameters.each do |name, header_definition|
+            value = @params[name] || @headers[name]
+            next if value.nil?
+
+            value = Array(value).join(',') if header_definition.schema.array?
+            headers[name] = value
+          end
+          @headers.each do |name, value|
+            headers[name] ||= value
           end
         end
       end

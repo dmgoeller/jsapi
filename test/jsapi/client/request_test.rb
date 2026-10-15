@@ -74,12 +74,122 @@ module Jsapi
         )
       end
 
-      def test_http_headers
-        request = Request.new(URI('https://foo.bar'), operation(method: 'head'))
-        request.headers['X-Foo'] = 'bar'
+      # HTTP headers
 
-        assert_equal('bar', request.http_request['X-Foo'])
+      def test_http_header_defined_as_parameter
+        operation = operation(
+          method: 'head',
+          parameters: {
+            'X-Foo' => {
+              in: 'header',
+              type: 'string'
+            }
+          }
+        )
+        { nil => nil, '' => '', 'bar' => 'bar' }.each do |value, expected|
+          %w[X-FOO X-Foo x-foo X_FOO X_Foo x_foo].each do |name|
+            request = Request.new(URI('https://foo.bar'), operation)
+            request[name] = value
+
+            actual = request.http_request['x-foo']
+            assert(
+              actual == expected,
+              "Expected HTTP header value for parameter #{name.inspect} set to " \
+              "#{value.inspect} to be #{expected.inspect}, is: #{actual.inspect}"
+            )
+          end
+          %w[X-FOO X-Foo x-foo].each do |name|
+            request = Request.new(URI('https://foo.bar'), operation)
+            request.headers[name] = value
+
+            actual = request.http_request['x-foo']
+            assert(
+              actual == expected,
+              "Expected HTTP header value for header #{name.inspect} set to " \
+              "#{value.inspect} to be #{expected.inspect}, is: #{actual.inspect}"
+            )
+          end
+        end
       end
+
+      def test_http_header_defined_as_array_parameter
+        operation = operation(
+          method: 'head',
+          parameters: {
+            'X-Foo' => {
+              in: 'header',
+              type: 'array',
+              items: {
+                type: 'string'
+              }
+            }
+          }
+        )
+        {
+          nil => nil,
+          '' => '',
+          'bar' => 'bar',
+          %w[bar] => 'bar',
+          %w[bar baz] => 'bar,baz'
+        }.each do |value, expected|
+          %w[X-FOO X-Foo x-foo X_FOO X_Foo x_foo].each do |name|
+            request = Request.new(URI('https://foo.bar'), operation)
+            request[name] = value
+
+            actual = request.http_request['x-foo']
+            assert(
+              actual == expected,
+              "Expected HTTP header for parameter #{name.inspect} set to " \
+              "#{value.inspect} to be #{expected.inspect}, is: #{actual.inspect}"
+            )
+          end
+          %w[X-FOO X-Foo x-foo].each do |name|
+            request = Request.new(URI('https://foo.bar'), operation)
+            request.headers[name] = value
+
+            actual = request.http_request['x-foo']
+            assert(
+              actual == expected,
+              "Expected HTTP header for header #{name.inspect} set to " \
+              "#{value.inspect} to be #{expected.inspect}, is: #{actual.inspect}"
+            )
+          end
+        end
+      end
+
+      def test_http_header_not_defined_as_parameter
+        %w[X-FOO X-Foo x-foo].each do |name|
+          request = Request.new(URI('https://foo.bar'), operation)
+          request.headers[name] = 'bar'
+
+          actual = request.http_request['x-foo']
+          assert(
+            actual == 'bar',
+            "Expected HTTP header value assigned to #{name.inspect} header " \
+            "to be \"bar\", is: #{actual.inspect}"
+          )
+        end
+      end
+
+      def test_parameter_takes_precedence_over_header
+        operation = operation(
+          method: 'head',
+          parameters: {
+            'x-foo' => {
+              in: 'header',
+              type: 'string'
+            }
+          }
+        )
+        request = Request.new(URI('https://foo.bar'), operation)
+        request.headers['x-foo'] = 'bar'
+        assert_equal('bar', request.http_request['x-foo'])
+
+        request['x-foo'] = 'baz'
+        assert_equal('baz', request.http_request['x-foo'])
+      end
+
+      # Path
 
       def test_path
         assert_equal(
@@ -128,6 +238,8 @@ module Jsapi
         end
         assert_equal('"{foo_id}" cannot be substituted', error.message)
       end
+
+      # Query string
 
       def test_query_string
         operation = operation(
@@ -218,7 +330,9 @@ module Jsapi
         end
       end
 
-      def test_request_body
+      # Body
+
+      def test_body
         operation = operation(
           method: 'post',
           request_body: {
@@ -269,10 +383,11 @@ module Jsapi
         assert_equal('null', http_request.body)
 
         # JSON request body on empty object
+        request = Request.new(URI('https://foo.bar'), operation)
+        request.content_type = 'application/json'
+        request.body = {}
+
         error = assert_raises(RequestError) do
-          Request.new(URI('https://foo.bar'), operation)
-          request.content_type = 'application/json'
-          request.body = {}
           request.http_request
         end
         assert_equal("foo can't be nil", error.message)

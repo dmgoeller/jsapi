@@ -9,6 +9,16 @@ module Jsapi
     class ResponseHeadersTest < Minitest::Test
       include TestHelper
 
+      def test_names_are_case_insensitive
+        headers = Response::Headers.new(
+          Session::Test::Response.new(content_type: 'application/json'),
+          response_definition
+        )
+        %w[CONTENT-TYPE Content-Type content-type].each do |name|
+          assert_equal('application/json', headers[name])
+        end
+      end
+
       def test_array_header
         headers = Response::Headers.new(
           Session::Test::Response.new(:ok, x_array: 'foo,bar'),
@@ -53,16 +63,6 @@ module Jsapi
           )
         )
         assert_equal(2048, headers['content-length'])
-      end
-
-      def test_bracket_operator
-        headers = Response::Headers.new(
-          Session::Test::Response.new(:ok, content_type: 'application/json'),
-          response_definition
-        )
-        %w[CONTENT-TYPE Content-Type content-type].each do |name|
-          assert_equal('application/json', headers[name])
-        end
       end
     end
   end

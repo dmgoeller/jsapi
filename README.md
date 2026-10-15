@@ -1738,8 +1738,8 @@ end
 
 ## API Clients
 
-Jsapi provides a high-level API to call remote operations over HTTP. API clients are subclasses
-of `Jsapi::Client::Base`. Remote operations are defined with the [Jsapi DSL](#jsapi-dsl).
+The `Jsapi::Client::Base` class allows calling remote operations over HTTP. The operations to
+be called are defined with the [Jsapi DSL](#jsapi-dsl).
 
 ```ruby
 class FooClient < Jsapi::Client::Base
@@ -1786,6 +1786,69 @@ object provides readers for all properties. The validity of a response body can 
 
 Unlike `call`, `call!` raises a `Jsapi::Client::ResponseError` when the response body
 is invalid.
+
+### Headers
+
+Headers can be provided in three ways:
+
+- Specify a header as a parameter in the API definition and pass its value when calling an
+  operation.
+- Set a header for a single request in the block passed to `call` or `call!`.
+- Set default headers for every subsequent operation call.
+
+Header names are case-insensitive.
+
+As described in [Specifying parameters](#specifying-parameters), a header can be defined as
+a parameter, for example:
+
+```ruby
+class FooClient < Jsapi::Client::Base
+  api_operation 'foo' do
+    parameter 'x-bar', in: 'header', type: 'string'
+  end
+end
+```
+
+In this case, the value of the header can be passed as a keyword argument when calling
+the operation:
+
+```ruby
+client = FooClient.new('https://foo.bar/api')
+response = client.call('foo', x_bar: '...')
+```
+
+Headers that are not defined as a parameter can be set for a single request using the
+`headers` method exposed by the request object passed to the block:
+
+```ruby
+response = client.call('foo') do |request|
+  request.headers['x-api-key'] = '...'
+end
+```
+
+`headers` also provides convenient methods to easily set HTTP Basic Authentication and HTTP
+Bearer Authentication:
+
+```ruby
+response = client.call('foo') do |request|
+  request.headers.http_basic_auth('username', 'password')
+end
+```
+
+```ruby
+response = client.call('foo') do |request|
+  request.headers.http_bearer('token')
+end
+```
+
+To include the same headers in every operation call, set them using the `request_headers`
+method.
+
+```ruby
+client = FooClient.new('https://foo.bar/api')
+client.request_headers['x-bar'] = '...'
+client.request_headers.http_basic_auth('username', 'password')
+```
 
 ### Sessions
 

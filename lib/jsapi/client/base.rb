@@ -90,7 +90,7 @@ module Jsapi
       # Like +call+, except it raises a subclass of ResponseError when:
       #
       # - InvalidResponseBodyError - raised when the response body is invalid.
-      # - UnexpectedResponseError -raised when no response specification matches the
+      # - UnexpectedResponseError - raised when no response specification matches the
       #   status code returned by the server.
 
       [true, false].each do |bang|

@@ -5,6 +5,7 @@ module Jsapi
     module Session
       class Error < StandardError; end
 
+      # \Base session class.
       class Base
         include Test
 

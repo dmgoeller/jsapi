@@ -202,7 +202,10 @@ module Jsapi
 
       if ENV['REAL_HTTP_REQUESTS'].present?
         def test_real_read_request
-          response = DummyClient.new.call!('read', id: 1)
+          client = DummyClient.new
+          client.request_headers['x-foo'] = 'bar'
+
+          response = client.call!('read', id: 1)
 
           assert_equal(Status::Code.from(:ok), response.status_code)
           assert_equal(1, response.content.id)
@@ -210,7 +213,10 @@ module Jsapi
         end
 
         def test_real_update_request
-          response = DummyClient.new.call!('update', { bar: 'baz' }, id: 1)
+          client = DummyClient.new
+          client.request_headers['x-foo'] = 'bar'
+
+          response = client.call!('update', { bar: 'baz' }, id: 1)
 
           assert_equal(Status::Code.from(:ok), response.status_code)
           assert_equal(1, response.content.id)

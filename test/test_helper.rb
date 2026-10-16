@@ -1,6 +1,9 @@
 # frozen_string_literal: true
 
 require 'minitest'
+require 'minitest/mock'
+require 'minitest/rg'
+require 'minitest/stub_any_instance'
 
 # SimpleCov
 if ENV['COVERAGE']
@@ -55,5 +58,4 @@ module Minitest
 end
 
 # Start Minitest
-require 'minitest/stub_any_instance'
 require 'minitest/autorun'

@@ -4,7 +4,7 @@ source 'https://rubygems.org'
 
 gemspec
 
-gem 'activesupport', '7.2.3.2'
+gem 'activesupport', '8.0.5.1'
 gem 'rake'
 
 group :test do

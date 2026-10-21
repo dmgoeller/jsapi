@@ -91,7 +91,7 @@ module Jsapi
         assert_equal(media_types, hash.keys)
       end
 
-      def test_json_predicate
+      def test_json_types
         [
           %w[application json],
           %w[application vnd.foo+json],
@@ -106,11 +106,22 @@ module Jsapi
           %w[application json-seq],
           %w[text plain]
         ].each do |type, subtype|
-          assert(
-            !(media_type = Type.new(type, subtype)).json?,
+          assert_not(
+            (media_type = Type.new(type, subtype)).json?,
             "Expected #{media_type.inspect} not to be a JSON type."
           )
         end
+      end
+
+      def test_json_seq_type
+        assert(
+          Type.new('application', 'json-seq').json_seq?,
+          'Expected "application/json-seq" to be a JSON Seq type'
+        )
+        assert_not(
+          Type.new('application', 'json').json_seq?,
+          'Expected "application/json" not to be a JSON Seq type'
+        )
       end
 
       def test_inspect

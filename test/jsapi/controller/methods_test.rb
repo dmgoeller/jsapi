@@ -180,6 +180,9 @@ module Jsapi
 
         define_method("test_#{name}_produces_a_plain_response_" \
                       'if_content_type_is_text_plain') do
+          object = Object.new
+          object.define_singleton_method(:to_s) { 'foo' }
+
           controller_class = controller_class do
             api_operation do
               response type: 'string', content_type: 'text/plain'
@@ -187,7 +190,7 @@ module Jsapi
           end
           [200, 201].each do |status|
             response = controller_class.new.instance_eval do
-              send(method, status: status) { 'foo' }
+              send(method, status: status) { object }
               self.response
             end
             assert_equal(status, response.status)

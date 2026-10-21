@@ -1,5 +1,10 @@
 # Change log
 
+## 2.1.2 (2026-10-21)
+
+Responses with a plain-text body can now be produced from any object by converting the
+pbject to a string.
+
 ## 2.1.1 (2026-10-13)
 
 Controller methods no longer crash on unexpected JSON values in request bodies.

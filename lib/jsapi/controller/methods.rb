@@ -185,32 +185,34 @@ module Jsapi
 
           result = _api_before_rendering(operation_name, result, api_params)
 
-          api_response = Response.new(
-            result,
-            content_model,
-            omit: omit,
-            locale: response_model.locale
-          )
-          if media_type.json?
+          if media_type == Media::Type::TEXT_PLAIN
             render(
-              json: api_response,
+              plain: result.to_s,
               status: status,
               content_type: media_type.to_s
             )
-          elsif media_type == Media::Type::TEXT_PLAIN
-            render(
-              plain: result,
-              status: status,
-              content_type: media_type.to_s
+          elsif media_type.json? || media_type.json_seq?
+            api_response = Response.new(
+              result,
+              content_model,
+              omit: omit,
+              locale: response_model.locale
             )
-          elsif media_type == Media::Type::APPLICATION_JSON_SEQ
-            self.content_type = media_type.to_s
-            response.status = status
+            if media_type.json?
+              render(
+                json: api_response,
+                status: status,
+                content_type: media_type.to_s
+              )
+            else
+              self.content_type = media_type.to_s
+              response.status = status
 
-            response.stream.tap do |stream|
-              api_response.write_json_seq_to(stream)
-            ensure
-              stream.close
+              response.stream.tap do |stream|
+                api_response.write_json_seq_to(stream)
+              ensure
+                stream.close
+              end
             end
           end
         end

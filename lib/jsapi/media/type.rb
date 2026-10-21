@@ -65,6 +65,11 @@ module Jsapi
         (type.in?(%w[application text]) && subtype == 'json') ||
           subtype.end_with?('+json')
       end
+
+      # Returns true if it is <code>"application/json-seq"</code>.
+      def json_seq?
+        type == 'application' && subtype == 'json-seq'
+      end
     end
   end
 end

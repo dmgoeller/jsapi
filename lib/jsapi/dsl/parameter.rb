@@ -23,7 +23,7 @@ module Jsapi
       # :args: location
       # Specifies the location of the parameter.
       #
-      # See Meta::Parameter::Model#in for further information.
+      # See Definition::Parameter::Model#in for further information.
     end
   end
 end

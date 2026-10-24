@@ -12,12 +12,12 @@ module Jsapi
       #
       #   additional_properties type: 'string'
       #
-      # See Meta::Schema::Object#additional_properties for further information.
+      # See Definition::Schema::Object#additional_properties for further information.
 
       # Includes all of the properties from +schemas+. Each argument must be the name of
       # a schema defined by ClassMethods#api_schema or Definitions#schema.
       def all_of(*schemas)
-        schemas.each { |schema| @meta_model.add_all_of({ ref: schema }) }
+        schemas.each { |schema| @definition.add_all_of({ ref: schema }) }
       end
 
       ##
@@ -61,13 +61,13 @@ module Jsapi
       # :args: **keywords, &block
       # Specifies the external documentation.
       #
-      # See Meta::Schema::Base#external_docs for further information.
+      # See Definition::Schema::Base#external_docs for further information.
 
       # Adds a sample matching the schema.
       #
       #   example 'foo'
       def example(example)
-        @meta_model.add_example(example)
+        @definition.add_example(example)
       end
 
       ##
@@ -77,7 +77,7 @@ module Jsapi
       #
       #   existence :allow_nil
       #
-      # See Meta::Schema::Base#existence for further information.
+      # See Definition::Schema::Base#existence for further information.
 
       # Specifies the format of a string.
       #
@@ -85,7 +85,7 @@ module Jsapi
       #
       # Raises an Error if type is other than <code>"string"</code>.
       #
-      # See Meta::Schema::String#format for further information.
+      # See Definition::Schema::String#format for further information.
       def format(format)
         keyword(:format, format)
       end
@@ -98,14 +98,14 @@ module Jsapi
       #
       # Raises an Error if type is other than <code>"array"</code>.
       def items(**keywords, &block)
-        unless @meta_model.respond_to?(:items=)
-          raise Error, "items isn't supported for '#{@meta_model.type}'"
+        unless @definition.respond_to?(:items=)
+          raise Error, "items isn't supported for '#{@definition.type}'"
         end
 
         define do
-          @meta_model.items = keywords
+          @definition.items = keywords
 
-          @meta_model.items.tap do |items|
+          @definition.items.tap do |items|
             Schema.new(items, &block) if block
           end
         end
@@ -174,15 +174,15 @@ module Jsapi
       #
       # Raises an Error if type is other than <code>"object"</code>.
       def model(klass = nil, &block)
-        unless @meta_model.respond_to?(:model=)
-          raise Error, "model isn't supported for '#{@meta_model.type}'"
+        unless @definition.respond_to?(:model=)
+          raise Error, "model isn't supported for '#{@definition.type}'"
         end
 
         if block
           klass = Class.new(klass || Model::Base)
           klass.class_eval(&block)
         end
-        @meta_model.model = klass
+        @definition.model = klass
       end
 
       ##
@@ -210,12 +210,12 @@ module Jsapi
       # Raises an Error if type is other than <code>"object"</code>.
       def property(name, **keywords, &block)
         define('property', name.inspect) do
-          unless @meta_model.respond_to?(:add_property)
-            raise Error, "property isn't supported for '#{@meta_model.type}'"
+          unless @definition.respond_to?(:add_property)
+            raise Error, "property isn't supported for '#{@definition.type}'"
           end
 
-          @meta_model.add_property(name, keywords).tap do |property_model|
-            Schema.new(property_model, &block) if block
+          @definition.add_property(name, keywords).tap do |property_definition|
+            Schema.new(property_definition, &block) if block
           end
         end
       end

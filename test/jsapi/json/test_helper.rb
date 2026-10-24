@@ -5,12 +5,12 @@ module Jsapi
     module TestHelper
       private
 
-      def schema(definitions = nil, **keywords)
-        definitions = Meta::Definitions.new if definitions.nil?
+      def schema(api_definition = nil, **keywords)
+        api_definition = Definition::API.new if api_definition.nil?
 
-        Meta::Schema.wrap(
-          Meta::Schema.new(**keywords).resolve(definitions),
-          definitions
+        Definition::Schema.wrap(
+          Definition::Schema.new(**keywords).resolve(api_definition),
+          api_definition
         )
       end
     end

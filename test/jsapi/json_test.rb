@@ -34,10 +34,10 @@ module Jsapi
     end
 
     def test_wrap_nil_on_default
-      definitions = Meta::Definitions.new
-      definitions.add_default('array', within_requests: [])
+      api_definition = Definition::API.new
+      api_definition.add_default('array', within_requests: [])
 
-      schema = schema(definitions, type: 'array')
+      schema = schema(api_definition, type: 'array')
 
       json_array = JSON.wrap(nil, schema, context: :request)
       assert_kind_of(JSON::Array, json_array)
@@ -55,9 +55,9 @@ module Jsapi
     end
 
     def test_wrap_raises_an_error_on_invalid_type
-      schema = Meta::Schema::Base.new
+      schema = Definition::Schema::Base.new
 
-      error = Meta::Schema::Base.stub_any_instance(:type, 'foo') do
+      error = Definition::Schema::Base.stub_any_instance(:type, 'foo') do
         assert_raises(RuntimeError) { JSON.wrap('foo', schema) }
       end
       assert_equal('invalid type: foo', error.message)

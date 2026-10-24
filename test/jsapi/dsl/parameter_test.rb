@@ -6,7 +6,7 @@ module Jsapi
       # #example
 
       def test_example
-        parameter = Meta::Parameter.new('param')
+        parameter = Definition::Parameter.new('param')
         Parameter.new(parameter) { example 'foo' }
 
         assert_equal('foo', parameter.example('default').value)

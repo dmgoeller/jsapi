@@ -5,10 +5,76 @@ require 'test_helper'
 module Jsapi
   module DSL
     class ClassMethodsTest < Minitest::Test
+      # #api
+
+      def test_api
+        base_klass = Class.new do
+          extend ClassMethods
+        end
+        klass = Class.new(base_klass)
+
+        base_api = base_klass.api
+        assert_equal(base_klass, base_api.owner)
+        assert_nil(base_api.parent)
+
+        api = klass.api
+        assert_equal(klass, api.owner)
+        assert_equal(base_api, api.parent)
+      end
+
+      def test_api_with_keywords
+        api = Class.new do
+          extend ClassMethods
+          api base_path: '/foo'
+        end.api
+
+        assert_equal('/foo', api.base_path.to_s)
+      end
+
+      def test_api_with_block
+        api = Class.new do
+          extend ClassMethods
+          api do
+            base_path '/foo'
+          end
+        end.api
+
+        assert_equal('/foo', api.base_path.to_s)
+      end
+
+      def test_loads_api_definition_from_file
+        configuration = Minitest::Mock.new
+        pathname = Minitest::Mock.new
+
+        configuration.expect(:pathname, pathname, [[], 'foo.rb'])
+        pathname.expect(:file?, true)
+        pathname.expect(:read, "base_path '/foo'")
+        pathname.expect(:to_path, '/foo.rb')
+
+        Jsapi.stub(:configuration, configuration) do
+          api = Class.new do
+            extend ClassMethods
+
+            def self.name
+              'Foo'
+            end
+          end.api
+
+          assert_equal('/foo', api.base_path.to_s)
+        end
+      end
+
+      def test_api_is_aliased_as_api_definitions
+        klass = Class.new do
+          extend ClassMethods
+        end
+        assert_same(klass.api, klass.api_definitions)
+      end
+
       # #api_base_path
 
       def test_api_base_path
-        base_path = api_definitions do
+        base_path = api do
           api_base_path '/foo'
         end.base_path
 
@@ -18,7 +84,7 @@ module Jsapi
       # #api_callback
 
       def test_api_callback
-        callback = api_definitions do
+        callback = api do
           api_callback 'foo', expressions: {
             '{$url}' => {
               operations: {
@@ -36,7 +102,7 @@ module Jsapi
       end
 
       def test_api_callback_with_block
-        callback = api_definitions do
+        callback = api do
           api_callback 'foo' do
             expression '{$url}' do
               operation 'get', description: 'Lorem ipsum'
@@ -54,7 +120,7 @@ module Jsapi
       # #api_default
 
       def test_api_default
-        default = api_definitions do
+        default = api do
           api_default 'array', within_responses: []
         end.default('array')
 
@@ -63,7 +129,7 @@ module Jsapi
       end
 
       def test_api_default_with_block
-        default = api_definitions do
+        default = api do
           api_default 'array' do
             within_responses []
           end
@@ -73,69 +139,10 @@ module Jsapi
         assert_equal([], default.within_responses)
       end
 
-      # #api_definitions
-
-      def test_api_definitions
-        base_klass = Class.new do
-          extend ClassMethods
-        end
-        klass = Class.new(base_klass)
-
-        base_definitions = base_klass.api_definitions
-        assert_equal(base_klass, base_definitions.owner)
-        assert_nil(base_definitions.parent)
-
-        definitions = klass.api_definitions
-        assert_equal(klass, definitions.owner)
-        assert_equal(base_definitions, definitions.parent)
-      end
-
-      def test_api_definitions_with_keywords
-        definitions = Class.new do
-          extend ClassMethods
-          api_definitions base_path: '/foo'
-        end.api_definitions
-
-        assert_equal('/foo', definitions.base_path.to_s)
-      end
-
-      def test_api_definitions_with_block
-        definitions = Class.new do
-          extend ClassMethods
-          api_definitions do
-            base_path '/foo'
-          end
-        end.api_definitions
-
-        assert_equal('/foo', definitions.base_path.to_s)
-      end
-
-      def test_api_definitions_loads_api_defs_from_file
-        configuration = Minitest::Mock.new
-        pathname = Minitest::Mock.new
-
-        configuration.expect(:pathname, pathname, [[], 'foo.rb'])
-        pathname.expect(:file?, true)
-        pathname.expect(:read, "base_path '/foo'")
-        pathname.expect(:to_path, '/foo.rb')
-
-        Jsapi.stub(:configuration, configuration) do
-          definitions = Class.new do
-            extend ClassMethods
-
-            def self.name
-              'Foo'
-            end
-          end.api_definitions
-
-          assert_equal('/foo', definitions.base_path.to_s)
-        end
-      end
-
       # #api_example
 
       def test_api_example
-        example = api_definitions do
+        example = api do
           api_example 'foo', value: 'bar'
         end.example('foo')
 
@@ -144,7 +151,7 @@ module Jsapi
       end
 
       def test_api_example_with_block
-        example = api_definitions do
+        example = api do
           api_example 'foo' do
             value 'bar'
           end
@@ -157,7 +164,7 @@ module Jsapi
       # #api_external_docs
 
       def test_api_external_docs
-        external_docs = api_definitions do
+        external_docs = api do
           api_external_docs description: 'Lorem ipsum'
         end.external_docs
 
@@ -166,7 +173,7 @@ module Jsapi
       end
 
       def test_api_external_docs_with_block
-        external_docs = api_definitions do
+        external_docs = api do
           api_external_docs do
             description 'Lorem ipsum'
           end
@@ -179,7 +186,7 @@ module Jsapi
       # #api_header
 
       def test_api_header
-        header = api_definitions do
+        header = api do
           api_header 'foo', description: 'Lorem ipsum'
         end.header('foo')
 
@@ -188,7 +195,7 @@ module Jsapi
       end
 
       def test_api_header_with_block
-        header = api_definitions do
+        header = api do
           api_header 'foo' do
             description 'Lorem ipsum'
           end
@@ -201,7 +208,7 @@ module Jsapi
       # #api_host
 
       def test_api_host
-        host = api_definitions do
+        host = api do
           api_host 'foo.bar'
         end.host
 
@@ -219,7 +226,7 @@ module Jsapi
         pathname.expect(:to_path, '')
 
         definitions = Jsapi.stub(:configuration, configuration) do
-          api_definitions do
+          api do
             api_import 'foo'
           end
         end
@@ -238,14 +245,14 @@ module Jsapi
           api_include foo_class
         end
 
-        schema = bar_class.api_definitions.find_schema('foo')
+        schema = bar_class.api.find_schema('foo')
         assert_predicate(schema, :present?)
       end
 
       # #api_info
 
       def test_api_info
-        info = api_definitions do
+        info = api do
           api_info title: 'foo'
         end.info
 
@@ -254,7 +261,7 @@ module Jsapi
       end
 
       def test_api_info_with_block
-        info = api_definitions do
+        info = api do
           api_info do
             title 'foo'
           end
@@ -267,7 +274,7 @@ module Jsapi
       # #api_link
 
       def test_api_link
-        link = api_definitions do
+        link = api do
           api_link 'foo', description: 'Lorem ipsum'
         end.link('foo')
 
@@ -276,7 +283,7 @@ module Jsapi
       end
 
       def test_api_link_with_block
-        link = api_definitions do
+        link = api do
           api_link 'foo' do
             description 'Lorem ipsum'
           end
@@ -289,7 +296,7 @@ module Jsapi
       # #api_on_rescue
 
       def test_api_on_rescue
-        on_rescue_callbacks = api_definitions do
+        on_rescue_callbacks = api do
           api_on_rescue :foo
         end.on_rescue_callbacks
 
@@ -297,7 +304,7 @@ module Jsapi
       end
 
       def test_api_on_rescue_with_block
-        on_rescue_callbacks = api_definitions do
+        on_rescue_callbacks = api do
           api_on_rescue { |e| e }
         end.on_rescue_callbacks
 
@@ -307,7 +314,7 @@ module Jsapi
       # #api_operation
 
       def test_api_operation
-        operation = api_definitions do
+        operation = api do
           api_operation 'foo', description: 'Lorem ipsum'
         end.operation('foo')
 
@@ -316,7 +323,7 @@ module Jsapi
       end
 
       def test_api_operation_with_block
-        operation = api_definitions do
+        operation = api do
           api_operation 'foo' do
             description 'Lorem ipsum'
           end
@@ -329,7 +336,7 @@ module Jsapi
       # #api_parameter
 
       def test_api_parameter
-        parameter = api_definitions do
+        parameter = api do
           api_parameter 'foo', description: 'Lorem ipsum'
         end.parameter('foo')
 
@@ -338,7 +345,7 @@ module Jsapi
       end
 
       def test_api_parameter_with_block
-        parameter = api_definitions do
+        parameter = api do
           api_parameter 'foo' do
             description 'Lorem ipsum'
           end
@@ -351,7 +358,7 @@ module Jsapi
       # #api_path
 
       def test_api_path
-        operation = api_definitions do
+        operation = api do
           api_path 'foo' do
             operation path: 'bar'
           end
@@ -364,7 +371,7 @@ module Jsapi
       # #api_request_body
 
       def test_api_request_body
-        request_body = api_definitions do
+        request_body = api do
           api_request_body 'foo', description: 'Lorem ipsum'
         end.request_body('foo')
 
@@ -373,7 +380,7 @@ module Jsapi
       end
 
       def test_api_request_body_with_block
-        request_body = api_definitions do
+        request_body = api do
           api_request_body 'foo' do
             description 'Lorem ipsum'
           end
@@ -386,7 +393,7 @@ module Jsapi
       # #api_rescue_from
 
       def test_api_rescue_from
-        rescue_handler = api_definitions do
+        rescue_handler = api do
           api_rescue_from StandardError
         end.rescue_handler_for(StandardError.new)
 
@@ -396,7 +403,7 @@ module Jsapi
       # #api_response
 
       def test_api_response
-        response = api_definitions do
+        response = api do
           api_response 'foo', description: 'Lorem ipsum'
         end.response('foo')
 
@@ -405,7 +412,7 @@ module Jsapi
       end
 
       def test_api_response_with_block
-        response = api_definitions do
+        response = api do
           api_response 'foo' do
             description 'Lorem ipsum'
           end
@@ -418,7 +425,7 @@ module Jsapi
       # #api_schema
 
       def test_api_schema
-        schema = api_definitions do
+        schema = api do
           api_schema 'foo', description: 'Lorem ipsum'
         end.schema('foo')
 
@@ -427,7 +434,7 @@ module Jsapi
       end
 
       def test_api_schema_with_block
-        schema = api_definitions do
+        schema = api do
           api_schema 'foo' do
             description 'Lorem ipsum'
           end
@@ -440,7 +447,7 @@ module Jsapi
       # #api_scheme
 
       def test_api_scheme
-        schemes = api_definitions do
+        schemes = api do
           api_scheme 'https'
         end.schemes
 
@@ -450,7 +457,7 @@ module Jsapi
       # #api_security_requirement
 
       def test_api_security_requirement
-        security_requirements = api_definitions do
+        security_requirements = api do
           api_security_requirement schemes: { 'basic_auth' => [] }
         end.security_requirements
 
@@ -459,7 +466,7 @@ module Jsapi
       end
 
       def test_api_security_requirement_with_block
-        security_requirements = api_definitions do
+        security_requirements = api do
           api_security_requirement do
             scheme 'basic_auth'
           end
@@ -472,7 +479,7 @@ module Jsapi
       # #api_security_scheme
 
       def test_api_security_scheme
-        security_scheme = api_definitions do
+        security_scheme = api do
           api_security_scheme 'basic_auth', type: 'http',
                                             scheme: 'basic',
                                             description: 'Lorem ipsum'
@@ -483,7 +490,7 @@ module Jsapi
       end
 
       def test_api_security_scheme_with_block
-        security_scheme = api_definitions do
+        security_scheme = api do
           api_security_scheme 'basic_auth', type: 'http', scheme: 'basic' do
             description 'Lorem ipsum'
           end
@@ -496,7 +503,7 @@ module Jsapi
       # #api_server
 
       def test_api_server
-        servers = api_definitions do
+        servers = api do
           api_server url: 'https://foo.bar/foo'
         end.servers
 
@@ -505,7 +512,7 @@ module Jsapi
       end
 
       def test_api_server_with_block
-        servers = api_definitions do
+        servers = api do
           api_server do
             url 'https://foo.bar/foo'
           end
@@ -518,7 +525,7 @@ module Jsapi
       # #api_tag
 
       def test_api_tag
-        tags = api_definitions do
+        tags = api do
           api_tag name: 'foo'
         end.tags
 
@@ -527,7 +534,7 @@ module Jsapi
       end
 
       def test_api_tag_with_block
-        tags = api_definitions do
+        tags = api do
           api_tag do
             name 'foo'
           end
@@ -539,12 +546,12 @@ module Jsapi
 
       private
 
-      def api_definitions(&block)
+      def api(&block)
         klass = Class.new do
           extend ClassMethods
         end
         klass.class_eval(&block)
-        klass.api_definitions
+        klass.api
       end
     end
   end

@@ -7,7 +7,7 @@ module Jsapi
 
       def test_model
         klass = Class.new(Model::Base)
-        model = definitions do
+        model = api_definition do
           path 'foo' do
             model klass
           end
@@ -17,7 +17,7 @@ module Jsapi
       end
 
       def test_model_with_block
-        model = definitions do
+        model = api_definition do
           path 'foo' do
             model do
               def foo
@@ -33,7 +33,7 @@ module Jsapi
 
       def test_model_with_class_and_block
         klass = Class.new(Model::Base)
-        model = definitions do
+        model = api_definition do
           path 'foo' do
             model klass do
               def foo
@@ -50,7 +50,7 @@ module Jsapi
       # #operation
 
       def test_named_operation
-        operation = definitions do
+        operation = api_definition do
           path 'foo' do
             operation 'bar'
           end
@@ -61,7 +61,7 @@ module Jsapi
       end
 
       def test_named_operation_with_path
-        operation = definitions do
+        operation = api_definition do
           path 'foo' do
             operation 'bar', path: 'bar'
           end
@@ -72,7 +72,7 @@ module Jsapi
       end
 
       def test_named_operation_with_block
-        operation = definitions do
+        operation = api_definition do
           path 'foo' do
             operation 'bar' do
               path 'bar'
@@ -85,7 +85,7 @@ module Jsapi
       end
 
       def test_nameless_operation
-        operation = definitions do
+        operation = api_definition do
           path 'foo' do
             operation()
           end
@@ -97,7 +97,7 @@ module Jsapi
       end
 
       def test_nameless_operation_with_path
-        operation = definitions do
+        operation = api_definition do
           path 'foo' do
             operation path: 'bar'
           end
@@ -109,7 +109,7 @@ module Jsapi
       end
 
       def test_nameless_operation_with_block
-        operation = definitions do
+        operation = api_definition do
           path 'foo' do
             operation do
               path 'bar'
@@ -125,7 +125,7 @@ module Jsapi
       # #parameter
 
       def test_parameter
-        parameter = definitions do
+        parameter = api_definition do
           path 'foo' do
             parameter 'bar', description: 'Lorem ipsum'
           end
@@ -136,7 +136,7 @@ module Jsapi
       end
 
       def test_parameter_with_block
-        parameter = definitions do
+        parameter = api_definition do
           path 'foo' do
             parameter 'bar' do
               description 'Lorem ipsum'
@@ -149,7 +149,7 @@ module Jsapi
       end
 
       def test_parameter_reference
-        parameter = definitions do
+        parameter = api_definition do
           path 'foo' do
             parameter ref: 'bar'
           end
@@ -160,7 +160,7 @@ module Jsapi
       end
 
       def test_parameter_reference_by_name
-        parameter = definitions do
+        parameter = api_definition do
           path 'foo' do
             parameter 'bar'
           end
@@ -173,7 +173,7 @@ module Jsapi
       # #path
 
       def test_nested_path
-        paths = definitions do
+        paths = api_definition do
           path 'foo' do
             path 'bar'
           end
@@ -183,7 +183,7 @@ module Jsapi
       end
 
       def test_nested_path_with_block
-        operation = definitions do
+        operation = api_definition do
           path 'foo' do
             path 'bar' do
               operation 'foo_bar'
@@ -192,11 +192,11 @@ module Jsapi
         end.find_operation('foo_bar')
 
         assert_predicate(operation, :present?)
-        assert_equal(Meta::Pathname.new('/foo/bar'), operation.full_path)
+        assert_equal(Definition::Pathname.new('/foo/bar'), operation.full_path)
       end
 
       def test_empty_path_segment
-        paths = definitions do
+        paths = api_definition do
           path 'foo' do
             path do
               path 'bar'
@@ -208,7 +208,7 @@ module Jsapi
       end
 
       def test_root_and_empty_path_segment
-        paths = definitions do
+        paths = api_definition do
           path do
             path
           end
@@ -220,9 +220,9 @@ module Jsapi
       # #request_body
 
       def test_request_body
-        request_body = definitions do
+        request_body = api_definition do
           path 'foo' do
-            request_body type: nil, description: 'Lorem ipsum'
+            request_body description: 'Lorem ipsum'
           end
         end.path('foo').request_body
 
@@ -231,7 +231,7 @@ module Jsapi
       end
 
       def test_request_body_with_block
-        request_body = definitions do
+        request_body = api_definition do
           path 'foo' do
             request_body do
               description 'Lorem ipsum'
@@ -244,7 +244,7 @@ module Jsapi
       end
 
       def test_request_body_reference
-        request_body = definitions do
+        request_body = api_definition do
           path 'foo' do
             request_body ref: 'foo'
           end
@@ -257,9 +257,9 @@ module Jsapi
       # #response
 
       def test_response
-        response = definitions do
+        response = api_definition do
           path 'foo' do
-            response 200, type: nil, description: 'Lorem ipsum'
+            response 200, description: 'Lorem ipsum'
           end
         end.path('foo')&.response(200)
 
@@ -268,7 +268,7 @@ module Jsapi
       end
 
       def test_response_with_block
-        response = definitions do
+        response = api_definition do
           path 'foo' do
             response 200 do
               description 'Lorem ipsum'
@@ -281,7 +281,7 @@ module Jsapi
       end
 
       def test_response_reference
-        response = definitions do
+        response = api_definition do
           path 'foo' do
             response 200, ref: 'bar'
           end
@@ -292,7 +292,7 @@ module Jsapi
       end
 
       def test_response_reference_by_name
-        response = definitions do
+        response = api_definition do
           path 'foo' do
             response 200, 'bar'
           end
@@ -303,9 +303,9 @@ module Jsapi
       end
 
       def test_default_response
-        response = definitions do
+        response = api_definition do
           path 'foo' do
-            response type: nil, description: 'Lorem ipsum'
+            response description: 'Lorem ipsum'
           end
         end.path('foo')&.response('default')
 
@@ -314,7 +314,7 @@ module Jsapi
       end
 
       def test_default_response_with_block
-        response = definitions do
+        response = api_definition do
           path 'foo' do
             response do
               description 'Lorem ipsum'
@@ -327,7 +327,7 @@ module Jsapi
       end
 
       def test_default_response_as_reference
-        response = definitions do
+        response = api_definition do
           path 'foo' do
             response ref: 'bar'
           end
@@ -338,7 +338,7 @@ module Jsapi
       end
 
       def test_default_response_as_reference_by_name
-        response = definitions do
+        response = api_definition do
           path 'foo' do
             response 'bar'
           end
@@ -350,7 +350,7 @@ module Jsapi
 
       def test_response_raises_an_error_when_name_and_keywords_are_specified_together
         error = assert_raises(Error) do
-          definitions do
+          api_definition do
             path 'foo' do
               response 200, 'bar', description: 'Lorem ipsum'
             end
@@ -365,9 +365,9 @@ module Jsapi
 
       private
 
-      def definitions(&block)
-        Meta::Definitions.new.tap do |definitions|
-          Definitions.new(definitions, &block)
+      def api_definition(&block)
+        Definition::API.new.tap do |api_definition|
+          API.new(api_definition, &block)
         end
       end
     end

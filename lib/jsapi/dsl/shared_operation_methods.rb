@@ -14,13 +14,13 @@ module Jsapi
       # +klass+ can be any subclass of Model::Base. If block is given, an anonymous
       # class is created that inherits either from +klass+ or Model::Base.
       #
-      # See Meta::Operation#model and Meta::Path#model for further information.
+      # See Definition::Operation#model and Definition::Path#model for further information.
       def model(klass = nil, &block)
         if block
           klass = Class.new(klass || Model::Base)
           klass.class_eval(&block)
         end
-        @meta_model.model = klass
+        @definition.model = klass
       end
 
       # Specifies a parameter.
@@ -40,15 +40,15 @@ module Jsapi
       #
       #   parameter 'foo'
       #
-      # See Meta::Operation#parameters and Meta::Path#parameters for further
+      # See Definition::Operation#parameters and Definition::Path#parameters for further
       # information.
       def parameter(name = nil, **keywords, &block)
         define('parameter', name&.inspect) do
           name = keywords[:ref] if name.nil?
           keywords = { ref: name } unless keywords.any? || block
 
-          @meta_model.add_parameter(name, keywords).tap do |parameter_model|
-            Parameter.new(parameter_model, &block) if block
+          @definition.add_parameter(name, keywords).tap do |parameter_definition|
+            Parameter.new(parameter_definition, &block) if block
           end
         end
       end
@@ -73,7 +73,7 @@ module Jsapi
       #
       #   request_body 'foo'
       #
-      # See Meta::Operation#request_body and Meta::Path#request_body for
+      # See Definition::Operation#request_body and Definition::Path#request_body for
       # further information.
       def request_body(name = nil, **keywords, &block)
         define('request body') do
@@ -81,17 +81,9 @@ module Jsapi
           if name && (keywords.any? || block)
 
           keywords = { ref: name } if name
+          @definition.request_body = keywords
 
-          if (%i[type ref schema contents].none? { |key| keywords.key?(key) }) && !block
-            deprecation_warning(
-              'Starting with Jsapi 3.0, a `request_body` without :type will no longer ' \
-              'define an :object schema. Please specify `type: :object` explicitly.'
-            )
-          end
-
-          @meta_model.request_body = keywords
-
-          @meta_model.request_body.tap do |request_body|
+          @definition.request_body.tap do |request_body|
             RequestBody.new(request_body, &block) if block
           end
         end
@@ -120,7 +112,7 @@ module Jsapi
       #
       #   response 'foo'
       #
-      # See Meta::Operation#responses and Meta::Path#responses for further
+      # See Definition::Operation#responses and Definition::Path#responses for further
       # information.
       def response(status = nil, name = nil, **keywords, &block)
         define('response', status&.inspect) do
@@ -131,15 +123,8 @@ module Jsapi
             raise Error, "name can't be specified together with keywords or a block"
           end
 
-          if (%i[type ref schema contents].none? { |key| keywords.key?(key) }) && !block
-            deprecation_warning(
-              'Starting with Jsapi 3.0, a `response` without :type will no longer ' \
-              'define an :object schema. Please specify `type: :object` explicitly.'
-            )
-          end
-
-          @meta_model.add_response(status, keywords).tap do |response_model|
-            Response.new(response_model, &block) if block
+          @definition.add_response(status, keywords).tap do |response_definition|
+            Response.new(response_definition, &block) if block
           end
         end
       end

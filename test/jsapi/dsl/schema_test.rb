@@ -142,7 +142,7 @@ module Jsapi
       private
 
       def schema(**keywords, &block)
-        Meta::Schema.new(keywords).tap do |schema|
+        Definition::Schema.new(keywords).tap do |schema|
           Schema.new(schema, &block)
         end
       end

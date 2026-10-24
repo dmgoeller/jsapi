@@ -6,7 +6,7 @@ module Jsapi
       # JSON serialization
 
       def test_json_response
-        content_model = content_model(
+        content_definition = content_definition(
           type: 'object',
           existence: true,
           properties: {
@@ -18,23 +18,27 @@ module Jsapi
         )
 
         # Valid response
-        response = Response.new({ foo: 'bar' }, content_model)
+        response = Response.new({ foo: 'bar' }, content_definition)
 
         assert_equal({ 'foo' => 'bar' }, response.as_json)
         assert_equal('{"foo":"bar"}', response.to_json)
 
         # Invalid responses
-        response = Response.new(nil, content_model)
-        error = assert_raises(JsonifyError) { response.as_json }
+        response = Response.new(nil, content_definition)
+        error = assert_raises(Definition::Schema::JsonifyError) do
+          response.as_json
+        end
         assert_equal("response body can't be nil", error.message)
 
-        response = Response.new({ foo: nil }, content_model)
-        error = assert_raises(JsonifyError) { response.as_json }
+        response = Response.new({ foo: nil }, content_definition)
+        error = assert_raises(Definition::Schema::JsonifyError) do
+          response.as_json
+        end
         assert_equal("foo can't be nil", error.message)
       end
 
       def test_localized_json_response
-        content_model = content_model(
+        content_definition = content_definition(
           type: 'object',
           properties: {
             'foo' => { type: 'string' }
@@ -46,18 +50,18 @@ module Jsapi
           end
         end.new
 
-        response = Response.new(object, content_model, locale: :en)
+        response = Response.new(object, content_definition, locale: :en)
         assert_equal({ 'foo' => 'Hello world' }, response.as_json)
 
-        response = Response.new(object, content_model, locale: :de)
+        response = Response.new(object, content_definition, locale: :de)
         assert_equal({ 'foo' => 'Hallo Welt' }, response.as_json)
       end
 
       # JSON seq
 
       def test_json_seq
-        content_model = content_model(
-          Meta::Definitions.new(
+        content_definition = content_definition(
+          Definition::API.new(
             defaults: {
               'array' => { within_responses: [] }
             }
@@ -73,7 +77,7 @@ module Jsapi
         )
 
         # Valid responses
-        response = Response.new([{}, { foo: 'bar' }], content_model)
+        response = Response.new([{}, { foo: 'bar' }], content_definition)
         assert_equal(
           <<~JSON_SEQ,
             \u001E{"foo":null}
@@ -84,7 +88,7 @@ module Jsapi
           end.string
         )
 
-        response = Response.new(nil, content_model)
+        response = Response.new(nil, content_definition)
         assert_empty(
           StringIO.new.tap do |stream|
             response.write_json_seq_to(stream)
@@ -92,16 +96,16 @@ module Jsapi
         )
 
         # Invalid response
-        response = Response.new([nil], content_model)
+        response = Response.new([nil], content_definition)
 
-        error = assert_raises(JsonifyError) do
+        error = assert_raises(Definition::Schema::JsonifyError) do
           response.write_json_seq_to(StringIO.new)
         end
         assert_equal("[0] can't be nil", error.message)
       end
 
       def test_localized_json_seq
-        content_model = content_model(
+        content_definition = content_definition(
           type: 'array',
           items: {
             type: 'object',
@@ -117,7 +121,7 @@ module Jsapi
         end.new
 
         { en: 'Hello world', de: 'Hallo Welt' }.each do |locale, expected|
-          response = Response.new([object], content_model, locale: locale)
+          response = Response.new([object], content_definition, locale: locale)
           assert_equal(
             <<~JSON_SEQ,
               \u001E{"foo":"#{expected}"}
@@ -132,16 +136,16 @@ module Jsapi
       # Inspection
 
       def test_inspect
-        response = Response.new('foo', content_model(type: 'string'))
+        response = Response.new('foo', content_definition(type: 'string'))
         assert_equal('#<Jsapi::Controller::Response "foo">', response.inspect)
       end
 
       private
 
-      def content_model(definitions = nil, **keywords)
-        Meta::Content::Wrapper.new(
-          Meta::Content.new(**keywords),
-          definitions || Meta::Definitions.new
+      def content_definition(api_definition = nil, **keywords)
+        Definition::Content::Wrapper.new(
+          Definition::Content.new(**keywords),
+          api_definition || Definition::API.new
         )
       end
     end

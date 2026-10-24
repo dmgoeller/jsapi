@@ -31,14 +31,14 @@ module Jsapi
       #
       #   header 'x_foo'
       #
-      # See Meta::Response::Model#headers for further information.
+      # See Definition::Response::Model#headers for further information.
       def header(name = nil, **keywords, &block)
         define('header', name&.inspect) do
           name = keywords[:ref] if name.nil?
           keywords = { ref: name } unless keywords.any? || block
 
-          @meta_model.add_header(name, keywords).tap do |header_model|
-            Base.new(header_model, &block) if block
+          @definition.add_header(name, keywords).tap do |header_definition|
+            Base.new(header_definition, &block) if block
           end
         end
       end
@@ -61,8 +61,8 @@ module Jsapi
           name = keywords[:ref] if name.nil?
           keywords = { ref: name } unless keywords.any? || block
 
-          @meta_model.add_link(name, keywords).tap do |link_model|
-            Base.new(link_model, &block) if block
+          @definition.add_link(name, keywords).tap do |link_definition|
+            Base.new(link_definition, &block) if block
           end
         end
       end

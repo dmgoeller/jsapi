@@ -191,7 +191,7 @@ module Jsapi
       private
 
       def schema(**keywords)
-        Meta::Schema.wrap(Meta::Schema.new(**keywords), Meta::Definitions.new)
+        Definition::Schema.wrap(Definition::Schema.new(**keywords), Definition::API.new)
       end
     end
   end

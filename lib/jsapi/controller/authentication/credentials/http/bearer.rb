@@ -9,19 +9,12 @@ module Jsapi
         module HTTP
           # Holds a token passed according to \HTTP \Bearer \Authentication.
           class Bearer < Base
-            # The decoded token.
-            attr_reader :token
+            ##
+            # :attr_reader: token
+            # The token.
 
-            def initialize(authorization)
-              super
-              @token =
-                Base64.decode64(auth_param) \
-                if auth_scheme == 'Bearer' && auth_param.present?
-            end
-
-            def well_formed? # :nodoc:
-              !token.nil?
-            end
+            # -
+            alias token auth_param
           end
         end
       end

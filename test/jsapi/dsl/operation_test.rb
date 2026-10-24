@@ -149,7 +149,7 @@ module Jsapi
 
       def test_request_body
         request_body = operation do
-          request_body type: nil, description: 'Lorem ipsum'
+          request_body description: 'Lorem ipsum'
         end.request_body
 
         assert_predicate(request_body, :present?)
@@ -201,7 +201,7 @@ module Jsapi
 
       def test_response
         response = operation do
-          response 200, type: nil, description: 'Lorem ipsum'
+          response 200, description: 'Lorem ipsum'
         end.response(200)
 
         assert_predicate(response, :present?)
@@ -239,7 +239,7 @@ module Jsapi
 
       def test_default_response
         response = operation do
-          response type: nil, description: 'Lorem ipsum'
+          response description: 'Lorem ipsum'
         end.response('default')
 
         assert_predicate(response, :present?)
@@ -290,7 +290,7 @@ module Jsapi
       private
 
       def operation(**keywords, &block)
-        Meta::Operation.new(keywords).tap do |operation|
+        Definition::Operation.new(keywords).tap do |operation|
           Operation.new(operation, &block)
         end
       end

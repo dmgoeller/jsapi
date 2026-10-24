@@ -59,7 +59,7 @@ module Jsapi
       private
 
       def examples(&block)
-        Meta::Parameter.new('foo').tap do |model|
+        Definition::Parameter.new('foo').tap do |model|
           Class.new(Base) do
             include Examples
           end.new(model, &block)

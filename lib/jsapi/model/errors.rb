@@ -27,10 +27,10 @@ module Jsapi
         errors << wrap(error)
       end
 
-      # Calls the block in context of +attribute+.
-      def nested(attribute, &block)
+      # Calls block in context of +attribute+.
+      def nested(attribute)
         @path.push(attribute.to_sym)
-        block&.call
+        yield if block_given?
       ensure
         @path.pop
       end

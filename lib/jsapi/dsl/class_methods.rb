@@ -3,7 +3,35 @@
 module Jsapi
   module DSL
     module ClassMethods
-      # Specifies the base path of the API.
+      # Returns the \API definition associated with the current class. Defines it,
+      # if keywords or a block are passed.
+      #
+      #   api base_path: '/foo' do
+      #     operation 'bar'
+      #   end
+      def api(**keywords, &block)
+        unless defined? @api_definition
+          @api_definition = Definition::API.new(
+            owner: self,
+            parent: superclass.try(:api_definitions)
+          )
+          if (name = try(:name))
+            pathname = Jsapi.configuration.pathname(
+              name.deconstantize.split('::').map(&:underscore),
+              "#{name.demodulize.delete_suffix('Controller').underscore}.rb"
+            )
+            API.new(@api_definition, pathname) if pathname&.file?
+          end
+        end
+        @api_definition.merge!(keywords) if keywords.any?
+        API.new(@api_definition, &block) if block
+
+        @api_definition
+      end
+
+      alias api_definitions api
+
+      # Specifies the base path of the \API.
       #
       #   api_base_path '/foo'
       #
@@ -27,32 +55,6 @@ module Jsapi
       #
       def api_default(type, **keywords, &block)
         api_definitions { default(type, **keywords, &block) }
-      end
-
-      # Returns the API definitions associated with the current class. Adds additional
-      # definitions when any keywords or a block is specified.
-      #
-      #   api_definitions base_path: '/foo' do
-      #     operation 'bar'
-      #   end
-      def api_definitions(**keywords, &block)
-        unless defined? @api_definitions
-          @api_definitions = Meta::Definitions.new(
-            owner: self,
-            parent: superclass.try(:api_definitions)
-          )
-          if (name = try(:name))
-            pathname = Jsapi.configuration.pathname(
-              name.deconstantize.split('::').map(&:underscore),
-              "#{name.demodulize.delete_suffix('Controller').underscore}.rb"
-            )
-            Definitions.new(@api_definitions, pathname) if pathname&.file?
-          end
-        end
-        @api_definitions.merge!(keywords) if keywords.any?
-        Definitions.new(@api_definitions, &block) if block
-
-        @api_definitions
       end
 
       # Specifies a reusable example.
@@ -79,7 +81,7 @@ module Jsapi
         api_definitions { header(name, **keywords, &block) }
       end
 
-      # Specifies the host serving the API.
+      # Specifies the host serving the \API.
       #
       #   api_host 'foo.bar'
       #
@@ -92,12 +94,12 @@ module Jsapi
         api_definitions { import(filename) }
       end
 
-      # Includes API definitions from +klasses+.
+      # Includes \API components from +klasses+.
       def api_include(*klasses)
         api_definitions { include(*klasses) }
       end
 
-      # Specifies general information about the API.
+      # Specifies general information about the \API.
       #
       #   api_info title: 'Foo', version: '1' do
       #     contact name: 'bar'
@@ -193,7 +195,7 @@ module Jsapi
         api_definitions { schema(name, **keywords, &block) }
       end
 
-      # Specifies a URI scheme supported by the API.
+      # Specifies a URI scheme supported by the \API.
       #
       #   api_scheme 'https'
       #
@@ -219,7 +221,7 @@ module Jsapi
         api_definitions { security_scheme(name, **keywords, &block) }
       end
 
-      # Specifies a server providing the API.
+      # Specifies a server providing the \API.
       #
       #   api_server url: 'https://foo.bar/foo'
       #

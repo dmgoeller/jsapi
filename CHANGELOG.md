@@ -1,5 +1,33 @@
 # Change log
 
+## 3.0 (2026-10-24)
+
+### New features
+
+#### API Clients
+
+Jsapi now provides a high-level API for calling remote operations over HTTP.
+
+#### OpenAPI
+
+The schema of a request body or response can now be omitted.
+
+### Changes
+
+- `api` can be used as a shorthand for `api_definitions`.
+
+### Breaking Changes
+
+- `request_body` and `response` without `:type` no longer define an `"object"` schema.
+  Specify `type: "object"` explicitly.
+
+- The `OperationNotFound` and `ResponseNotFound` error classes have been moved from
+  `Jsapi::Controller` to `Jsapi::Definition`.
+
+- The `JsonifyError` class has been moved from `Jsapi` to `Jsapi::Definition::Schema`.
+
+- The default location for API definitions has been changed from `jsapi/api_defs` to `jsapi`.
+
 ## 2.1.2 (2026-10-21)
 
 Responses with a plain-text body can now be produced from any object by converting the
@@ -21,10 +49,9 @@ The field name for request bodies in OpenAPI 3.x documents has been corrected.
 
 ### New features
 
-#### API Actions
+#### API actions
 
-Starting with Jsapi 2.0 the `api_action` and `api_action!` can be used to define API
-actions.
+Starting with Jsapi 2.0 API actions can be defined by `api_action` and `api_action!`.
 
 ```ruby
 api_operation 'foo' do
@@ -60,7 +87,7 @@ class FooController < Jsapi::Controller::Base
 end
 ```
 
-#### API Callbacks
+#### API callbacks
 
 The `api_operation` and `api_operation!` methods now trigger callbacks.
 
@@ -89,7 +116,7 @@ end
 The `api_operation` and `api_operation!` methods now render the textual representation of
 the object returned by the block if the media type of the response is `text/plain`.
 
-#### Content Negotiation
+#### Content negotiation
 
 Request body and responses can now have different types of content.
 
@@ -164,14 +191,14 @@ end
 
 ## 1.4 (2025-11-15)
 
-### New Features
+### New features
 
 Operations can now be grouped by path. Therefore, it is possible to specify
 a path name only once, even if there are multiple operations for it.
 
 ## 1.3 (2025-11-02)
 
-### New Features
+### New features
 
 The new OpenAPI version 3.2 is supported, in particalur:
 

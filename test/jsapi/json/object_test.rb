@@ -85,7 +85,7 @@ module Jsapi
       end
 
       def test_attributes_on_polymorphism
-        definitions = Meta::Definitions.new(
+        api_definition = Definition::API.new(
           schemas: {
             'Base' => {
               discriminator: {
@@ -107,7 +107,7 @@ module Jsapi
         )
         object = Object.new(
           { 'type' => 'Foo', 'foo' => 'bar' },
-          schema(definitions, ref: 'Base')
+          schema(api_definition, ref: 'Base')
         )
         assert_equal({ 'type' => 'Foo', 'foo' => 'bar' }, object.attributes)
       end
@@ -132,7 +132,7 @@ module Jsapi
         object = Object.new(
           { 'foo' => 'bar' },
           schema(
-            Meta::Definitions.new(
+            Definition::API.new(
               schemas: {
                 'Foo' => { type: 'string' }
               }
@@ -185,7 +185,7 @@ module Jsapi
         assert(errors.added?(:foo, "can't be blank"))
       end
 
-      def test_validates_nested_attributes_against_model
+      def test_validates_nested_attributes_against_schema
         schema = schema(
           type: 'object',
           properties: {

@@ -1,0 +1,36 @@
+# frozen_string_literal: true
+
+require 'test_helper'
+
+require_relative 'test_helper'
+
+module Jsapi
+  module Definition
+    class ContactTest < Minitest::Test
+      include TestHelper
+
+      def test_empty_openapi_contact_object
+        assert_openapi_equal({}, Contact.new, nil)
+      end
+
+      def test_full_openapi_contact_object
+        contact = Contact.new(
+          name: 'Foo',
+          url: 'https://foo.bar',
+          email: 'foo@foo.bar',
+          openapi_extensions: { 'foo' => 'bar' }
+        )
+        assert_openapi_equal(
+          {
+            name: 'Foo',
+            url: 'https://foo.bar',
+            email: 'foo@foo.bar',
+            'x-foo': 'bar'
+          },
+          contact,
+          nil
+        )
+      end
+    end
+  end
+end

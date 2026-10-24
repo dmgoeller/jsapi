@@ -7,14 +7,14 @@ module Jsapi
     class BaseTest < Minitest::Test
       def test_integration
         controller = Class.new(Base) do
-          public :api_definitions
+          public :api
 
-          api_definitions do
+          api do
             operation 'foo'
           end
         end.new
-        api_definitions = controller.api_definitions
-        assert_predicate(api_definitions.find_operation('foo'), :present?)
+        api = controller.api
+        assert_predicate(api.find_operation('foo'), :present?)
       end
     end
   end

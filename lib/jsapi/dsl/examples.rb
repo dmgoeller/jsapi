@@ -21,7 +21,7 @@ module Jsapi
             keywords = { value: name_or_value }
           end
 
-          example = @meta_model.add_example(name, keywords)
+          example = @definition.add_example(name, keywords)
           Base.new(example, &block) if block
         end
       end

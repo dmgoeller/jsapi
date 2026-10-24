@@ -9,6 +9,13 @@ module Jsapi
     class MethodsTest < Minitest::Test
       include TestHelper
 
+      # #api
+
+      def test_api_is_aliased_as_api_definitions
+        controller = self.controller
+        assert_same(controller.api, controller.api_definitions)
+      end
+
       # #api_operation and #api_operation!
 
       %i[api_operation api_operation!].each do |method|
@@ -115,21 +122,19 @@ module Jsapi
           assert_equal('omit must be one of :empty or :nil, is :foo', error.message)
         end
 
-        define_method("test_#{name}_raises_an_error_when_the_" \
-                      'operation_could_not_be_found') do
-          assert_raises(OperationNotFound) do
+        define_method("test_#{name}_raises_an_error_if_operation_is_not_found") do
+          assert_raises(Definition::OperationNotFound) do
             controller.instance_eval { send(method, :foo) }
           end
         end
 
-        define_method("test_#{name}_raises_an_error_when_no_suitable_" \
-                      'response_could_be_found') do
+        define_method("test_#{name}_raises_an_error_if_no_response_matches") do
           controller = controller do
             api_operation do
               response 200, type: 'string'
             end
           end
-          assert_raises(ResponseNotFound) do
+          assert_raises(Definition::ResponseNotFound) do
             controller.instance_eval { send(method, status: 204) }
           end
         end
@@ -140,7 +145,7 @@ module Jsapi
           controller = controller do
             api_operation do
               parameter 'request_id', type: 'integer'
-              response do
+              response type: 'object' do
                 property 'request_id', type: 'integer'
                 property 'foo', type: 'string'
               end
@@ -312,7 +317,7 @@ module Jsapi
 
         define_method("test_#{name}_produces_an_error_response_when_rescuing_an_exception") do
           controller = controller do
-            api_definitions do
+            api do
               rescue_from RuntimeError, with: 500
 
               operation do
@@ -333,7 +338,7 @@ module Jsapi
 
         define_method("test_#{name}_calls_an_on_rescue_callback_as_a_method") do
           controller = controller do
-            api_definitions do
+            api do
               rescue_from RuntimeError, with: 500
               on_rescue :notice_error
 
@@ -362,7 +367,7 @@ module Jsapi
           error = nil
 
           controller = controller do
-            api_definitions do
+            api do
               rescue_from RuntimeError, with: 500
               on_rescue { |e| error = e }
 
@@ -382,7 +387,7 @@ module Jsapi
 
         define_method("test_#{name}_reraises_an_error") do
           controller = controller do
-            api_definitions do
+            api do
               rescue_from RuntimeError, with: 500
 
               operation do
@@ -542,7 +547,7 @@ module Jsapi
       end
 
       def test_api_params_raises_an_error_when_the_operation_could_not_be_found
-        assert_raises(OperationNotFound) do
+        assert_raises(Definition::OperationNotFound) do
           controller.instance_eval { api_params('foo') }
         end
       end
@@ -595,21 +600,21 @@ module Jsapi
         assert_equal('omit must be one of :empty or :nil, is :foo', error.message)
       end
 
-      def test_api_response_raises_an_error_when_the_operation_could_not_be_found
-        assert_raises(OperationNotFound) do
+      def test_api_response_raises_an_error_if_the_operation_is_not_found
+        assert_raises(Definition::OperationNotFound) do
           controller.instance_eval do
             api_response('foo', 'foo', status: 200)
           end
         end
       end
 
-      def test_api_response_raises_an_error_when_no_suitable_response_could_be_found
+      def test_api_response_raises_an_error_if_no_response_matches
         controller = controller do
           api_operation do
             response 200, type: 'string'
           end
         end
-        assert_raises(ResponseNotFound) do
+        assert_raises(Definition::ResponseNotFound) do
           controller.instance_eval do
             controller.api_response('foo', status: 204)
           end

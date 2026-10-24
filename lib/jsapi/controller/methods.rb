@@ -4,26 +4,6 @@ require_relative 'methods/callbacks'
 
 module Jsapi
   module Controller
-    # Raised when no operation with the specified name could be found.
-    class OperationNotFound < StandardError
-      def initialize(operation_name)
-        super("operation not found: #{operation_name}")
-      end
-    end
-
-    # Raised when no suitable response could be found.
-    class ResponseNotFound < StandardError
-      def initialize(operation, status)
-        super(
-          if operation.responses.none?
-            "#{operation.name.inspect} has no responses"
-          else
-            "#{operation.name.inspect} has no response for status #{status}"
-          end
-        )
-      end
-    end
-
     # Raised when the current request could not be authenticated.
     class Unauthorized < StandardError
       def initialize # :nodoc:
@@ -49,7 +29,9 @@ module Jsapi
 
       # Overrides <code>Exception#message</code> to lazily generate the error message.
       def message
-        "#{@params.errors.full_messages.map { |m| m.delete_suffix('.') }.join('. ')}."
+        @params.errors.full_messages.map do |message|
+          message.end_with?('.') ? message : "#{message}."
+        end.join(' ')
       end
     end
 
@@ -58,14 +40,16 @@ module Jsapi
         base.include(Callbacks)
       end
 
-      # Returns the Meta::Definitions instance associated with the controller class. In
+      # Returns the Definition::API instance associated with the controller class. In
       # particular, this method can be used to create an OpenAPI document, for example:
       #
-      #   render(json: api_definitions.openapi_document)
+      #   render(json: api.openapi_document)
       #
-      def api_definitions
-        self.class.api_definitions
+      def api
+        self.class.api
       end
+
+      alias api_definitions api
 
       ##
       # :method: api_operation
@@ -92,11 +76,10 @@ module Jsapi
       #   end
       #
       # +operation_name+ can be omitted if the controller handles one operation only.
-      #
-      # If no operation could be found for +operation_name+, an OperationNotFound exception
-      # is raised.
+      # If the operation does not exist, an OperationNotFound error is raised.
       #
       # +:status+ specifies the HTTP status code of the response to be produced.
+      # If no suitable response exists, a ResponseNotFound error is raised.
       #
       # If +:strong+ is +true+, parameters that can be mapped are accepted only. That means
       # that the model passed to the block is invalid if there are any request parameters
@@ -108,7 +91,7 @@ module Jsapi
       # - +:empty+ - All of the  properties whose value is empty are omitted.
       # - +:nil+ - All of the properties whose value is +nil+ are omitted.
       #
-      # Raises an Unauthorized exception if the Authentication module is included and the
+      # Raises an Unauthorized error if the Authentication module is included and the
       # current request could not be authenticated.
       #
       # See Callbacks::ClassMethods for possible callbacks.
@@ -117,8 +100,8 @@ module Jsapi
       # :method: api_operation!
       # :args: operation_name = nil, omit: nil, status: nil, strong: false, &block
       #
-      # Like +api_operation+, except that a ParametersInvalid exception is raised
-      # when request parameters are invalid.
+      # Like +api_operation+, except it raises a ParametersInvalid error when the request
+      # parameters are invalid.
       #
       #   api_operation!('foo') do |api_params|
       #     # ...
@@ -127,14 +110,14 @@ module Jsapi
       [true, false].each do |bang|
         define_method(bang ? :api_operation! : :api_operation) \
         do |operation_name = nil, omit: nil, status: nil, strong: false, &block|
-          raise ArgumentError, Messages.invalid_value(
+          raise ArgumentError, Support::Messages.invalid_value(
             name: 'omit',
             value: omit,
             valid_values: %i[empty nil]
           ) if [nil, :empty, :nil].exclude?(omit)
 
-          operation = _api_operation(operation_name)
-          response_model = nil
+          operation = api.find_operation!(operation_name)
+          response_definition = nil
 
           result = begin
             # Authenticate request first if Authentication is included
@@ -145,7 +128,7 @@ module Jsapi
             end
 
             status = Status::Code.from(status)
-            response_model = _api_response_model(operation, status)
+            response_definition = operation.find_response_for!(status)
 
             api_params = _api_params(operation, strong: strong)
 
@@ -157,19 +140,17 @@ module Jsapi
 
             block&.call(api_params)
           rescue StandardError => e
-            definitions = api_definitions
-
             # Lookup a rescue handler
-            rescue_handler = definitions.rescue_handler_for(e)
+            rescue_handler = api.rescue_handler_for(e)
             raise e if rescue_handler.nil?
 
-            # Replace the status code and response model
+            # Replace the status code and response definition
             status = rescue_handler.status_code
-            response_model = operation.find_response(status)
-            raise e if response_model.nil?
+            response_definition = operation.find_response_for(status)
+            raise e if response_definition.nil?
 
             # Call on_rescue callbacks
-            definitions.on_rescue_callbacks.each do |callback|
+            api.on_rescue_callbacks.each do |callback|
               callback.respond_to?(:call) ? callback.call(e) : send(callback, e)
             end
 
@@ -179,9 +160,12 @@ module Jsapi
           return if response_body
 
           # Produce response
-          media_type, content_model = _api_media_type_and_content_model(response_model)
+          media_type, content_definition =
+            response_definition
+            .media_type_and_content_for(*_api_accept)
+
           status = status&.to_i
-          return head(status) unless content_model
+          return head(status) unless content_definition
 
           result = _api_before_rendering(operation_name, result, api_params)
 
@@ -194,9 +178,9 @@ module Jsapi
           elsif media_type.json? || media_type.json_seq?
             api_response = Response.new(
               result,
-              content_model,
+              content_definition,
               omit: omit,
-              locale: response_model.locale
+              locale: response_definition.locale
             )
             if media_type.json?
               render(
@@ -225,8 +209,7 @@ module Jsapi
       #
       # +operation_name+ can be omitted if the controller handles one operation only.
       #
-      # If no operation could be found for +operation_name+, an OperationNotFound exception
-      # is raised.
+      # If the operation does not exist, an OperationNotFound error is raised.
       #
       # If +strong+ is +true+, parameters that can be mapped are accepted only. That means
       # that the model returned is invalid if there are any request parameters that can't be
@@ -234,20 +217,19 @@ module Jsapi
       #
       # Note that each call of +api_params+ returns a newly created instance.
       def api_params(operation_name = nil, strong: false)
-        _api_params(_api_operation(operation_name), strong: strong)
+        _api_params(api.find_operation!(operation_name), strong: strong)
       end
 
-      # Returns a Response to serialize the JSON representation of +result+ according to the
-      # appropriate +response+ specification.
+      # Returns a Response to serialize the JSON representation of +result+ according to
+      # the appropriate +response+ specification.
       #
       #   render(json: api_response(bar, 'foo', status: 200))
       #
       # +operation_name+ can be omitted if the controller handles one operation only.
-      #
-      # If no operation could be found for +operation_name+, an OperationNotFound exception
-      # is raised.
+      # If the operation does not exist, an OperationNotFound error is raised.
       #
       # +:status+ specifies the HTTP status code of the response to be produced.
+      # If no suitable response exists, a ResponseNotFound error is raised.
       #
       # The +:omit+ option specifies on which conditions properties are omitted.
       # Possible values are:
@@ -255,37 +237,28 @@ module Jsapi
       # - +:empty+ - All of the  properties whose value is empty are omitted.
       # - +:nil+ - All of the properties whose value is +nil+ are omitted.
       def api_response(result, operation_name = nil, omit: nil, status: nil)
-        raise ArgumentError, Messages.invalid_value(
+        raise ArgumentError, Support::Messages.invalid_value(
           name: 'omit',
           value: omit,
           valid_values: %i[empty nil]
         ) if [nil, :empty, :nil].exclude?(omit)
 
         status = Status::Code.from(status)
-        operation = _api_operation(operation_name)
-        response_model = _api_response_model(operation, status)
+        operation = api.find_operation!(operation_name)
+        response_definition = operation.find_response_for!(status)
 
         Response.new(
           result,
-          _api_media_type_and_content_model(response_model).second,
+          response_definition.content_for(*_api_accept),
           omit: omit,
-          locale: response_model.locale
+          locale: response_definition.locale
         )
       end
 
       private
 
-      def _api_media_type_and_content_model(response_model)
-        response_model.media_type_and_content_for(
-          *(request.headers['Accept']&.split(',').presence || [Media::Range::ALL])
-        )
-      end
-
-      def _api_operation(operation_name)
-        operation = api_definitions.find_operation(operation_name)
-        return operation if operation
-
-        raise OperationNotFound.new(operation_name)
+      def _api_accept
+        request.headers['Accept']&.split(',').presence || [Media::Range::ALL]
       end
 
       def _api_params(operation, strong:)
@@ -297,13 +270,6 @@ module Jsapi
             strong: strong
           )
         )
-      end
-
-      def _api_response_model(operation, status)
-        response_model = operation.find_response(status)
-        return response_model if response_model
-
-        raise ResponseNotFound.new(operation, status)
       end
     end
   end

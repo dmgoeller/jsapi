@@ -21,14 +21,14 @@ module Jsapi
       #
       #   callback 'foo'
       #
-      # See Meta::Operation#callbacks for further information.
+      # See Definition::Operation#callbacks for further information.
       def callback(name = nil, **keywords, &block)
         define('callback', name&.inspect) do
           name = keywords[:ref] if name.nil?
           keywords = { ref: name } unless keywords.any? || block
 
-          @meta_model.add_callback(name, keywords).tap do |callback_model|
-            Base.new(callback_model, &block) if block
+          @definition.add_callback(name, keywords).tap do |callback_definition|
+            Base.new(callback_definition, &block) if block
           end
         end
       end
@@ -47,18 +47,20 @@ module Jsapi
       #
       #    external_docs url: 'https://foo.bar/docs'
       #
-      # See Meta::Operation#external_docs for further information.
+      # See Definition::Operation#external_docs for further information.
 
       ##
       # :method: description
       # :args: arg
       # Specifies the description of the operation.
 
-      # Specifies the HTTP verb of the operation.
+      # Specifies the HTTP method of the operation.
       #
       #   method 'post'
       #
-      # See Meta::Operation#method for further information.
+      # See Definition::Operation#method for further information.
+      #
+      # Aliased as +http_method+.
       def method(arg)
         keyword(:method, arg)
       end
@@ -77,7 +79,7 @@ module Jsapi
       #     scheme 'basic_auth'
       #   end
       #
-      # See Meta::Operation#security_requirements for further information.
+      # See Definition::Operation#security_requirements for further information.
 
       # :method: server
       # :args: arg

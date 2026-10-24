@@ -27,6 +27,41 @@ module Jsapi
         end
       end
 
+      def test_ranges
+        ranges = %w[
+          informational
+          success
+          redirection
+          client_error
+          server_error
+        ]
+        {
+          continue: 'informational',
+          ok: 'success',
+          moved_permanently: 'redirection',
+          bad_request: 'client_error',
+          internal_server_error: 'server_error'
+        }.each do |symbol, expected_range|
+          code = Code.from(symbol)
+
+          ranges.each do |range|
+            method = :"#{range}?"
+
+            if range == expected_range
+              assert(
+                code.send(method),
+                "Expected #{code} to be #{name}"
+              )
+            else
+              assert_not(
+                code.send(method),
+                "Expected #{code} not to be #{name}"
+              )
+            end
+          end
+        end
+      end
+
       def test_match
         code = Code.from(200)
 

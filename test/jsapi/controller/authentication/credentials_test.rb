@@ -15,7 +15,7 @@ module Jsapi
                 'X-API-KEY' => 'foo'
               }
             ),
-            Meta::SecurityScheme::APIKey.new(
+            Definition::SecurityScheme::APIKey.new(
               in: 'header',
               name: 'X-API-KEY'
             )
@@ -31,7 +31,7 @@ module Jsapi
                 'api-key' => 'foo'
               }
             ),
-            Meta::SecurityScheme::APIKey.new(
+            Definition::SecurityScheme::APIKey.new(
               in: 'query',
               name: 'api-key'
             )
@@ -43,7 +43,7 @@ module Jsapi
         def test_api_key_on_other_location
           credentials = Credentials.create(
             ActionDispatch::Request.new,
-            Meta::SecurityScheme::APIKey.new(
+            Definition::SecurityScheme::APIKey.new(
               in: 'cookie',
               name: 'apikey'
             )
@@ -61,7 +61,7 @@ module Jsapi
                 'Authorization' => "Basic #{Base64.encode64('foo:bar')}"
               }
             ),
-            Meta::SecurityScheme::HTTP::Basic.new
+            Definition::SecurityScheme::HTTP::Basic.new
           )
           assert_kind_of(Credentials::HTTP::Basic, credentials)
           assert_equal('foo', credentials.username)
@@ -72,10 +72,10 @@ module Jsapi
           credentials = Credentials.create(
             ActionDispatch::Request.new(
               headers: {
-                'Authorization' => "Bearer #{Base64.encode64('foo')}"
+                'Authorization' => 'Bearer foo'
               }
             ),
-            Meta::SecurityScheme::HTTP::Bearer.new
+            Definition::SecurityScheme::HTTP::Bearer.new
           )
           assert_kind_of(Credentials::HTTP::Bearer, credentials)
           assert_equal('foo', credentials.token)
@@ -88,7 +88,7 @@ module Jsapi
                 'Authorization' => 'foo bar'
               }
             ),
-            Meta::SecurityScheme::HTTP::Other.new
+            Definition::SecurityScheme::HTTP::Other.new
           )
           assert_kind_of(Credentials::HTTP::Base, credentials)
           assert_equal('foo', credentials.auth_scheme)

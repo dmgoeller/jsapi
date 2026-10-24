@@ -69,6 +69,7 @@ module Jsapi
       def test_initialize_on_query_parameter_and_request_body
         operation.add_parameter('foo', type: 'string')
         operation.request_body = {
+          type: 'object',
           additional_properties: { type: 'string' }
         }
         params = parameters(foo: 'Value of foo', bar: 'Value of bar')
@@ -83,6 +84,7 @@ module Jsapi
           additional_properties: { type: 'string' }
         )
         operation.request_body = {
+          type: 'object',
           additional_properties: { type: 'string' }
         }
         params = parameters(query_parameters: { foo: 'Value of foo' }, bar: 'Value of bar')
@@ -115,7 +117,10 @@ module Jsapi
 
       def test_additional_attributes
         operation.add_parameter('foo', type: 'string')
-        operation.request_body = { additional_properties: { type: 'string' } }
+        operation.request_body = {
+          type: 'object',
+          additional_properties: { type: 'string' }
+        }
 
         params = parameters(foo: 'Value of foo')
         assert_equal({}, params.additional_attributes)
@@ -139,7 +144,7 @@ module Jsapi
         assert(errors.added?(:foo, "can't be blank"))
       end
 
-      def test_validates_nested_parameters_against_model
+      def test_validates_nested_parameters_against_schema
         parameter = operation.add_parameter('foo', type: 'object')
         parameter.schema.add_property('bar', type: 'string', existence: true)
         errors = Model::Errors.new
@@ -239,12 +244,12 @@ module Jsapi
 
       private
 
-      def definitions
-        @definitions ||= Meta::Definitions.new
+      def api_definition
+        @api_definition ||= Definition::API.new
       end
 
       def operation
-        @operation ||= definitions.add_operation('operation')
+        @operation ||= api_definition.add_operation('operation')
       end
 
       def parameters(headers: {}, query_parameters: {}, strong: false, **params)
@@ -259,7 +264,7 @@ module Jsapi
             headers: headers,
             query_parameters: query_parameters
           ),
-          definitions.find_operation,
+          api_definition.find_operation,
           strong: strong
         )
       end

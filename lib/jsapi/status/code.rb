@@ -104,6 +104,26 @@ module Jsapi
         super(value, priority: 1)
       end
 
+      def informational?
+        Range::INFORMATIONAL.match?(self)
+      end
+
+      def success?
+        Range::SUCCESS.match?(self)
+      end
+
+      def redirection?
+        Range::REDIRECTION.match?(self)
+      end
+
+      def client_error?
+        Range::CLIENT_ERROR.match?(self)
+      end
+
+      def server_error?
+        Range::SERVER_ERROR.match?(self)
+      end
+
       # Returns true if and only if +status_code+ is equal to itself.
       def match?(status_code)
         status_code == self

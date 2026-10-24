@@ -20,11 +20,11 @@ module Jsapi
         @params_to_be_validated = strong == true ? params.dup : {}
 
         # Parameters
-        @raw_attributes = operation.parameters.transform_values do |parameter_model|
+        @raw_attributes = operation.parameters.transform_values do |parameter_definition|
           JSON.wrap(
-            case parameter_model.in
+            case parameter_definition.in
             when 'header'
-              request.headers[parameter_model.name]
+              request.headers[parameter_definition.name]
             when 'querystring'
               query_params = request.query_parameters
               keys = query_params.keys
@@ -32,11 +32,11 @@ module Jsapi
               unassigned_params.except!(*keys)
               @params_to_be_validated.except!(*keys)
 
-              parameter_model.object? ? params.slice(*keys) : query_params.to_query
+              parameter_definition.object? ? params.slice(*keys) : query_params.to_query
             else
-              unassigned_params.delete(parameter_model.name)
+              unassigned_params.delete(parameter_definition.name)
             end,
-            parameter_model.schema,
+            parameter_definition.schema,
             context: :request
           )
         end

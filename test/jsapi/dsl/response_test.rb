@@ -3,15 +3,45 @@
 module Jsapi
   module DSL
     class ResponseTest < Minitest::Test
+      def test_implicit_content
+        content = response content_type: 'text/plain' do
+          example 'Lorem ipsum'
+        end.content('text/plain')
+
+        assert_predicate(content, :present?)
+        assert_nil(content.schema)
+        assert_equal('Lorem ipsum', content.example('default').value)
+      end
+
+      def test_implicit_content_with_type
+        content = response content_type: 'text/plain', type: 'string' do
+          example 'Lorem ipsum'
+        end.content('text/plain')
+
+        assert_predicate(content, :present?)
+        assert_equal('string', content.schema.type)
+        assert_equal('Lorem ipsum', content.example('default').value)
+      end
+
       # #content
 
       def test_content
         content = response content_type: 'foo/bar' do
-          example 'foo bar'
+          example 'Lorem ipsum'
         end.content('foo/bar')
 
         assert_predicate(content, :present?)
-        assert_equal('foo bar', content.example('default').value)
+        assert_nil(content.schema)
+        assert_equal('Lorem ipsum', content.example('default').value)
+      end
+
+      def test_content_with_type
+        content = response do
+          content 'text/plain', type: 'string'
+        end.content('text/plain')
+
+        assert_predicate(content, :present?)
+        assert_equal('string', content.schema.type)
       end
 
       # #example
@@ -108,7 +138,7 @@ module Jsapi
       private
 
       def response(**keywords, &block)
-        Meta::Response.new(keywords).tap do |response|
+        Definition::Response.new(keywords).tap do |response|
           Response.new(response, &block)
         end
       end

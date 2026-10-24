@@ -34,10 +34,10 @@ simple echo endpoint can be defined as below.
 get 'echo', to: 'echo#index'
 ```
 
-Specify the operation to be bound to the API endpoint in `jsapi/api_defs/echo.rb`:
+Specify the operation to be bound to the API endpoint in `jsapi/echo.rb`:
 
 ```ruby
-# jsapi/api_defs/echo.rb
+# jsapi/echo.rb
 
 operation path: '/echo' do
   parameter 'call', type: 'string', existence: true
@@ -84,10 +84,10 @@ body is produced:
 
 When the required `call` parameter is missing or the value of `call` is empty, `api_operation!`
 raises a `Jsapi::Controller::ParametersInvalid` error. To rescue such exceptions, add an
-`rescue_from` directive to `jsapi/api_defs/echo.rb`:
+`rescue_from` directive to `jsapi/echo.rb`:
 
 ```ruby
-# jsapi/api_defs/echo.rb
+# jsapi/echo.rb
 
 rescue_from Jsapi::Controller::ParametersInvalid, with: 400
 ```
@@ -101,8 +101,14 @@ Then a response with HTTP status code 400 and the following body is produced:
 }
 ```
 
-To produce an OpenAPI document describing the API, add another route, an `info` directive and
-a controller action matching the route, for example:
+To produce an OpenAPI document describing the API, add an `info` directive and a controller
+action that renders the document, for example:
+
+```ruby
+# jsapi/echo.rb
+
+info title: 'Echo', version: '1'
+```
 
 ```ruby
 # config/routes.rb
@@ -111,17 +117,11 @@ get 'echo/openapi', to: 'echo#openapi'
 ```
 
 ```ruby
-# jsapi/api_defs/echo.rb
-
-info title: 'Echo', version: '1'
-```
-
-```ruby
 # app/controllers/echo_controller.rb
 
 class EchoController < Jsapi::Controller::Base
   def openapi
-    render(json: api_definitions.openapi_document(params[:version]))
+    render(json: api.openapi_document(params[:version]))
   end
 end
 ```
@@ -138,13 +138,12 @@ all top-level directives start with `api_`. These are:
 - [api_base_path](#specifying-api-locations)
 - [api_callback](#callbacks)
 - [api_default](#specifying-general-default-values)
-- api_definitions
 - [api_example](#specifying-examples)
 - [api_external_docs](#specifying-external-docs)
 - [api_header](#headers)
 - [api_host](#specifying-api-locations)
-- [api_import](#importing-api-definitions)
-- [api_include](#sharing-api-definitions)
+- [api_import](#importing-api-definition)
+- [api_include](#sharing-api-components)
 - [api_info](#specifying-metadata)
 - [api_link](#links)
 - [api_on_rescue](#specifying-rescue-handlers-and-callbacks)
@@ -183,13 +182,13 @@ class EchoController < Jsapi::Controller::Base
 end
 ```
 
-Furthermore, API definitions can be specified within an `api_definitions` block as below.
+Furthermore, the API can be defined in a single `api` block:
 
 ```ruby
 # app/controllers/echo_controller.rb
 
 class EchoController < Jsapi::Controller::Base
-  api_definitions do
+  api do
     info title: 'Echo', version: '1'
 
     rescue_from Jsapi::Controller::ParametersInvalid, with: 400
@@ -208,8 +207,10 @@ class EchoController < Jsapi::Controller::Base
 end
 ```
 
-All keywords except `:ref`, `:schema` and `:type` may also be specified by nested directives,
-for example:
+`api` is aliased as `api_definitions`.
+
+All keywords except `:ref`, `:schema` and `:type` may also be specified using directives
+within the block, for example:
 
 ```ruby
 parameter 'call', type: 'string' do
@@ -250,7 +251,7 @@ keywords:
 - `:deprecated` - Specifies whether or not the operation is deprecated.
 - `:description` - The description of the operation.
 - `:external_docs` - See [Specifying external docs].
-- `:method` - The HTTP verb of the operation, `"GET"` by default.
+- `:method` (aliased as `:http_method`) - The HTTP method of the operation, `"GET"` by default.
 - `:model` - See [API models](#api-models).
 - `:openapi_extensions` - See [Specifying OpenAPI extensions].
 - `:parameters` - See [Specifying parameters].
@@ -451,6 +452,8 @@ schema of the request body. Additionally, the following keywords may be specifie
 The `:example`, `:examples` and `:openapi_extensions` keywords are only used to describe the
 request body in generated OpenAPI documents.
 
+The schema is omitted if `:type` is missing.
+
 #### Different types of content
 
 Different types of content can be specified by nested `content` directives, for example:
@@ -545,6 +548,8 @@ language of regular responses.
 
 The `:example`, `:examples`, `:headers`, `:links` `:openapi_extensions` and `summary` keywords
 are only used to describe a response in generated OpenAPI documents.
+
+The schema is omitted if `:type` is missing.
 
 #### Different types of content
 
@@ -1019,13 +1024,13 @@ The location of an API can either be specified by an `api_server` directive or t
 `api_host` and `api_base_path` directives, for example:
 
 ```ruby
-api_server 'https://foo.bar/foo'
+api_server 'https://foo.bar/api'
 ```
 
 ```ruby
 api_scheme 'https'
 api_host 'foo.bar'
-api_base_path '/foo'
+api_base_path '/api'
 ```
 
 The `api_server` directive corresponds to the `Server` object introduced with OpenAPI 3.0. The
@@ -1219,22 +1224,22 @@ api_default 'array', within_requests: [], within_responses: []
 - `:within_requests` - The general default value of parameters when consuming requests.
 - `:within_responses` - The general default value of properties when producing responses.
 
-### Importing API definitions
+### Importing API definition
 
-API definitions can also be specified in separate files located in `jsapi/api_defs`. Directives
-within files are specified as in `api_definitions` blocks without prefix `api_`, for example:
+The API can also be defined in a separate file located in `jsapi`. Directives within files are
+specified without prefix `api_`, for example:
 
 ```ruby
-# jsapi/api_defs/foo.rb
+# jsapi/foo.rb
 
 operation 'foo' do
   # ...
 end
 ```
 
-The API definitions specified in a file are automatically imported into a controller if the
-file name matches the controller name. For example, `jsapi/api_defs/foo.rb` is automatically
-imported into `FooController`. Other files can be imported as below.
+The API definition specified in a file are automatically imported into a controller if the
+file name matches the controller name. For example, `jsapi/foo.rb` is automatically imported
+into `FooController`. Other files can be imported as below.
 
 ```ruby
 class FooController < Jsapi::Controller::Base
@@ -1245,13 +1250,13 @@ end
 Within a file, other files can be imported as below.
 
 ```ruby
-# jsapi/api_defs/foo/bar.rb
+# jsapi/foo/bar.rb
 
 import 'foo/shared'
 ```
 
 ```ruby
-# jsapi/api_defs/foo/bar.rb
+# jsapi/foo/bar.rb
 
 import_relative 'shared'
 ```
@@ -1264,7 +1269,7 @@ The location of API definitions can be changed by an initializer:
 Jsapi.configuration.api_defs_path = 'app/foo'
 ```
 
-### Sharing API definitions
+### Sharing API components
 
 API components can be used in multiple classes by inheritance or inclusion. A controller
 class inherits all API components from the parent class, for example:
@@ -1315,11 +1320,22 @@ end
 The `Jsapi::Controller::Methods` module provides the following methods to deal with
 API operations:
 
+- [api](#the-api-method)
 - [api_params](#the-api_params-method)
 - [api_response](#the-api_response-method)
 - [api_operation](#the-api_operation-method)
 - [api_operation!](#the-api_operation-method-1)
-- [api_definitions](#the-api-definitions-method)
+
+#### The `api` method
+
+`api` returns the API definition for the controller class. In particular,  this method can be
+used to create an OpenAPI document.
+
+```ruby
+render(json: api.openapi_document)
+```
+
+Also aliased as `api_definitions`.
 
 #### The `api_params` method
 
@@ -1332,8 +1348,8 @@ params = api_params('foo')
 ```
 
 The one and only positional argument specifies the name of the API operation. It can be
-omitted if the controller handles one API operation only. If no operation could be found for
-this name, an `Jsapi::Controller::OperationNotFound` exception is raised.
+omitted if the controller handles one API operation only. If the operation does not exist,
+a `Jsapi::Definition::OperationNotFound` error is raised.
 
 Note that each call of `api_params` returns a newly created instance. Thus, the instance
 returned by `api_params` must be locally stored when validating request parameters,
@@ -1359,10 +1375,11 @@ render(json: api_response(foo, 'foo', status: 200))
 
 The object to be serialized is passed as the first positional argument. The second
 positional argument specifies the name of the API operation. It can be omitted if the
-controller handles one API operation only.  If no operation could be found for this name,
-an `Jsapi::Controller::OperationNotFound` exception is raised.
+controller handles one API operation only. If the operation does not exist, a
+`Jsapi::OperationNotFound` error is raised.
 
-`:status` specifies the HTTP status code of the response to be produced.
+`:status` specifies the HTTP status code of the response to be produced. If no suitable
+response exists, a `Jsapi::Definition::ResponseNotFound` error is raised.
 
 #### The `api_operation` method
 
@@ -1388,10 +1405,11 @@ end
 ```
 
 The one and only positional argument specifies the name of the API operation. It can be
-omitted if the controller handles one API operation only. If no operation could be found for
-this name, an `Jsapi::Controller::OperationNotFound` exception is raised.
+omitted if the controller exposes a single operation. If the operation does not exist,
+a `Jsapi::Definition::OperationNotFound` error is raised.
 
-`:status` specifies the HTTP status code of the response to be produced.
+`:status` specifies the HTTP status code of the response to be produced. If no suitable
+response exists, a `Jsapi::Definition::ResponseNotFound` error is raised.
 
 If an exception is raised while performing the operation, an error response according to the
 first matching rescue handler is rendered. If no rescue handler matches, the exception is
@@ -1399,8 +1417,8 @@ raised again.
 
 #### The `api_operation!` method
 
-Like `api_operation`, except that a `Jsapi::Controller::ParametersInvalid` exception is raised
-on invalid request parameters.
+Like `api_operation`, but raises a `Jsapi::Controller::ParametersInvalid` errors when the
+request parameters are invalid.
 
 ```ruby
 api_operation!('foo') do |api_params|
@@ -1410,15 +1428,6 @@ end
 
 The `errors` instance method of `Jsapi::Controller::ParametersInvalid` returns all of the
 validation errors encountered.
-
-#### The `api_definitions` method
-
-`api_definitions` returns the API definitions of the controller class. In particular,  this
-method can be used to create an OpenAPI document.
-
-```ruby
-render(json: api_definitions.openapi_document)
-```
 
 ### Strong parameters
 
@@ -1726,6 +1735,207 @@ def update
   api_operation!('update_foo') do |api_params|
     foo = Foo.find api_params.id
     foo.update! api_params.foo.serializable_hash(only: params[:foo].keys)
+  end
+end
+```
+
+## API Clients
+
+The `Jsapi::Client::Base` class allows calling remote operations over HTTP. The operations to
+be called are defined with the [Jsapi DSL](#jsapi-dsl).
+
+```ruby
+class FooClient < Jsapi::Client::Base
+  api_operation 'foo' do
+    # Define API operation here
+  end
+end
+```
+
+The base URL of the API is supplied when instantiating a client.
+
+```ruby
+client = FooClient.new('https://foo.bar/api')
+```
+
+Alternatively, the name of a server can be passed:
+
+```ruby
+class FooClient < Jsapi::Client::Base
+  api do
+    server name: 'production', url: 'https://foo.bar:{port}/api' do
+      variable 'port', default: 443
+    end
+  end
+end
+
+client = new FooClient('production', { port: 8443 })
+```
+
+### Calling API operations
+
+Use `call` or `call!` to invoke a remote operation.
+
+```ruby
+response = client.call('foo', bar, baz: 'bat')
+```
+
+The first argument specifies the name of the operation. It can be omitted if the API exposes
+a single operation. If the operation is not defined a `Jsapi::Definition::OperationNotFound`
+error is raised. The optional second argument specifies the object to build the request body
+from. Parameters may be passed directly as keyword arguments.
+
+Alternatively, the request can be assembled in a block before it is sent.
+
+```ruby
+response = client.call('foo') do |request|
+  request[:baz] = 'bat'
+  request.body = bar
+end
+```
+
+`call` returns an object exposing `body` and `headers` to access the response body and headers.
+`body` returns a model-like object. For a JSON response body whose type is `object`, this
+object provides readers for all properties. The validity of a response body can be checked by
+`valid?` or `invalid?`.
+
+`call` returns `nil` if no response specification matches the HTTP status code returned.
+
+Unlike `call`, `call!` raises a `Jsapi::Client::ResponseError` when the response body
+is invalid.
+
+### Headers
+
+Headers can be provided in three ways:
+
+- Specify a header as a parameter in the API definition and pass its value when calling an
+  operation.
+- Set a header for a single request in the block passed to `call` or `call!`.
+- Set default headers for every subsequent operation call.
+
+Header names are case-insensitive.
+
+As described in [Specifying parameters](#specifying-parameters), a header can be defined as
+a parameter, for example:
+
+```ruby
+class FooClient < Jsapi::Client::Base
+  api_operation 'foo' do
+    parameter 'x-bar', in: 'header', type: 'string'
+  end
+end
+```
+
+In this case, the value of the header can be passed as a keyword argument when calling
+the operation:
+
+```ruby
+client = FooClient.new('https://foo.bar/api')
+response = client.call('foo', x_bar: '...')
+```
+
+Headers that are not defined as a parameter can be set for a single request using the
+`headers` method exposed by the request object passed to the block:
+
+```ruby
+response = client.call('foo') do |request|
+  request.headers['x-api-key'] = '...'
+end
+```
+
+`headers` also provides a convenient method to easily set HTTP Basic Authentication:
+
+```ruby
+response = client.call('foo') do |request|
+  request.headers.http_basic_auth('username', 'password')
+end
+```
+
+To include the same headers in every operation call, set them using the `request_headers`
+method.
+
+```ruby
+client = FooClient.new('https://foo.bar/api')
+client.request_headers['x-bar'] = '...'
+client.request_headers.http_basic_auth('username', 'password')
+```
+
+### Sessions
+
+Use `start_session` to reuse a single HTTP session across multiple operation calls. If a block
+is passed to `start_session` the session is closed automatically after the block has been
+executed.
+
+```ruby
+client.start_session do
+  client.call('foo')
+  client.call('bar)
+end
+```
+
+Otherwise, the session must be closed by `finish_session`.
+
+```ruby
+client.start_session
+begin
+  client.call('foo')
+  client.call('bar')
+ensure
+  client.finish_session
+end
+```
+
+### Raising errors
+
+Use `raises` to register an error class for responses with matching HTTP status codes.
+The required `:on` option can be a status code or a status code range, such as `"5xx"`.
+
+```ruby
+class FooClient < Jsapi::Client::Base
+  class ServerError < StandardError; end
+
+  raises ServerError, on: '5xx'
+end
+```
+
+### Logging
+
+Assign a Ruby logger to `client.logger` to log HTTP requests and responses.
+
+```ruby
+client = FooClient.new('https://foo.bar/api')
+client.logger = Logger.new($stdout)
+```
+
+At the `debug` level, the client logs each request's HTTP method and path, and each response's
+HTTP version and status code. By default, request and response bodies are not logged. To log
+bodies as well, use `Jsapi::Client::Session::Logger` with `body: true`:
+
+```ruby
+client.logger = Jsapi::Client::Session::Logger.new(Logger.new($stdout), body: true)
+```
+
+### Testing
+
+Use `Jsapi::Client::Session::SingleRequest.spy` to test a client operation without making an
+HTTP request. It supplies a stubbed response and provides access to the captured request:
+
+```ruby
+Jsapi::Client::Session::SingleRequest.spy(:ok, '{"id":1}', content_type: 'application/json') do |spy|
+  client.call('foo')
+
+  assert_equal('GET', spy.request.method)
+end
+```
+
+For calls made within a session, use `Jsapi::Client::Session::Base.spy`. Set the response for
+each request with `response_with`:
+
+```ruby
+Jsapi::Client::Session::Base.spy do |spy|
+  spy.response_with(:ok, '{"id":1}', content_type: 'application/json')
+  client.start_session do
+    client.call('foo')
   end
 end
 ```

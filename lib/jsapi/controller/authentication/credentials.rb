@@ -13,7 +13,7 @@ module Jsapi
           # security scheme.
           def create(request, security_scheme)
             case security_scheme
-            when Meta::SecurityScheme::APIKey
+            when Definition::SecurityScheme::APIKey
               name = security_scheme.name
               APIKey.new(
                 case security_scheme.in
@@ -23,11 +23,11 @@ module Jsapi
                   request.query_parameters[name]
                 end
               )
-            when Meta::SecurityScheme::HTTP::Basic
+            when Definition::SecurityScheme::HTTP::Basic
               HTTP::Basic.new(request.authorization)
-            when Meta::SecurityScheme::HTTP::Bearer
+            when Definition::SecurityScheme::HTTP::Bearer
               HTTP::Bearer.new(request.authorization)
-            when Meta::SecurityScheme::HTTP::Other
+            when Definition::SecurityScheme::HTTP::Other
               HTTP::Base.new(request.authorization)
             end
           end

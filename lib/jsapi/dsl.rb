@@ -9,11 +9,11 @@ require_relative 'dsl/response'
 require_relative 'dsl/shared_operation_methods'
 require_relative 'dsl/operation'
 require_relative 'dsl/path'
-require_relative 'dsl/definitions'
+require_relative 'dsl/api'
 require_relative 'dsl/class_methods'
 
 module Jsapi
-  # The \DSL to define API components.
+  # The \DSL to define \API components.
   module DSL
     def self.included(base) # :nodoc:
       base.extend(ClassMethods)

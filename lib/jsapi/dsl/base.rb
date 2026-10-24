@@ -34,8 +34,8 @@ module Jsapi
     end
 
     class Base
-      def initialize(meta_model, pathname = nil, parent: nil, &block)
-        @meta_model = meta_model
+      def initialize(definition, pathname = nil, parent: nil, &block)
+        @definition = definition
         @pathname = pathname
         @parent = parent
 
@@ -55,7 +55,7 @@ module Jsapi
 
         # Evaluate block
         if block
-          if meta_model.reference?
+          if definition.reference?
             raise Error, "reference can't be specified together with a block"
           end
 
@@ -68,7 +68,7 @@ module Jsapi
         raise ArgumentError, "file name can't be blank" if filename.blank?
 
         pathname = Jsapi.configuration.pathname("#{filename}.rb")
-        self.class.new(@meta_model, pathname, parent: self)
+        self.class.new(@definition, pathname, parent: self)
       end
 
       # Imports the file named +filename+ relative to the current file's path.
@@ -76,7 +76,7 @@ module Jsapi
         raise ArgumentError, "file name can't be blank" if filename.blank?
 
         pathname = (@pathname&.parent || Jsapi.configuration.pathname) + "#{filename}.rb"
-        self.class.new(@meta_model, pathname, parent: self)
+        self.class.new(@definition, pathname, parent: self)
       end
 
       def respond_to_missing?(param1, *) # :nodoc:
@@ -105,7 +105,7 @@ module Jsapi
 
       def find_method(name)
         ["#{name}=", "add_#{name}"].find do |method|
-          @meta_model.respond_to?(method)
+          @definition.respond_to?(method)
         end
       end
 
@@ -114,7 +114,7 @@ module Jsapi
         raise "unsupported keyword: #{name}" unless method
 
         define(name) do
-          @meta_model.public_send(method, *params).tap do |result|
+          @definition.public_send(method, *params).tap do |result|
             Base.new(result, &block) if block
           end
         end
